@@ -1,0 +1,23 @@
+[27-Aug-2024 10:13:03 Asia/Tehran] PHP Fatal error:  Uncaught Error: Call to undefined function add_action() in /home3/tibinir/public_html/wp-content/plugins/Faraz Telegram Plugin 5/index.php:10
+Stack trace:
+#0 {main}
+  thrown in /home3/tibinir/public_html/wp-content/plugins/Faraz Telegram Plugin 5/index.php on line 10
+[27-Aug-2024 10:14:21 Asia/Tehran] PHP Fatal error:  Uncaught Error: Call to undefined function add_action() in /home3/tibinir/public_html/wp-content/plugins/Faraz Telegram Plugin 5/index.php:10
+Stack trace:
+#0 {main}
+  thrown in /home3/tibinir/public_html/wp-content/plugins/Faraz Telegram Plugin 5/index.php on line 10
+[27-Aug-2024 10:16:29 Asia/Tehran] PHP Fatal error:  Uncaught Error: Call to undefined function get_option() in /home3/tibinir/public_html/wp-content/plugins/Faraz Telegram Plugin 5/add-content.php:19
+Stack trace:
+#0 /home3/tibinir/public_html/wp-content/plugins/Faraz Telegram Plugin 5/index.php(11): stp_check_for_new_rss_items()
+#1 {main}
+  thrown in /home3/tibinir/public_html/wp-content/plugins/Faraz Telegram Plugin 5/add-content.php on line 19
+[27-Aug-2024 10:20:05 Asia/Tehran] PHP Fatal error:  Uncaught Error: Call to undefined function get_option() in /home3/tibinir/public_html/wp-content/plugins/Faraz Telegram Plugin 5/add-content.php:19
+Stack trace:
+#0 /home3/tibinir/public_html/wp-content/plugins/Faraz Telegram Plugin 5/index.php(11): stp_check_for_new_rss_items()
+#1 {main}
+  thrown in /home3/tibinir/public_html/wp-content/plugins/Faraz Telegram Plugin 5/add-content.php on line 19
+[27-Aug-2024 10:20:06 Asia/Tehran] PHP Fatal error:  Uncaught Error: Call to undefined function get_option() in /home3/tibinir/public_html/wp-content/plugins/Faraz Telegram Plugin 5/add-content.php:19
+Stack trace:
+#0 /home3/tibinir/public_html/wp-content/plugins/Faraz Telegram Plugin 5/index.php(11): stp_check_for_new_rss_items()
+#1 {main}
+  thrown in /home3/tibinir/public_html/wp-content/plugins/Faraz Telegram Plugin 5/add-content.php on line 19
