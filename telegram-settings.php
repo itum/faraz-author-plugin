@@ -1,5 +1,5 @@
 <?php
- // Add settings menu
+// Add settings menu
 add_action('admin_menu', 'tsp_add_menu');
 
 function tsp_add_menu()
@@ -10,26 +10,188 @@ function tsp_add_menu()
 function telegram_bot_settings_page()
 {
 ?>
-    <div class="wrap">
-        <h2>Telegram Bot Settings</h2>
-        <form method="post" action="">
-            <?php wp_nonce_field('save_telegram_bot_token', 'telegram_bot_nonce'); ?>
-            <label for="telegram_bot_token">Enter your Telegram Bot chat ID Group:</label><br>
-            <input type="text" id="telegram_bot_token" name="telegram_bot_Chat_id" value="<?php echo esc_attr(get_option('telegram_bot_Chat_id')); ?>"><br><br>
-            <label for="telegram_bot_token">Enter your Telegram Bot token:</label><br>
-            <input type="text" id="telegram_bot_token" name="telegram_bot_token" value="<?php echo esc_attr(get_option('telegram_bot_token')); ?>"><br><br>
-            <label for="telegram_bot_url">Enter your Telegram Bot info:</label><br>
-            <input type="text" id="telegram_bot_url" name="telegram_bot_url" value="<?php echo esc_attr(get_option('telegram_bot_url')); ?>"><br><br>
-            <label for="telegram_bot_info">Enter your Telegram Bot info:</label><br>
-            <textarea id="telegram_bot_info" name="telegram_bot_info" value="<?php echo esc_attr(get_option('telegram_bot_info')); ?>" rows="8" cols="32" placeholder="به بات فراز خوش اومدی :)
+    <style>
+    .telegram-settings-wrap {
+        font-family: 'IRANSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+        max-width: 800px;
+        margin: 40px auto;
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
 
-از کامند های زیر استفاده کن : 
-/start 
-/send_drafts
-/publish_all_drafts"><?php echo esc_attr(get_option('telegram_bot_info')); ?></textarea><br><br>
-            <input type="submit" name="submit_token" value="Submit">
+    .telegram-settings-wrap h2 {
+        color: #2c3e50;
+        font-size: 2em;
+        margin-bottom: 30px;
+        border-bottom: 3px solid #3498db;
+        padding-bottom: 10px;
+        display: inline-block;
+    }
+
+    .telegram-settings-form {
+        display: grid;
+        gap: 20px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-group label {
+        color: #2c3e50;
+        font-size: 1em;
+        font-weight: 500;
+    }
+
+    .form-group input[type="text"],
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s ease;
+        background: #f8f9fa;
+    }
+
+    .form-group input[type="text"]:focus,
+    .form-group textarea:focus {
+        border-color: #3498db;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .form-group textarea {
+        min-height: 150px;
+        resize: vertical;
+    }
+
+    .submit-button {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+        margin-top: 20px;
+        width: fit-content;
+    }
+
+    .submit-button:hover {
+        background: #2980b9;
+    }
+
+    .success-message,
+    .error-message {
+        display: none;
+        padding: 15px 20px;
+        border-radius: 6px;
+        margin-top: 20px;
+        font-weight: 500;
+    }
+
+    .success-message {
+        background: #2ecc71;
+        color: white;
+    }
+
+    .error-message {
+        background: #e74c3c;
+        color: white;
+    }
+
+    /* Loading animation */
+    .loading {
+        display: none;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-left: 10px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    </style>
+
+    <div class="telegram-settings-wrap">
+        <h2>تنظیمات ربات تلگرام</h2>
+        <form method="post" action="" class="telegram-settings-form">
+            <?php wp_nonce_field('save_telegram_bot_token', 'telegram_bot_nonce'); ?>
+            
+            <div class="form-group">
+                <label for="telegram_bot_chat_id">شناسه چت گروه تلگرام:</label>
+                <input type="text" id="telegram_bot_chat_id" name="telegram_bot_Chat_id" 
+                       value="<?php echo esc_attr(get_option('telegram_bot_Chat_id')); ?>" 
+                       placeholder="مثال: -1001234567890">
+            </div>
+
+            <div class="form-group">
+                <label for="telegram_bot_token">توکن ربات تلگرام:</label>
+                <input type="text" id="telegram_bot_token" name="telegram_bot_token" 
+                       value="<?php echo esc_attr(get_option('telegram_bot_token')); ?>" 
+                       placeholder="مثال: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+            </div>
+
+            <div class="form-group">
+                <label for="telegram_bot_url">آدرس وب‌هوک ربات:</label>
+                <input type="text" id="telegram_bot_url" name="telegram_bot_url" 
+                       value="<?php echo esc_attr(get_option('telegram_bot_url')); ?>" 
+                       placeholder="مثال: https://example.com/webhook">
+            </div>
+
+            <div class="form-group">
+                <label for="telegram_bot_info">پیام خوش‌آمدگویی ربات:</label>
+                <textarea id="telegram_bot_info" name="telegram_bot_info" 
+                          placeholder="پیام خوش‌آمدگویی و راهنمای دستورات ربات را وارد کنید"><?php echo esc_attr(get_option('telegram_bot_info')); ?></textarea>
+            </div>
+
+            <button type="submit" name="submit_token" class="submit-button">
+                <span>ذخیره تنظیمات</span>
+                <span class="loading"></span>
+            </button>
         </form>
+
+        <div class="success-message">تنظیمات با موفقیت ذخیره شد!</div>
+        <div class="error-message">خطا در ذخیره تنظیمات!</div>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('.telegram-settings-form');
+        const loading = document.querySelector('.loading');
+        const successMessage = document.querySelector('.success-message');
+        const errorMessage = document.querySelector('.error-message');
+
+        form.addEventListener('submit', function() {
+            loading.style.display = 'inline-block';
+        });
+
+        <?php if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_token'])) : ?>
+            <?php if (check_admin_referer('save_telegram_bot_token', 'telegram_bot_nonce')) : ?>
+                successMessage.style.display = 'block';
+                setTimeout(function() {
+                    successMessage.style.display = 'none';
+                }, 3000);
+            <?php else : ?>
+                errorMessage.style.display = 'block';
+                setTimeout(function() {
+                    errorMessage.style.display = 'none';
+                }, 3000);
+            <?php endif; ?>
+        <?php endif; ?>
+    });
+    </script>
 <?php
 }
 

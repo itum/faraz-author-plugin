@@ -27,109 +27,405 @@ function stp_render_page() {
                 $entries = array_values($entries);  
                 update_option('stp_entries', $entries);
             }
-        } elseif (isset($_POST['stp_submit_entries'])) { 
-            stp_schedule_rss_check();
         }
     }
 ?>
 <style>
+/* Reset and base styles */
+.wrap {
+    font-family: 'IRANSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 20px;
+}
+
+/* Add New Item button style */
+#add-new-item {
+    background: #3498db;
+    color: white;
+    padding: 12px 25px;
+    border-radius: 6px;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 20px;
+    transition: background 0.3s ease;
+}
+
+#add-new-item:hover {
+    background: #2980b9;
+}
+
+h1 {
+    color: #2c3e50;
+    font-size: 2.2em;
+    margin-bottom: 30px;
+    border-bottom: 3px solid #3498db;
+    padding-bottom: 10px;
+    display: inline-block;
+}
+
+/* Modal styles */
 [data-ml-modal] {
-	position:fixed;
-	top:0;
-	bottom:0;
-	left:0;
-	right:0;
-	overflow-x:hidden;
-	overflow-y:auto;
-	-webkit-overflow-scrolling:touch;
-	z-index:999;
-	width:0;
-	height:0;
-	opacity:0;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    direction: rtl;
 }
+
 [data-ml-modal]:target {
-	width:auto;
-	height:auto;
-	opacity:1;
-	-webkit-transition:  opacity 1s ease;
-	transition: opacity 1s ease;
+    opacity: 1;
+    visibility: visible;
 }
-[data-ml-modal]:target .modal-overlay {
-	position:fixed;
-	top:0;
-	bottom:0;
-	left:0;
-	right:0;
-	cursor:pointer;
-	background-color:#000;
-	background-color:rgba(0, 0, 0, 0.7);
-	z-index:1;
-}
-[data-ml-modal] .modal-dialog {
-	border-radius:6px;
-	box-shadow:0 11px 15px -7px rgba(0, 0, 0, 0.2), 0 24px 38px 3px rgba(0, 0, 0, 0.14), 0 9px 46px 8px rgba(0, 0, 0, 0.12);
-	position:relative;
-	width: 90%;
-	max-width:660px;
-	max-height:70%;
-	margin:10% auto;
-	overflow-x:hidden;
-	overflow-y:auto;
-	z-index:2;
-}
-.modal-dialog-lg {max-width:820px !important;}
 
-[data-ml-modal] .modal-dialog > h3 {
-	background-color:#eee;
-	border-bottom:1px solid #b3b3b3;
-	font-size:24px;
-	font-weight: 400;
-	margin:0;
-	padding:0.8em 56px .8em 27px; 
+.modal-dialog {
+    background: #fff;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 90%;
+    margin: 40px auto;
+    position: relative;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
+
+.modal-dialog h3 {
+    color: #2c3e50;
+    margin-bottom: 25px;
+    font-size: 1.5em;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+}
+
+.modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Form styles in modal */
+.modal-content input[type="text"],
+.modal-content select {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background: #f8f9fa;
+    text-align: right;
+}
+
+.modal-content input[type="text"]:focus,
+.modal-content select:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    outline: none;
+}
+
+.modal-content input[type="text"]::placeholder {
+    color: #95a5a6;
+    text-align: right;
+}
+
+.modal-content select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a0aec0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: left 1rem center;
+    background-size: 1em;
+    padding-left: 2.5rem;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 25px;
+    justify-content: flex-start;
+}
+
+.button-group button[type="submit"],
+.button-group .modal-close {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    min-width: 120px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.button-group button[type="submit"] {
+    background: #3498db;
+    color: white;
+    border: none;
+}
+
+.button-group button[type="submit"]:hover {
+    background: #2980b9;
+}
+
+.button-group .modal-close {
+    background: #e74c3c;
+    color: white;
+    text-decoration: none;
+}
+
+.button-group .modal-close:hover {
+    background: #c0392b;
+}
+
+/* Table styles */
+#stp-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 30px;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    table-layout: fixed;
+}
+
+#stp-table th {
+    background: #3498db;
+    color: white;
+    font-weight: 500;
+    text-align: center;
+    padding: 15px;
+    white-space: nowrap;
+}
+
+#stp-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    text-align: center;
+    vertical-align: middle;
+}
+
+#stp-table tr:last-child td {
+    border-bottom: none;
+}
+
+#stp-table tr:hover {
+    background: #f8f9fa;
+}
+
+/* Column widths */
+#stp-table th:nth-child(1), 
+#stp-table td:nth-child(1) { /* RSS آدرس */
+    width: 25%;
+}
+
+#stp-table th:nth-child(2),
+#stp-table td:nth-child(2) { /* عنوان کانال */
+    width: 15%;
+}
+
+#stp-table th:nth-child(3),
+#stp-table td:nth-child(3) { /* توضیحات کانال */
+    width: 20%;
+}
+
+#stp-table th:nth-child(4),
+#stp-table td:nth-child(4) { /* نوع */
+    width: 10%;
+}
+
+#stp-table th:nth-child(5),
+#stp-table td:nth-child(5) { /* کلاس */
+    width: 15%;
+}
+
+#stp-table th:nth-child(6),
+#stp-table td:nth-child(6) { /* عملیات */
+    width: 15%;
+}
+
+/* Action buttons in table */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    padding: 5px;
+}
+
 .button-p {
-  font: bold 11px Arial;
-  text-decoration: none;
-  background-color: #EEEEEE;
-  color: #333333 !important;
-  padding: 2px 6px 2px 6px;
-  border: 1px solid #cccccc;
-
+    display: inline-block;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background 0.3s ease;
+    color: white;
+    min-width: 70px;
+    text-align: center;
 }
-[data-ml-modal] .modal-content {background:#fff; padding:23px 27px;}
- 
-    .modal-content {
-        background: #fff;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+
+.edit-entry {
+    background: #2ecc71;
+}
+
+.edit-entry:hover {
+    background: #27ae60;
+}
+
+.delete-btn {
+    background: #e74c3c;
+}
+
+.delete-btn:hover {
+    background: #c0392b;
+}
+
+/* Remove any form styles that might interfere */
+.action-buttons form {
+    margin: 0;
+    padding: 0;
+    display: inline;
+}
+
+/* Submit button at bottom */
+button[name="stp_submit_entries"] {
+    margin-top: 20px;
+    background: #9b59b6;
+    padding: 12px 30px;
+    font-size: 16px;
+}
+
+button[name="stp_submit_entries"]:hover {
+    background: #8e44ad;
+}
+
+/* Loading indicator */
+.loading {
+    display: none;
+    margin-left: 10px;
+    color: #3498db;
+}
+
+/* Success message */
+.success-message {
+    display: none;
+    background: #2ecc71;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    margin-top: 20px;
+}
+
+/* Error message */
+.error-message {
+    display: none;
+    background: #e74c3c;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    margin-top: 20px;
+}
+
+/* Delete confirmation modal styles */
+.delete-confirm-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.delete-confirm-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    transform: translateY(-20px);
+    animation: slideIn 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+    to {
+        transform: translateY(0);
     }
-    .button-p {
-        background-color:  #EEEEEE;
-        color: white;
-        padding: 14px 20px;
-        margin: 8px 0;
-        border: none;
-        cursor: pointer;
-    }
-    .button-p:hover {
-        opacity: 0.8;
-    }
+}
+
+.delete-confirm-content h3 {
+    color: #e74c3c;
+    margin: 0 0 20px 0;
+    font-size: 1.5em;
+}
+
+.delete-confirm-content p {
+    color: #2c3e50;
+    margin-bottom: 25px;
+    line-height: 1.6;
+}
+
+.delete-confirm-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.delete-confirm-buttons button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s ease;
+}
+
+.confirm-delete-btn {
+    background: #e74c3c;
+    color: white;
+}
+
+.confirm-delete-btn:hover {
+    background: #c0392b;
+}
+
+.cancel-delete-btn {
+    background: #95a5a6;
+    color: white;
+}
+
+.cancel-delete-btn:hover {
+    background: #7f8c8d;
+}
 </style>
 <div class="wrap">
-    <h1>faraz Telegram Plugin</h1>
-    <p><a href="#modal-10" class="button-p" id="add-new-item">Add an item</a></p>
+    <h1>پلاگین تلگرام فراز</h1>
+    <p><a href="#modal-10" class="button-p" id="add-new-item">افزودن آیتم جدید</a></p>
     <form method="post">
         <div data-ml-modal id="modal-10">
             <a href="#!" class="modal-overlay"></a>
-            <div class="modal-dialog modal-dialog-lg">
-                <h3 id="modal-title">Add an item</h3>
-                <div class="modal-content newspaper">
-                    <input type="text" name="stp_input" id="stp-input" placeholder="Enter RSS URL">
-                    <input type="text" name="rss_fetcher_type" id="rss_fetcher_type" placeholder="Enter Type (e.g., div)">
-                    <input type="text" name="rss_fetcher_class" id="rss_fetcher_class" placeholder="Enter Class (e.g., article-content)">
+            <div class="modal-dialog">
+                <h3 id="modal-title">افزودن آیتم جدید</h3>
+                <div class="modal-content">
+                    <input type="text" name="stp_input" id="stp-input" placeholder="آدرس RSS را وارد کنید">
+                    <input type="text" name="rss_fetcher_type" id="rss_fetcher_type" placeholder="نوع را وارد کنید (مثال: div)">
+                    <input type="text" name="rss_fetcher_class" id="rss_fetcher_class" placeholder="کلاس را وارد کنید (مثال: article-content)">
                     
                     <select name="category_id" id="category-select">
+                        <option value="">دسته‌بندی را انتخاب کنید</option>
                         <?php
                         $categories = get_categories(array('hide_empty' => false));
                         foreach ($categories as $category) {
@@ -137,54 +433,67 @@ function stp_render_page() {
                         }
                         ?>
                     </select>
-                    <br><hr>
+                    
                     <input type="hidden" name="entry_index" id="entry_index" value="">
-                    <button type="submit" name="stp_add_entry" id="save-button">Add to Table</button>
-                    <a href="#!" class="modal-close button-p">Cancel</a>
+                    <div class="button-group" style="margin-top: 20px;">
+                        <button type="submit" name="stp_add_entry" id="save-button">افزودن به جدول</button>
+                        <a href="#!" class="modal-close button-p">انصراف</a>
+                    </div>
                 </div>
             </div>
         </div>
     </form>
+
+    <table id="stp-table">
+        <thead>
+            <tr>
+                <th>آدرس RSS</th>
+                <th>عنوان کانال</th>
+                <th>توضیحات کانال</th>
+                <th>نوع</th>
+                <th>کلاس</th>
+                <th>عملیات</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($entries as $index => $entry) : ?>
+                <tr>
+                    <td><?php echo esc_html($entry['url']); ?></td>
+                    <td><?php echo get_cat_name(esc_html($entry['channel_title'])); ?></td>
+                    <td><?php echo esc_html($entry['channel_description']); ?></td>
+                    <td><?php echo esc_html($entry['type']); ?></td>
+                    <td><?php echo esc_html($entry['class']); ?></td>
+                    <td class="action-buttons">
+                        <a href="#modal-10" class="button-p edit-entry" data-index="<?php echo $index; ?>">ویرایش</a>
+                        <button type="button" class="button-p delete-btn" style="background: #e74c3c;" onclick="showDeleteConfirmation(<?php echo $index; ?>)">حذف</button>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+
+    <div class="success-message">عملیات با موفقیت انجام شد!</div>
+    <div class="error-message">خطا در انجام عملیات!</div>
 </div>
 
-<table id="stp-table" style="width: 100%; margin-top: 20px; border-collapse: collapse;">
-    <thead>
-        <tr>
-            <th style="border: 1px solid #000; padding: 8px;">RSS URL</th>
-            <th style="border: 1px solid #000; padding: 8px;">Channel Title</th>
-            <th style="border: 1px solid #000; padding: 8px;">Channel Description</th>
-            <th style="border: 1px solid #000; padding: 8px;">Type</th>
-            <th style="border: 1px solid #000; padding: 8px;">Class</th>
-            <th style="border: 1px solid #000; padding: 8px;">Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php foreach ($entries as $index => $entry) : ?>
-            <tr>
-                <td style="border: 1px solid #000; padding: 8px;"><?php echo esc_html($entry['url']); ?></td>
-                <td style="border: 1px solid #000; padding: 8px;"><?php echo get_cat_name(esc_html($entry['channel_title'])); ?></td>
-                <td style="border: 1px solid #000; padding: 8px;"><?php echo esc_html($entry['channel_description']); ?></td>
-                <td style="border: 1px solid #000; padding: 8px;"><?php echo esc_html($entry['type']); ?></td>
-                <td style="border: 1px solid #000; padding: 8px;"><?php echo esc_html($entry['class']); ?></td>
-                <td style="border: 1px solid #000; padding: 8px;">
-                    <a href="#modal-10" class="button-p edit-entry" data-index="<?php echo $index; ?>">Edit</a>
-                    <form method="post" style="display:inline;">
-                        <input type="hidden" name="entry_index" value="<?php echo $index; ?>">
-                        <button type="submit" name="stp_delete_entry">Delete</button>
-                    </form>
-                </td>
-            </tr>
-        <?php endforeach; ?>
-    </tbody>
-</table>
-<br><br>
-<form method="post">
-    <button type="submit" name="stp_submit_entries">Submit</button>
-</form>
+<!-- Delete Confirmation Modal -->
+<div class="delete-confirm-modal" id="delete-confirm-modal">
+    <div class="delete-confirm-content">
+        <h3>تأیید حذف</h3>
+        <p>آیا از حذف این مورد اطمینان دارید؟</p>
+        <div class="delete-confirm-buttons">
+            <form method="post" id="delete-form">
+                <input type="hidden" name="entry_index" id="delete-entry-index" value="">
+                <button type="submit" name="stp_delete_entry" class="confirm-delete-btn">بله، حذف شود</button>
+            </form>
+            <button type="button" class="cancel-delete-btn">انصراف</button>
+        </div>
+    </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Edit button functionality
     document.querySelectorAll('.edit-entry').forEach(function(button) {
         button.addEventListener('click', function() {
             var index = this.getAttribute('data-index');
@@ -193,21 +502,85 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('stp-input').value = row.cells[0].textContent.trim();
             document.getElementById('rss_fetcher_type').value = row.cells[3].textContent.trim();
             document.getElementById('rss_fetcher_class').value = row.cells[4].textContent.trim();
-            document.getElementById('category-select').value = row.cells[1].getAttribute('data-category-id');
+            
+            // Find and select the category in dropdown
+            var categoryName = row.cells[1].textContent.trim();
+            var categorySelect = document.getElementById('category-select');
+            for(var i = 0; i < categorySelect.options.length; i++) {
+                if(categorySelect.options[i].text === categoryName) {
+                    categorySelect.selectedIndex = i;
+                    break;
+                }
+            }
+            
             document.getElementById('entry_index').value = index;
-            document.getElementById('save-button').textContent = 'Update';
-            document.getElementById('modal-title').textContent = 'Edit Item';
+            document.getElementById('save-button').textContent = 'به‌روزرسانی';
+            document.getElementById('modal-title').textContent = 'ویرایش آیتم';
         });
     });
 
+    // Add new item button functionality
     document.getElementById('add-new-item').addEventListener('click', function() {
         document.getElementById('stp-input').value = '';
         document.getElementById('rss_fetcher_type').value = '';
         document.getElementById('rss_fetcher_class').value = '';
         document.getElementById('category-select').selectedIndex = 0;
         document.getElementById('entry_index').value = '';
-        document.getElementById('save-button').textContent = 'Add to Table';
-        document.getElementById('modal-title').textContent = 'Add an Item';
+        document.getElementById('save-button').textContent = 'افزودن به جدول';
+        document.getElementById('modal-title').textContent = 'افزودن آیتم جدید';
+    });
+
+    // Form submission handling
+    document.querySelectorAll('form').forEach(function(form) {
+        form.addEventListener('submit', function() {
+            document.querySelector('.loading').style.display = 'inline-block';
+        });
+    });
+
+    // Success/Error message handling
+    <?php if ($_SERVER['REQUEST_METHOD'] == 'POST') : ?>
+        var successMessage = document.querySelector('.success-message');
+        var errorMessage = document.querySelector('.error-message');
+        
+        <?php if (isset($_POST['stp_add_entry']) || isset($_POST['stp_delete_entry'])) : ?>
+            successMessage.style.display = 'block';
+            setTimeout(function() {
+                successMessage.style.display = 'none';
+            }, 3000);
+        <?php else : ?>
+            errorMessage.style.display = 'block';
+            setTimeout(function() {
+                errorMessage.style.display = 'none';
+            }, 3000);
+        <?php endif; ?>
+    <?php endif; ?>
+
+    // Delete confirmation handling
+    const deleteModal = document.getElementById('delete-confirm-modal');
+    const deleteForm = document.getElementById('delete-form');
+    const deleteEntryIndex = document.getElementById('delete-entry-index');
+
+    window.showDeleteConfirmation = function(index) {
+        deleteEntryIndex.value = index;
+        deleteModal.style.display = 'flex';
+    };
+
+    document.querySelector('.cancel-delete-btn').addEventListener('click', function() {
+        deleteModal.style.display = 'none';
+    });
+
+    // Close modal when clicking outside
+    deleteModal.addEventListener('click', function(e) {
+        if (e.target === deleteModal) {
+            deleteModal.style.display = 'none';
+        }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && deleteModal.style.display === 'flex') {
+            deleteModal.style.display = 'none';
+        }
     });
 });
 </script>

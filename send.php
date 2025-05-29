@@ -5,10 +5,10 @@
 function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has =false , $chat_id = null) {
     $token = get_option('telegram_bot_token');
     //$workerUrl = 'https://bot.alirea.ir/fakhrzd/cloud.php';
-    $workerUrl = 'https://khetabat.com/all.php'; 
+    $workerUrl = 'https://arz.shr1.ir/all.php'; 
     if(is_null($chat_id))
         $chat_id = get_option('telegram_bot_Chat_id');
-    $errorChatId = 1016239559;
+    $errorChatId = 80266430;
  
     if (empty($caption)) {
         sendErrorToTelegram("Error: Caption is empty", $errorChatId, $token);
