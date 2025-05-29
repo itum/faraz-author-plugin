@@ -97,10 +97,15 @@ function stp_render_page() {
     display: inline-block;
     margin-bottom: 20px;
     transition: background 0.3s ease;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
 }
 
 #add-new-item:hover {
     background: #2980b9;
+    color: white;
+    text-decoration: none;
 }
 
 h1 {
@@ -113,23 +118,23 @@ h1 {
 }
 
 /* Modal styles */
-[data-ml-modal] {
+.modal {
+    display: none;
     position: fixed;
     top: 0;
-    bottom: 0;
     left: 0;
     right: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 999;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999999;
+    align-items: center;
+    justify-content: center;
     direction: rtl;
 }
 
-[data-ml-modal]:target {
-    opacity: 1;
-    visibility: visible;
+.modal:target,
+.modal.show {
+    display: flex;
 }
 
 .modal-dialog {
@@ -137,18 +142,12 @@ h1 {
     border-radius: 12px;
     max-width: 600px;
     width: 90%;
-    margin: 40px auto;
-    position: relative;
     padding: 25px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-.modal-dialog h3 {
-    color: #2c3e50;
-    margin-bottom: 25px;
-    font-size: 1.5em;
-    border-bottom: 2px solid #3498db;
-    padding-bottom: 10px;
+    position: relative;
+    margin: 20px;
+    transform: translateY(0);
+    transition: transform 0.3s ease;
 }
 
 .modal-content {
@@ -157,7 +156,14 @@ h1 {
     gap: 20px;
 }
 
-/* Form styles in modal */
+.modal h3 {
+    color: #2c3e50;
+    margin-bottom: 25px;
+    font-size: 1.5em;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+}
+
 .modal-content input[type="text"],
 .modal-content select {
     width: 100%;
@@ -194,7 +200,6 @@ h1 {
 .button-group {
     display: flex;
     gap: 10px;
-    margin-top: 25px;
     justify-content: flex-start;
 }
 
@@ -471,8 +476,7 @@ button[name="stp_submit_entries"]:hover {
     <?php if (empty($current_tab)): // Only show main content on main tab ?>
     <a href="#add-new-modal" id="add-new-item" class="button">افزودن آیتم جدید</a>
     <form method="post">
-        <div data-ml-modal id="modal-10">
-            <a href="#!" class="modal-overlay"></a>
+        <div id="add-new-modal" class="modal">
             <div class="modal-dialog">
                 <h3 id="modal-title">افزودن آیتم جدید</h3>
                 <div class="modal-content">
@@ -520,7 +524,7 @@ button[name="stp_submit_entries"]:hover {
                     <td><?php echo esc_html($entry['type']); ?></td>
                     <td><?php echo esc_html($entry['class']); ?></td>
                     <td class="action-buttons">
-                        <a href="#modal-10" class="button-p edit-entry" data-index="<?php echo $index; ?>">ویرایش</a>
+                        <a href="#" class="button-p edit-entry" data-index="<?php echo $index; ?>">ویرایش</a>
                         <button type="button" class="button-p delete-btn" style="background: #e74c3c;" onclick="showDeleteConfirmation(<?php echo $index; ?>)">حذف</button>
                     </td>
                 </tr>
@@ -550,9 +554,14 @@ button[name="stp_submit_entries"]:hover {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('add-new-modal');
+    const addNewBtn = document.getElementById('add-new-item');
+    const closeBtn = document.querySelector('.modal-close');
+    
     // Edit button functionality
     document.querySelectorAll('.edit-entry').forEach(function(button) {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
             var index = this.getAttribute('data-index');
             var row = this.closest('tr');
 
@@ -573,11 +582,13 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('entry_index').value = index;
             document.getElementById('save-button').textContent = 'به‌روزرسانی';
             document.getElementById('modal-title').textContent = 'ویرایش آیتم';
+            modal.classList.add('show');
         });
     });
 
     // Add new item button functionality
-    document.getElementById('add-new-item').addEventListener('click', function() {
+    addNewBtn.addEventListener('click', function(e) {
+        e.preventDefault();
         document.getElementById('stp-input').value = '';
         document.getElementById('rss_fetcher_type').value = '';
         document.getElementById('rss_fetcher_class').value = '';
@@ -585,6 +596,27 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('entry_index').value = '';
         document.getElementById('save-button').textContent = 'افزودن به جدول';
         document.getElementById('modal-title').textContent = 'افزودن آیتم جدید';
+        modal.classList.add('show');
+    });
+
+    // Close modal functionality
+    closeBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        modal.classList.remove('show');
+    });
+
+    // Close modal when clicking outside
+    window.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.classList.remove('show');
+        }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('show')) {
+            modal.classList.remove('show');
+        }
     });
 
     // Form submission handling
@@ -626,16 +658,9 @@ document.addEventListener('DOMContentLoaded', function() {
         deleteModal.style.display = 'none';
     });
 
-    // Close modal when clicking outside
+    // Close delete modal when clicking outside
     deleteModal.addEventListener('click', function(e) {
         if (e.target === deleteModal) {
-            deleteModal.style.display = 'none';
-        }
-    });
-
-    // Close modal with Escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && deleteModal.style.display === 'flex') {
             deleteModal.style.display = 'none';
         }
     });
