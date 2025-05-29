@@ -1,6 +1,15 @@
 <?php
 
 function stp_render_page() { 
+    // Get current tab
+    $current_tab = isset($_GET['tab']) ? $_GET['tab'] : '';
+
+    // If we're on signature tab, show signature settings
+    if ($current_tab === 'signature') {
+        farazautur_signature_page();
+        return;
+    }
+
     $entries = get_option('stp_entries', array());
 
     if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -37,6 +46,45 @@ function stp_render_page() {
     max-width: 1200px;
     margin: 20px auto;
     padding: 0 20px;
+}
+
+/* Tab styles */
+.nav-tab-wrapper {
+    border-bottom: 1px solid #ccc;
+    margin: 0;
+    padding-top: 9px;
+    padding-bottom: 0;
+    line-height: inherit;
+    direction: rtl;
+    margin-bottom: 20px;
+}
+
+.nav-tab {
+    float: right;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    margin-right: .5em;
+    padding: 5px 10px;
+    font-size: 14px;
+    line-height: 24px;
+    background: #e5e5e5;
+    color: #555;
+    text-decoration: none;
+}
+
+.nav-tab:hover,
+.nav-tab:focus {
+    background-color: #fff;
+    color: #444;
+}
+
+.nav-tab-active,
+.nav-tab-active:focus,
+.nav-tab-active:focus:active,
+.nav-tab-active:hover {
+    border-bottom: 1px solid #fff;
+    background: #fff;
+    color: #000;
 }
 
 /* Add New Item button style */
@@ -413,7 +461,15 @@ button[name="stp_submit_entries"]:hover {
 </style>
 <div class="wrap">
     <h1>پلاگین تلگرام فراز</h1>
-    <p><a href="#modal-10" class="button-p" id="add-new-item">افزودن آیتم جدید</a></p>
+    
+    <!-- Add tabs navigation -->
+    <h2 class="nav-tab-wrapper">
+        <a href="?page=faraz-telegram-plugin" class="nav-tab <?php echo empty($current_tab) ? 'nav-tab-active' : ''; ?>">تنظیمات اصلی</a>
+        <a href="?page=faraz-telegram-plugin&tab=signature" class="nav-tab <?php echo $current_tab === 'signature' ? 'nav-tab-active' : ''; ?>">تنظیمات امضا</a>
+    </h2>
+
+    <?php if (empty($current_tab)): // Only show main content on main tab ?>
+    <a href="#add-new-modal" id="add-new-item" class="button">افزودن آیتم جدید</a>
     <form method="post">
         <div data-ml-modal id="modal-10">
             <a href="#!" class="modal-overlay"></a>
@@ -474,6 +530,7 @@ button[name="stp_submit_entries"]:hover {
 
     <div class="success-message">عملیات با موفقیت انجام شد!</div>
     <div class="error-message">خطا در انجام عملیات!</div>
+    <?php endif; ?>
 </div>
 
 <!-- Delete Confirmation Modal -->

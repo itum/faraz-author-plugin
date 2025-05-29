@@ -15,6 +15,14 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
         return;
     }
 
+    // Add signature to caption if enabled
+    if (get_option('farazautur_signature_enabled')) {
+        $signature = get_option('farazautur_signature_text');
+        if (!empty($signature)) {
+            $caption .= "\n\n" . wp_strip_all_tags($signature);
+        }
+    }
+
     if (empty($photo_url)) {
         sendErrorToTelegram("Error: Photo URL is empty", $errorChatId, $token);
         return;

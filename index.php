@@ -5,12 +5,42 @@ Description: A WordPress plugin to add rss and save them as drafts and send them
 Version: 5
 Author: faraz Team - Parsa Alavi
 */ 
+
+// Include signature settings
+require_once plugin_dir_path(__FILE__) . 'signature-settings.php';
   
 add_action('admin_menu', 'stp_add_menu'); 
 
 function stp_add_menu()
 {
-    add_menu_page('faraz Telegram Plugin', 'faraz Plugin', 'manage_options', 'faraz-telegram-plugin', 'stp_render_page');
+    // Add main menu
+    add_menu_page(
+        'faraz Telegram Plugin', // Page title
+        'faraz Plugin', // Menu title
+        'manage_options', // Capability
+        'faraz-telegram-plugin', // Menu slug
+        'stp_render_page' // Function
+    );
+    
+    // Add RSS Management submenu
+    add_submenu_page(
+        'faraz-telegram-plugin',
+        'مدیریت RSS ها',
+        'مدیریت RSS ها',
+        'manage_options',
+        'faraz-telegram-plugin',
+        'stp_render_page'
+    );
+    
+    // Add Signature Settings submenu
+    add_submenu_page(
+        'faraz-telegram-plugin',
+        'تنظیمات امضا',
+        'تنظیمات امضا',
+        'manage_options',
+        'faraz-telegram-plugin&tab=signature',
+        'farazautur_signature_page'
+    );
 }
 if ( ! function_exists( 'post_exists' ) ) {
     require_once( ABSPATH . 'wp-admin/includes/post.php' );
