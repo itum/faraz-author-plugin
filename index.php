@@ -8,6 +8,8 @@ Author: faraz Team - Parsa Alavi
 
 // Include signature settings
 require_once plugin_dir_path(__FILE__) . 'signature-settings.php';
+require_once plugin_dir_path(__FILE__) . 'newsroom.php';
+require_once plugin_dir_path(__FILE__) . 'private-channel-settings.php';
   
 add_action('admin_menu', 'stp_add_menu'); 
 
@@ -40,6 +42,26 @@ function stp_add_menu()
         'manage_options',
         'faraz-telegram-plugin&tab=signature',
         'farazautur_signature_page'
+    );
+
+    // Add Newsroom submenu
+    add_submenu_page(
+        'faraz-telegram-plugin',
+        'اتاق خبر',
+        'اتاق خبر',
+        'manage_options',
+        'faraz-telegram-plugin-newsroom',
+        'farazautur_newsroom_page'
+    );
+
+    // Add Private Channel Settings submenu
+    add_submenu_page(
+        'faraz-telegram-plugin',
+        'تنظیمات کانال خصوصی',
+        'تنظیمات کانال خصوصی',
+        'manage_options',
+        'faraz-telegram-plugin-private-channel',
+        'farazautur_private_channel_settings_page'
     );
 }
 if ( ! function_exists( 'post_exists' ) ) {
