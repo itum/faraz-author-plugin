@@ -50,13 +50,35 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
     // درج پست جدید
     $post_id = wp_insert_post($post_data);
     
-    // اضافه کردن برچسب‌ها
+    // فقط ارسال کلمات کلیدی به Rank Math بدون اضافه کردن به برچسب‌های وردپرس
     if (!empty($keywords) && !is_wp_error($post_id)) {
-        wp_set_post_tags($post_id, $keywords);
+        // استفاده از تایمر تاخیری برای اطمینان از ذخیره‌سازی کامل پست
+        wp_schedule_single_event(time() + 2, 'smart_admin_delayed_post_saved', array($post_id, $keywords));
+        
+        // لاگ برای تشخیص روند اجرا
+        error_log('Smart Admin: پست جدید با شناسه ' . $post_id . ' ایجاد شد و کلمات کلیدی برای Rank Math برنامه‌ریزی شدند: ' . implode(', ', $keywords));
     }
     
     return $post_id;
 }
+
+// اکشن تاخیری برای تنظیم کلمات کلیدی
+add_action('smart_admin_delayed_post_saved', function($post_id, $keywords) {
+    error_log('Smart Admin: اجرای اکشن تاخیری برای تنظیم کلمات کلیدی - پست ID: ' . $post_id);
+    
+    // اطمینان از تکمیل ذخیره‌سازی پست
+    $post = get_post($post_id);
+    if (!$post) {
+        error_log('Smart Admin: پست با شناسه ' . $post_id . ' پیدا نشد.');
+        return;
+    }
+    
+    if (function_exists('smart_admin_set_rank_math_focus_keyword')) {
+        smart_admin_set_rank_math_focus_keyword($post_id, $keywords);
+    } else {
+        error_log('Smart Admin: تابع smart_admin_set_rank_math_focus_keyword تعریف نشده است.');
+    }
+}, 10, 2);
 
 // تابع دریافت پیش‌نویس‌های ایجاد شده توسط دستیار هوشمند
 function smart_admin_get_ai_drafts($limit = 10) {
@@ -82,7 +104,7 @@ function smart_admin_add_metabox() {
     add_meta_box(
         'smart_admin_metabox',
         'اطلاعات دستیار هوشمند',
-        'smart_admin_metabox_callback',
+        'smart_admin_status_metabox_callback',
         'post',
         'side',
         'high'
@@ -91,7 +113,7 @@ function smart_admin_add_metabox() {
 add_action('add_meta_boxes', 'smart_admin_add_metabox');
 
 // نمایش محتوای متاباکس
-function smart_admin_metabox_callback($post) {
+function smart_admin_status_metabox_callback($post) {
     // بررسی آیا این پست توسط دستیار هوشمند ایجاد شده است
     $is_ai_generated = get_post_meta($post->ID, 'smart_admin_generated', true);
     

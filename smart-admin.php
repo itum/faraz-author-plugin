@@ -8,6 +8,9 @@ require_once plugin_dir_path(__FILE__) . 'smart-admin-templates.php';
 // وارد کردن فایل تنظیمات لحن انسانی
 require_once plugin_dir_path(__FILE__) . 'smart-admin-human-tone.php';
 
+// وارد کردن فایل یکپارچه‌سازی با Rank Math SEO
+require_once plugin_dir_path(__FILE__) . 'smart-admin-rank-math-seo.php';
+
 // ریدایرکت مسیر smart-admin در wp-admin به آدرس صحیح
 add_action('admin_init', 'smart_admin_redirect');
 
@@ -117,7 +120,15 @@ function smart_admin_page() {
         
         $title = sanitize_text_field($_POST['post_title']);
         $content = wp_kses_post($_POST['ai_response']);
-        $keywords = explode(',', sanitize_text_field($_POST['post_keywords']));
+        
+        // استخراج کلمات کلیدی از فرم یا استخراج خودکار
+        $keywords = array();
+        if (!empty($_POST['post_keywords'])) {
+            $keywords = explode(',', sanitize_text_field($_POST['post_keywords']));
+            $keywords = array_map('trim', $keywords);
+        } elseif (function_exists('smart_admin_extract_keywords_from_ai_response')) {
+            $keywords = smart_admin_extract_keywords_from_ai_response($content);
+        }
         
         // ذخیره محتوا به عنوان پیش‌نویس
         $post_id = smart_admin_save_ai_content_as_draft($title, $content, $keywords);
@@ -986,18 +997,36 @@ function smart_admin_page() {
             }
             
             // استخراج کلمات کلیدی از محتوا
-            const keywordsMatch = contentText.match(/کلمات کلیدی|برچسب‌ها|تگ‌ها|keywords|tags/i);
-            if (keywordsMatch) {
-                const startPos = contentText.indexOf(keywordsMatch[0]);
-                const nextLinePos = contentText.indexOf('\n', startPos + keywordsMatch[0].length);
-                if (nextLinePos > startPos) {
-                    const keywordsLine = contentText.substring(startPos, nextLinePos);
-                    const extractedKeywords = keywordsLine.replace(/.*?:/, '').trim();
-                    
-                    const keywordsInput = document.getElementById('post_keywords');
-                    if (keywordsInput && extractedKeywords) {
-                        keywordsInput.value = extractedKeywords;
+            const keywordsInput = document.getElementById('post_keywords');
+            if (keywordsInput) {
+                // الگوهای مختلف برای یافتن کلمات کلیدی
+                const patterns = [
+                    /کلمات\s*کلیدی\s*[:]\s*(.*?)(?:[\.\n]|$)/i,
+                    /کلیدواژه\s*[:]\s*(.*?)(?:[\.\n]|$)/i,
+                    /keywords\s*[:]\s*(.*?)(?:[\.\n]|$)/i,
+                    /tags\s*[:]\s*(.*?)(?:[\.\n]|$)/i,
+                    /برچسب\s*ها\s*[:]\s*(.*?)(?:[\.\n]|$)/i,
+                    /تگ\s*ها\s*[:]\s*(.*?)(?:[\.\n]|$)/i,
+                    /کلمات\s*کلیدی\s*[=]\s*(.*?)(?:[\.\n]|$)/i,
+                    /کلمات\s*کلیدی\s*[>]\s*(.*?)(?:[\.\n]|$)/i,
+                ];
+
+                // جستجو بر اساس الگوها
+                let foundKeywords = '';
+                for (const pattern of patterns) {
+                    const match = contentText.match(pattern);
+                    if (match && match[1]) {
+                        foundKeywords = match[1].trim();
+                        break;
                     }
+                }
+
+                if (foundKeywords) {
+                    // حذف کاماهای اضافی از ابتدا و انتهای رشته
+                    foundKeywords = foundKeywords.replace(/^[,،\s]+|[,،\s]+$/g, '');
+                    // حذف فاصله‌های اضافی بعد از کاماها
+                    foundKeywords = foundKeywords.replace(/[,،](\s+)/g, ',');
+                    keywordsInput.value = foundKeywords;
                 }
             }
         }
@@ -1049,7 +1078,18 @@ function send_to_gapgpt_api($prompt, $model, $api_key) {
     
     // استخراج محتوای پاسخ
     if (isset($response_body['choices'][0]['message']['content'])) {
-        return array('content' => $response_body['choices'][0]['message']['content']);
+        $content = $response_body['choices'][0]['message']['content'];
+        
+        // استخراج کلمات کلیدی از محتوا
+        $keywords = array();
+        if (function_exists('smart_admin_extract_keywords_from_ai_response')) {
+            $keywords = smart_admin_extract_keywords_from_ai_response($content);
+        }
+        
+        return array(
+            'content' => $content,
+            'keywords' => $keywords
+        );
     } else {
         return array('error' => 'خطا در دریافت پاسخ از API');
     }
@@ -1113,4 +1153,75 @@ function smart_admin_publish_draft() {
         exit;
     }
 }
-add_action('admin_init', 'smart_admin_publish_draft'); 
+add_action('admin_init', 'smart_admin_publish_draft');
+
+// نمایش محتوای متاباکس
+function smart_admin_metabox_callback($post) {
+    // بررسی آیا این پست توسط دستیار هوشمند ایجاد شده است
+    $is_ai_generated = get_post_meta($post->ID, 'smart_admin_generated', true);
+    
+    if ($is_ai_generated == 'yes') {
+        $generation_date = get_post_meta($post->ID, 'smart_admin_generation_date', true);
+        echo '<p><strong>این محتوا توسط دستیار هوشمند تولید شده است.</strong></p>';
+        echo '<p>تاریخ تولید: ' . date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($generation_date)) . '</p>';
+        
+        // دریافت برچسب‌های پست
+        $post_tags = wp_get_post_tags($post->ID, array('fields' => 'names'));
+        $keywords_string = implode(', ', $post_tags);
+        
+        echo '<div id="smart-admin-keywords-form">';
+        echo '<p><label for="smart_admin_keywords">کلمات کلیدی:</label><br>';
+        echo '<input type="text" id="smart_admin_keywords" name="smart_admin_keywords" value="' . esc_attr($keywords_string) . '" style="width: 100%;">';
+        echo '<button type="button" id="set_rank_math_keywords" class="button button-secondary" style="margin-top: 8px;">تنظیم کلمات کلیدی در Rank Math</button>';
+        echo '<span id="keywords_result" style="display: block; margin-top: 5px;"></span>';
+        echo '</p>';
+        echo '</div>';
+        
+        wp_nonce_field('smart_admin_set_keywords', 'smart_admin_keywords_nonce');
+        
+        // اسکریپت برای ارسال درخواست AJAX
+        ?>
+        <script type="text/javascript">
+        jQuery(document).ready(function($) {
+            $('#set_rank_math_keywords').on('click', function() {
+                var $button = $(this);
+                var $result = $('#keywords_result');
+                var keywords = $('#smart_admin_keywords').val();
+                
+                $button.prop('disabled', true).text('در حال تنظیم...');
+                $result.text('');
+                
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'smart_admin_set_keywords',
+                        post_id: <?php echo $post->ID; ?>,
+                        keywords: keywords,
+                        nonce: $('#smart_admin_keywords_nonce').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $result.html('<span style="color: green;">' + response.data + '</span>');
+                            // بروزرسانی صفحه برای نمایش تغییرات
+                            setTimeout(function() {
+                                location.reload();
+                            }, 2000);
+                        } else {
+                            $result.html('<span style="color: red;">' + response.data + '</span>');
+                        }
+                        $button.prop('disabled', false).text('تنظیم کلمات کلیدی در Rank Math');
+                    },
+                    error: function() {
+                        $result.html('<span style="color: red;">خطا در ارتباط با سرور</span>');
+                        $button.prop('disabled', false).text('تنظیم کلمات کلیدی در Rank Math');
+                    }
+                });
+            });
+        });
+        </script>
+        <?php
+    } else {
+        echo '<p>این محتوا توسط دستیار هوشمند تولید نشده است.</p>';
+    }
+} 
