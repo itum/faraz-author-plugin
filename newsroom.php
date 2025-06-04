@@ -43,13 +43,13 @@ function send_to_private_channel($post_id) {
     $message .= $excerpt . "\n\n";
     $message .= "📎 ادامه خبر را بخوانید: \n" . $short_link;
     
-    // Add signature to message if enabled
-    if (get_option('farazautur_signature_enabled')) {
-        $signature = get_option('farazautur_signature_text');
-        if (!empty($signature)) {
-            $message .= "\n\n" . wp_strip_all_tags($signature);
-        }
-    }
+    // امضا فقط باید در کانال عمومی نمایش داده شود، نه در کانال خصوصی
+    // if (get_option('farazautur_signature_enabled')) {
+    //     $signature = get_option('farazautur_signature_text');
+    //     if (!empty($signature)) {
+    //         $message .= "\n\n" . wp_strip_all_tags($signature);
+    //     }
+    // }
 
     write_log("Prepared message: " . $message, $log_file);
 

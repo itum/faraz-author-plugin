@@ -1,45 +1,42 @@
 <?php
 function farazautur_private_channel_settings_page() {
-    if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['save_private_channel'])) {
-        // Save settings
+    if (isset($_POST['save_private_channel'])) {
         update_option('farazautur_private_channel_id', sanitize_text_field($_POST['private_channel_id']));
-        update_option('farazautur_auto_post_enabled', isset($_POST['auto_post_enabled']) ? '1' : '0');
+        update_option('farazautur_public_channel_id', sanitize_text_field($_POST['public_channel_id']));
         update_option('telegram_hook_url', esc_url_raw($_POST['telegram_hook_url']));
-        update_option('telegram_bot_token', sanitize_text_field($_POST['telegram_bot_token']));
-        
-        echo '<div class="notice notice-success is-dismissible"><p>تنظیمات با موفقیت ذخیره شد.</p></div>';
+        update_option('farazautur_auto_post_enabled', isset($_POST['auto_post_enabled']) ? '1' : '0');
+        echo '<div class="updated"><p>تنظیمات ذخیره شدند.</p></div>';
     }
 
-    // Get current settings
     $channel_id = get_option('farazautur_private_channel_id', '');
-    $auto_post_enabled = get_option('farazautur_auto_post_enabled', '0');
+    $public_channel_id = get_option('farazautur_public_channel_id', '');
     $hook_url = get_option('telegram_hook_url', '');
-    $bot_token = get_option('telegram_bot_token', '');
+    $auto_post_enabled = get_option('farazautur_auto_post_enabled', '0');
     ?>
     <div class="wrap">
-        <h1>تنظیمات کانال خصوصی</h1>
+        <h2>تنظیمات کانال‌های تلگرامی</h2>
         <form method="post" action="">
             <table class="form-table">
                 <tr>
                     <th scope="row">
-                        <label for="private_channel_id">شناسه عددی کانال</label>
+                        <label for="private_channel_id">آیدی کانال خصوصی (مدیریت)</label>
                     </th>
                     <td>
                         <input type="text" id="private_channel_id" name="private_channel_id" 
                                value="<?php echo esc_attr($channel_id); ?>" class="regular-text"
-                               placeholder="مثال: -1001234567890">
-                        <p class="description">شناسه عددی کانال خصوصی را وارد کنید. این شناسه باید با - شروع شود.</p>
+                               placeholder="مثال: -100123456789">
+                        <p class="description">آیدی عددی کانال خصوصی را وارد کنید. این آیدی با - شروع می‌شود.</p>
                     </td>
                 </tr>
                 <tr>
                     <th scope="row">
-                        <label for="telegram_bot_token">توکن ربات تلگرام</label>
+                        <label for="public_channel_id">آیدی کانال عمومی (انتشار)</label>
                     </th>
                     <td>
-                        <input type="text" id="telegram_bot_token" name="telegram_bot_token" 
-                               value="<?php echo esc_attr($bot_token); ?>" class="regular-text"
-                               placeholder="مثال: 123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef">
-                        <p class="description">توکن کامل ربات تلگرام را وارد کنید. این توکن را از BotFather دریافت می‌کنید و شبیه 123456789:ABC... است.</p>
+                        <input type="text" id="public_channel_id" name="public_channel_id" 
+                               value="<?php echo esc_attr($public_channel_id); ?>" class="regular-text"
+                               placeholder="مثال: -100123456789">
+                        <p class="description">آیدی عددی کانال عمومی برای انتشار نهایی اخبار را وارد کنید. در این کانال امضا نمایش داده خواهد شد.</p>
                     </td>
                 </tr>
                 <tr>

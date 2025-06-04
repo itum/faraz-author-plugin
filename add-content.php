@@ -194,14 +194,14 @@ function stp_check_for_new_rss_items() {
                     $full_text = fetch_full_text($link, $type, $class);
                     $excerpt = $item->get_content();
 
-                    // Add signature if enabled
-                    if (get_option('farazautur_signature_enabled')) {
-                        $signature = get_option('farazautur_signature_text');
-                        if (!empty($signature)) {
-                            $full_text .= "\n\n" . wp_strip_all_tags($signature);
-                            $excerpt .= "\n\n" . wp_strip_all_tags($signature);
-                        }
-                    }
+                    // امضا در متن پست‌ها نمایش داده نشود
+                    // if (get_option('farazautur_signature_enabled')) {
+                    //     $signature = get_option('farazautur_signature_text');
+                    //     if (!empty($signature)) {
+                    //         $full_text .= "\n\n" . wp_strip_all_tags($signature);
+                    //         $excerpt .= "\n\n" . wp_strip_all_tags($signature);
+                    //     }
+                    // }
                 
                     if (check_post_title_exists($title, $excerpt, $full_text) > 0) continue;
                 

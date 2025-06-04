@@ -1,0 +1,13 @@
+# BEGIN WordPress
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+
+# ریدایرکت مسیر wp-admin/smart-admin به آدرس صحیح
+RewriteRule ^wp-admin/smart-admin$ /wp-admin/admin.php?page=smart-admin [R=301,L]
+</IfModule>
+# END WordPress 

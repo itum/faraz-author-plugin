@@ -313,9 +313,29 @@ function handle_request()
                 $post_id = str_replace('publish_post_', '', $callback_data);
                 $post_status = get_post_status($post_id);
                 if($post_status === 'faraz'){
-                publish_draft_post($post_id);
-                $post_title = get_the_title($post_id);
-                send_to_telegram($post_title . " با موفقیت منتشر شد!");
+                    // ابتدا پست را منتشر کنیم
+                    publish_draft_post($post_id);
+                    $post_title = get_the_title($post_id);
+                    
+                    // ارسال پست به کانال عمومی با امضا
+                    $post_thumbnail_url = get_the_post_thumbnail_url($post_id, 'full');
+                    if ($post_thumbnail_url) {
+                        $post_excerpt = get_the_excerpt($post_id);
+                        $post_link = get_permalink($post_id);
+                        $cats = get_the_category($post_id);
+                        $cat = !empty($cats) ? esc_html($cats[0]->name) : 'بدون دسته‌بندی';
+                        $message = "$post_title \n\n$post_excerpt \n\nدسته‌بندی:  $cat \n\nآدرس پست در سایت: $post_link";
+                        
+                        // ارسال به کانال عمومی
+                        $public_channel_id = get_option('farazautur_public_channel_id', '');
+                        if (!empty($public_channel_id)) {
+                            // ارسال پست به کانال عمومی
+                            send_telegram_photo_with_caption($post_thumbnail_url, $message, $post_id, true, $public_channel_id);
+                        }
+                    }
+                    
+                    // ارسال پیام تایید به ادمین
+                    send_to_telegram($post_title . " با موفقیت منتشر شد!");
                 }
             }
             if (strpos($callback_data, 'delete_post_') === 0) {
@@ -429,8 +449,10 @@ function send_post_to_telegram($post_id, $chat_id)
     $cat = !empty($cats) ? esc_html($cats[0]->name) : 'بدون دسته‌بندی';
  
     $message = "$post_title \n\n$post_excerpt \n\nدسته‌بندی:  $cat \n\nآدرس پست در سایت شما: $post_link";
- 
-    send_telegram_photo_with_caption($post_thumbnail_url, $message, $post_id , true , $chat_id);
+
+    // این تابع برای نمایش و تغییر پست به ادمین ها ارسال می‌شود
+    // در اینجا همیشه باید پارامتر false ارسال شود تا امضا اضافه نشود
+    send_telegram_photo_with_caption($post_thumbnail_url, $message, $post_id, false, $chat_id);
 }
 function send_all_draft_posts($chat_id)
 {
@@ -467,7 +489,8 @@ function send_all_draft_posts($chat_id)
 
                 $message = "$post_title \n\n$post_excerpt \n\nدسته بندی :  $cat \n\n ادرس پست در سایت شما: $post_link ";
                  
-                send_telegram_photo_with_caption($post_thumbnail_url, $message , $post_id);
+                // پارامتر false به معنی عدم نمایش امضا در کانال ادمین‌ها است
+                send_telegram_photo_with_caption($post_thumbnail_url, $message, $post_id, false);
 
                 $count_post_p += 1;
                 if($count_post_p > 10) break;

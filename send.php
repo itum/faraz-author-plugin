@@ -15,8 +15,20 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
         return;
     }
 
-    // Add signature to caption if enabled
-    if (get_option('farazautur_signature_enabled')) {
+    // بررسی وجود امضا در متن (برای اطمینان از حذف آن از کانال ادمین‌ها)
+    $signature_text = wp_strip_all_tags(get_option('farazautur_signature_text', ''));
+    if (!empty($signature_text)) {
+        // حذف هر گونه امضای موجود در متن پیام
+        $caption = str_replace("\n\n" . $signature_text, '', $caption);
+        $caption = str_replace($signature_text, '', $caption);
+    }
+
+    // اضافه کردن امضا به پیام فقط اگر:
+    // 1. امضا فعال باشد
+    // 2. پیام به کانال ادمین‌ها ارسال نشود
+    // 3. این یک انتشار نهایی باشد ($has = true)
+    $admin_chat_id = get_option('telegram_bot_Chat_id');
+    if ($has && $chat_id != $admin_chat_id && get_option('farazautur_signature_enabled')) {
         $signature = get_option('farazautur_signature_text');
         if (!empty($signature)) {
             $caption .= "\n\n" . wp_strip_all_tags($signature);

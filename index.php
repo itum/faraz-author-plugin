@@ -3,13 +3,17 @@
 Plugin Name: faraz Telegram Plugin
 Description: A WordPress plugin to add rss and save them as drafts and send them to the Telegram bot.
 Version: 5
-Author: faraz Team - Parsa Alavi
+Author: تیم توسعه تجارت الکترونیک فراز 
 */ 
 
 // Include signature settings
 require_once plugin_dir_path(__FILE__) . 'signature-settings.php';
 require_once plugin_dir_path(__FILE__) . 'newsroom.php';
 require_once plugin_dir_path(__FILE__) . 'private-channel-settings.php';
+require_once plugin_dir_path(__FILE__) . 'smart-admin.php';
+require_once plugin_dir_path(__FILE__) . 'smart-admin-templates.php';
+require_once plugin_dir_path(__FILE__) . 'smart-admin-save-post.php';
+require_once plugin_dir_path(__FILE__) . 'smart-admin-human-tone.php';
   
 add_action('admin_menu', 'stp_add_menu'); 
 

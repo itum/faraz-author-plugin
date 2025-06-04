@@ -178,17 +178,7 @@ function farazautur_signature_page() {
 // Add signature to post content
 add_filter('the_content', 'farazautur_add_signature');
 function farazautur_add_signature($content) {
-    // Check if signature is enabled
-    if (get_option('farazautur_signature_enabled')) {
-        // Get signature text
-        $signature = get_option('farazautur_signature_text');
-        
-        // Only add signature to single posts
-        if (is_single()) {
-            $content .= '<div class="farazautur-signature" style="margin-top: 30px; padding: 15px; border-top: 1px solid #ddd;">';
-            $content .= wpautop($signature); // Use wpautop to properly format HTML content
-            $content .= '</div>';
-        }
-    }
+    // امضا فقط در تلگرام نمایش داده شود، نه در سایت
+    // اکنون به محتوای پست هیچ امضایی اضافه نمی‌شود
     return $content;
 } 
