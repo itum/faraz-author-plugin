@@ -16,8 +16,10 @@ require_once plugin_dir_path(__FILE__) . 'smart-admin-save-post.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin-human-tone.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin-rank-math-seo.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin-seo-auto-optimizer.php';
+require_once plugin_dir_path(__FILE__) . 'auto-report.php';
   
-add_action('admin_menu', 'stp_add_menu'); 
+// اضافه کردن منوی اصلی با اولویت پایین‌تر (برای اجرای زودتر)
+add_action('admin_menu', 'stp_add_menu', 10); 
 
 function stp_add_menu()
 {
