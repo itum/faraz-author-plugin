@@ -1,0 +1,182 @@
+/**
+ * استایل‌های بهینه‌ساز خودکار SEO
+ */
+
+/* دکمه بهینه‌ساز SEO */
+#smart-admin-seo-optimizer-button {
+    background-color: #4caf50;
+    color: white;
+    border-color: #45a049;
+}
+
+#smart-admin-seo-optimizer-button:hover {
+    background-color: #45a049;
+}
+
+/* مودال نتایج */
+.smart-admin-seo-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 99999;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    direction: rtl;
+}
+
+.smart-admin-seo-modal-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.smart-admin-seo-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.smart-admin-seo-modal-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #23282d;
+}
+
+.smart-admin-seo-modal-close {
+    cursor: pointer;
+    font-size: 20px;
+    color: #777;
+}
+
+.smart-admin-seo-modal-body {
+    margin-bottom: 15px;
+}
+
+.smart-admin-seo-result-item {
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #f8f8f8;
+}
+
+.smart-admin-seo-result-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #23282d;
+}
+
+.smart-admin-seo-result-value {
+    color: #444;
+}
+
+.smart-admin-seo-recommendations {
+    margin-top: 15px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.smart-admin-seo-recommendation-item {
+    margin-bottom: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    background-color: #fffbdb;
+    border-left: 3px solid #ffb900;
+}
+
+.smart-admin-seo-score {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 15px 0;
+}
+
+.smart-admin-seo-score-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: #f5f5f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    font-weight: bold;
+    position: relative;
+}
+
+.smart-admin-seo-score-text {
+    margin-right: 15px;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* رنگ‌بندی امتیاز */
+.smart-admin-seo-score-good {
+    background-color: #63c76a;
+    color: white;
+}
+
+.smart-admin-seo-score-ok {
+    background-color: #ffb900;
+    color: white;
+}
+
+.smart-admin-seo-score-bad {
+    background-color: #dc3232;
+    color: white;
+}
+
+/* آیکن بهینه‌ساز در ویرایشگر گوتنبرگ */
+.smart-admin-seo-gutenberg-button {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 4px;
+    background-color: #4caf50;
+    color: white;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.smart-admin-seo-gutenberg-button:hover {
+    background-color: #45a049;
+}
+
+.smart-admin-seo-gutenberg-button .dashicons {
+    margin-left: 5px;
+}
+
+/* حالت در حال بارگذاری */
+.smart-admin-seo-loading {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.smart-admin-seo-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 2s linear infinite;
+    margin-bottom: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+} 
