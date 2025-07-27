@@ -114,6 +114,9 @@ function check_post_title_exists($title , $excerpt , $post_content) {
 }
  
 function stp_check_for_new_rss_items() { 
+    $log_file = plugin_dir_path(__FILE__) . 'rss_logs.txt';
+    file_put_contents($log_file, "Starting RSS check at " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
+
     $start_time = microtime(true);  
     global $wpdb;
 
@@ -154,6 +157,7 @@ function stp_check_for_new_rss_items() {
  
     try {
         foreach ($entries as $entry) {
+            file_put_contents($log_file, "Processing RSS feed: " . $entry['url'] . "\n", FILE_APPEND);
             $rss = fetch_feed($entry['url']);
             $class = $entry['class'];
             $type = $entry['type'];
@@ -161,12 +165,19 @@ function stp_check_for_new_rss_items() {
             if (!is_wp_error($rss)) {
                 $max_items = $rss->get_item_quantity(4);
                 $rss_items = $rss->get_items(0, $max_items);
+                file_put_contents($log_file, "Found " . count($rss_items) . " RSS items\n", FILE_APPEND);
                 $a = 0;
                 foreach ($rss_items as $item) { 
                     $date = strtotime($item->get_date('Y-m-d H:i:s'));
-                    if (empty($date)) sendErrorToTelegram('$item');
+                    if (empty($date)) {
+                        file_put_contents($log_file, "Empty date for item: " . $item->get_title() . "\n", FILE_APPEND);
+                        sendErrorToTelegram('$item');
+                    }
                 
-                    if ($date !== false AND ((3600 * 2) < (time() - $date))) continue;
+                    if ($date !== false AND ((3600 * 2) < (time() - $date))) {
+                        file_put_contents($log_file, "Item too old, skipping: " . $item->get_title() . "\n", FILE_APPEND);
+                        continue;
+                    }
                 
                     if ((microtime(true) - $start_time) > 25) {
                         if (strpos($_SERVER['REQUEST_URI'], 'wp-json')) {
@@ -182,6 +193,7 @@ function stp_check_for_new_rss_items() {
                     $thumbnail_url = fetch_thumbnail($link);
                     $thumbnail_url = $thumbnail_url['image'];
                     if (empty($thumbnail_url)){
+                        file_put_contents($log_file, "No thumbnail found for: " . $title . "\n", FILE_APPEND);
                         $processed_items[] = ['error_thumbnail' => [$title, $datej , $link , $thumbnail_url  ]];
                         continue; 
                     }
@@ -194,19 +206,15 @@ function stp_check_for_new_rss_items() {
                     $full_text = fetch_full_text($link, $type, $class);
                     $excerpt = $item->get_content();
 
-                    // امضا در متن پست‌ها نمایش داده نشود
-                    // if (get_option('farazautur_signature_enabled')) {
-                    //     $signature = get_option('farazautur_signature_text');
-                    //     if (!empty($signature)) {
-                    //         $full_text .= "\n\n" . wp_strip_all_tags($signature);
-                    //         $excerpt .= "\n\n" . wp_strip_all_tags($signature);
-                    //     }
-                    // }
-                
-                    if (check_post_title_exists($title, $excerpt, $full_text) > 0) continue;
+                    file_put_contents($log_file, "Checking if post exists: " . $title . "\n", FILE_APPEND);
+                    if (check_post_title_exists($title, $excerpt, $full_text) > 0) {
+                        file_put_contents($log_file, "Post already exists, skipping: " . $title . "\n", FILE_APPEND);
+                        continue;
+                    }
                 
                     $category_id = $entry['channel_title'];
                 
+                    file_put_contents($log_file, "Creating post with title: " . $title . "\n", FILE_APPEND);
 
                     $post_data = [
                         'post_title'    => $title,
@@ -218,24 +226,41 @@ function stp_check_for_new_rss_items() {
                     ];
                     $post_id = wp_insert_post($post_data);
                 
-                    if (is_wp_error($post_id) AND (sendErrorToTelegram('Error creating post: ' . $post_id->get_error_message())  OR True)) continue;
+                    if (is_wp_error($post_id)) {
+                        file_put_contents($log_file, "Error creating post: " . $post_id->get_error_message() . "\n", FILE_APPEND);
+                        sendErrorToTelegram('Error creating post: ' . $post_id->get_error_message());
+                        continue;
+                    }
                 
-                    if ((check_post_title_exists($title, $excerpt, $full_text) >= 2) AND (wp_delete_post($post_id, true) OR true)) continue;
-                    if ($post_id && $thumbnail_url) attach_thumbnail($post_id, $thumbnail_url);
+                    file_put_contents($log_file, "Post created successfully with ID: " . $post_id . "\n", FILE_APPEND);
+                
+                    if ((check_post_title_exists($title, $excerpt, $full_text) >= 2) AND (wp_delete_post($post_id, true) OR true)) {
+                        file_put_contents($log_file, "Duplicate post detected, deleting: " . $post_id . "\n", FILE_APPEND);
+                        continue;
+                    }
+                    if ($post_id && $thumbnail_url) {
+                        file_put_contents($log_file, "Attaching thumbnail to post: " . $post_id . "\n", FILE_APPEND);
+                        attach_thumbnail($post_id, $thumbnail_url);
+                    }
                 
                     if ($post_id && $thumbnail_url) { 
                         $cat = get_cat_name(intval(esc_html($entry['channel_title'])));
                         $message = "$title \n\n$excerpt \n\nدسته بندی : $cat \n\nنام سایت : $source \n\n  $datej ";
+                        file_put_contents($log_file, "Sending to Telegram for post ID: " . $post_id . "\n", FILE_APPEND);
                         send_telegram_photo_with_caption($thumbnail_url, $message, $post_id);
+                    } else {
+                        file_put_contents($log_file, "Cannot send to Telegram - missing post_id or thumbnail_url\n", FILE_APPEND);
                     }
                 
                     usleep(333);  
                 }
                 
+            } else {
+                file_put_contents($log_file, "RSS feed error: " . $rss->get_error_message() . "\n", FILE_APPEND);
             }
         }
  
-        
+        file_put_contents($log_file, "Finished RSS check at " . date('Y-m-d H:i:s') . "\n\n", FILE_APPEND);
         
     } catch (Exception $e) {
         sendErrorToTelegram('An error occurred: ' . $e->getMessage());

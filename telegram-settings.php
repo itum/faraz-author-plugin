@@ -231,8 +231,17 @@ add_action('rest_api_init', function() {
 });
 function handle_request()
 {
+    // Log all incoming requests
+    $log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
+    $update_raw = file_get_contents('php://input');
+    file_put_contents($log_file, "Received update: " . $update_raw . "\n", FILE_APPEND);
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $update = json_decode(file_get_contents('php://input'), true);
+        $update = json_decode($update_raw, true);
+
+        // Log decoded update
+        file_put_contents($log_file, "Decoded update: " . print_r($update, true) . "\n", FILE_APPEND);
+
         if (isset($update['message'])) {
             $message_text = $update['message']['text'];
             $token = get_option('telegram_bot_token');
@@ -309,9 +318,16 @@ function handle_request()
             $chat_id = $callback_query['message']['user']['id'];
             $message_id = $callback_query['message']['message_id'];
 
+            // Log callback query data
+            file_put_contents($log_file, "Callback query data: " . $callback_data . "\n", FILE_APPEND);
+
             if (strpos($callback_data, 'publish_post_') === 0) {
                 $post_id = str_replace('publish_post_', '', $callback_data);
                 $post_status = get_post_status($post_id);
+
+                // Log post status
+                file_put_contents($log_file, "Processing publish_post for post ID: $post_id with status: $post_status\n", FILE_APPEND);
+
                 if($post_status === 'faraz'){
                     // ابتدا پست را منتشر کنیم
                     publish_draft_post($post_id);
@@ -335,7 +351,9 @@ function handle_request()
                     }
                     
                     // ارسال پیام تایید به ادمین
-                    send_to_telegram($post_title . " با موفقیت منتشر شد!");
+                    $confirmation_message = $post_title . " با موفقیت منتشر شد!";
+                    file_put_contents($log_file, "Sending confirmation to admin: $confirmation_message\n", FILE_APPEND);
+                    send_to_telegram($confirmation_message);
                 }
             }
             if (strpos($callback_data, 'delete_post_') === 0) {
@@ -398,6 +416,11 @@ function send_to_telegram($message)
     curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
 
     $response = curl_exec($ch);
+
+    // Log the response from the worker
+    $log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
+    file_put_contents($log_file, "Telegram send response: " . $response . "\n", FILE_APPEND);
+
     if (curl_errno($ch)) {
         echo 'Error:' . curl_error($ch);
     }

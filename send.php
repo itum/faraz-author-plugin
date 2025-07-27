@@ -44,8 +44,7 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
         $inline_keyboard = [
         [
             ['text' => 'منتشر کردن پست', 'callback_data' => 'publish_post_' . $post_id],
-            ['text' => 'پاک کردن پست', 'callback_data' => 'delete_post_' . $post_id],
-            ['text' => 'نمایش پست', 'web_app' => ['url' => "https://tibin.ir/wp-json/bot-rss/v1/post/$post_id?password=opkwfaopfkoan2" ] ]
+            ['text' => 'پاک کردن پست', 'callback_data' => 'delete_post_' . $post_id]
         ]
     ];
     }else     
@@ -53,9 +52,6 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
         [
             ['text' => 'منتشر کردن پست', 'callback_data' => 'publish_post_' . $post_id],
             ['text' => 'پاک کردن پست', 'callback_data' => 'delete_post_' . $post_id]
-        ],
-        [
-            ['text' => 'نمایش پست', 'web_app' => ['url' => "https://tibin.ir/wp-json/bot-rss/v1/post/$post_id?password=opkwfaopfkoan2" ] ]
         ]
     ];
 

