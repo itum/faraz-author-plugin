@@ -143,18 +143,119 @@ function send_to_private_channel($post_id) {
     return false;
 }
 
+function write_whatsapp_log($message) {
+    $log_file = plugin_dir_path(__FILE__) . 'whatsapp_logs.txt';
+    $timestamp = current_time('mysql');
+    $log_message = sprintf("[%s] %s\n", $timestamp, $message);
+    error_log($log_message, 3, $log_file);
+}
+
+function send_to_whatsapp_group($post_id) {
+    write_whatsapp_log("Starting to send post ID: " . $post_id . " to WhatsApp");
+
+    $api_key = get_option('farazautur_whatsapp_api_key');
+    $group_id = get_option('farazautur_whatsapp_group_id');
+    
+    if (empty($api_key) || empty($group_id)) {
+        write_whatsapp_log("Error: Missing WhatsApp API Key or Group ID");
+        return false;
+    }
+
+    $title = get_the_title($post_id);
+    $excerpt = get_the_excerpt($post_id);
+    $thumbnail = get_the_post_thumbnail_url($post_id, 'full');
+    $permalink = get_permalink($post_id);
+
+    // کوتاه کردن لینک
+    $short_link = wp_get_shortlink($post_id);
+    if (!$short_link) {
+        $short_link = $permalink;
+    }
+
+    // Format message like Telegram
+    $message_text = "🔸 " . $title . "\n\n";
+    $message_text .= $excerpt . "\n\n";
+    $message_text .= "📎 ادامه خبر را بخوانید: \n" . $short_link;
+
+    // Add signature if enabled
+    if (get_option('farazautur_signature_enabled')) {
+        $signature = get_option('farazautur_signature_text');
+        if (!empty($signature)) {
+            // Strip HTML tags for WhatsApp
+            $clean_signature = wp_strip_all_tags( $signature );
+            $message_text .= "\n\n" . $clean_signature;
+        }
+    }
+
+    $api_url = 'https://api.360messenger.com/v2/sendGroup';
+
+    $data = [
+        'groupId' => $group_id,
+        'text' => $message_text,
+    ];
+
+    if ($thumbnail) {
+        $data['url'] = $thumbnail;
+    }
+
+    $headers = [
+        'Authorization' => 'Bearer ' . $api_key,
+    ];
+
+    $args = [
+        'body' => $data,
+        'headers' => $headers,
+        'method' => 'POST',
+        'timeout'     => 30,
+    ];
+    
+    write_whatsapp_log("Request ARGS: " . print_r($args, true));
+
+    $response = wp_remote_post($api_url, $args);
+
+    if (is_wp_error($response)) {
+        write_whatsapp_log("Failed to send message to WhatsApp. WP_Error: " . $response->get_error_message());
+        return false;
+    }
+
+    $response_code = wp_remote_retrieve_response_code($response);
+    $response_body = wp_remote_retrieve_body($response);
+
+    write_whatsapp_log("WhatsApp API Response Code: " . $response_code);
+    write_whatsapp_log("WhatsApp API Response Body: " . $response_body);
+
+    $response_data = json_decode($response_body, true);
+    if ($response_code === 201 && isset($response_data['success']) && $response_data['success'] === true) {
+        write_whatsapp_log("Message sent successfully to WhatsApp group.");
+        return true;
+    }
+
+    write_whatsapp_log("Failed to send message to WhatsApp group. Response: " . $response_body);
+    return false;
+}
+
 function farazautur_newsroom_page() {
-    // Handle post approval and sending to private channel
-    if (isset($_POST['approve_post']) && isset($_POST['post_id'])) {
+    // Handle post actions
+    if (isset($_POST['post_id'])) {
         $post_id = intval($_POST['post_id']);
-        
-        // Send to private channel if auto-post is enabled
-        if (get_option('farazautur_auto_post_enabled', '0') === '1') {
-            $sent = send_to_private_channel($post_id);
+
+        if (isset($_POST['approve_post'])) {
+            // Send to private channel if auto-post is enabled
+            if (get_option('farazautur_auto_post_enabled', '0') === '1') {
+                $sent = send_to_private_channel($post_id);
+                if ($sent) {
+                    echo '<div class="notice notice-success is-dismissible"><p>خبر با موفقیت در کانال خصوصی منتشر شد. برای مشاهده جزئیات به فایل telegram_logs.txt مراجعه کنید.</p></div>';
+                } else {
+                    echo '<div class="notice notice-error is-dismissible"><p>خطا در ارسال خبر به کانال خصوصی. لطفاً فایل telegram_logs.txt را بررسی کنید.</p></div>';
+                }
+            }
+        } elseif (isset($_POST['send_to_whatsapp'])) {
+            // Handle sending to WhatsApp
+            $sent = send_to_whatsapp_group($post_id);
             if ($sent) {
-                echo '<div class="notice notice-success is-dismissible"><p>خبر با موفقیت در کانال خصوصی منتشر شد. برای مشاهده جزئیات به فایل telegram_logs.txt مراجعه کنید.</p></div>';
+                echo '<div class="notice notice-success is-dismissible"><p>خبر با موفقیت در گروه واتس‌اپ منتشر شد. برای مشاهده جزئیات به فایل whatsapp_logs.txt مراجعه کنید.</p></div>';
             } else {
-                echo '<div class="notice notice-error is-dismissible"><p>خطا در ارسال خبر به کانال خصوصی. لطفاً فایل telegram_logs.txt را بررسی کنید.</p></div>';
+                echo '<div class="notice notice-error is-dismissible"><p>خطا در ارسال خبر به گروه واتس‌اپ. لطفاً فایل whatsapp_logs.txt را بررسی کنید.</p></div>';
             }
         }
     }
@@ -287,27 +388,17 @@ function farazautur_newsroom_page() {
                                 <p><?php echo esc_html($excerpt); ?></p>
                             </div>
                         </div>
-                        <div class="news-footer">
-                            <div>
-                                <a href="<?php echo esc_url($permalink); ?>" target="_blank">مشاهده خبر</a>
-                            </div>
-                            <div>
-                                <form method="post" style="display: inline;">
-                                    <input type="hidden" name="post_id" value="<?php echo get_the_ID(); ?>">
-                                    <button type="submit" name="approve_post" class="approve-news">
-                                        تایید و ارسال به کانال
-                                    </button>
-                                </form>
-                                <button class="copy-news button button-primary" 
-                                        data-title="<?php echo esc_attr($title); ?>" 
-                                        data-excerpt="<?php echo esc_attr($excerpt); ?>"
-                                        data-link="<?php echo esc_url($permalink); ?>">
-                                    کپی خبر
-                                </button>
-                            </div>
+                        <div class="news-actions">
+                            <form method="post" action="" style="display: inline;">
+                                <input type="hidden" name="post_id" value="<?php echo get_the_ID(); ?>">
+                                <button type="submit" name="approve_post" class="button button-primary">تایید و ارسال به کانال</button>
+                                <button type="submit" name="send_to_whatsapp" class="button button-secondary">ارسال به واتس اپ</button>
+                            </form>
+                            <a href="<?php echo get_edit_post_link(get_the_ID()); ?>" class="button">ویرایش</a>
+                            <a href="<?php echo get_delete_post_link(get_the_ID()); ?>" class="button button-danger" onclick="return confirm('آیا از حذف این خبر مطمئن هستید؟')">حذف</a>
                         </div>
                     </div>
-                <?php
+                    <?php
                 endwhile;
                 wp_reset_postdata();
             else :

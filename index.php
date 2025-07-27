@@ -10,6 +10,7 @@ Author: تیم توسعه تجارت الکترونیک فراز
 require_once plugin_dir_path(__FILE__) . 'signature-settings.php';
 require_once plugin_dir_path(__FILE__) . 'newsroom.php';
 require_once plugin_dir_path(__FILE__) . 'private-channel-settings.php';
+require_once plugin_dir_path(__FILE__) . 'whatsapp-settings.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin-templates.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin-save-post.php';
@@ -25,11 +26,13 @@ function stp_add_menu()
 {
     // Add main menu
     add_menu_page(
-        'faraz Telegram Plugin', // Page title
-        'faraz Plugin', // Menu title
+        'نویسنده خودکار هوشمند', // Page title
+        'نویسنده خودکار هوشمند', // Menu title
         'manage_options', // Capability
         'faraz-telegram-plugin', // Menu slug
-        'stp_render_page' // Function
+        'stp_render_page', // Function
+        'dashicons-edit-large', // Icon
+        30 // Position
     );
     
     // Add RSS Management submenu
@@ -60,6 +63,16 @@ function stp_add_menu()
         'manage_options',
         'faraz-telegram-plugin-newsroom',
         'farazautur_newsroom_page'
+    );
+
+    // Add WhatsApp Settings submenu
+    add_submenu_page(
+        'faraz-telegram-plugin',
+        'تنظیمات واتس‌اپ',
+        'تنظیمات واتس‌اپ',
+        'manage_options',
+        'faraz-telegram-plugin-whatsapp',
+        'farazautur_whatsapp_settings_page'
     );
 
     // Add Private Channel Settings submenu
