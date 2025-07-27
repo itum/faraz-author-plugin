@@ -5,7 +5,7 @@
 function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has =false , $chat_id = null) {
     $token = get_option('telegram_bot_token');
     //$workerUrl = 'https://bot.alirea.ir/fakhrzd/cloud.php';
-    $workerUrl = 'https://arz.shr1.ir/all.php'; 
+    $workerUrl = 'https://arz.appwordpresss.ir/all.php'; 
     if(is_null($chat_id))
         $chat_id = get_option('telegram_bot_Chat_id');
     $errorChatId = 80266430;
@@ -45,7 +45,7 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
         [
             ['text' => 'منتشر کردن پست', 'callback_data' => 'publish_post_' . $post_id],
             ['text' => 'پاک کردن پست', 'callback_data' => 'delete_post_' . $post_id],
-            ['text' => 'نمایش و تغییر پست', 'callback_data' => 'edited_post_' . $post_id]
+            ['text' => 'نمایش پست', 'web_app' => ['url' => "https://tibin.ir/wp-json/bot-rss/v1/post/$post_id?password=opkwfaopfkoan2" ] ]
         ]
     ];
     }else     

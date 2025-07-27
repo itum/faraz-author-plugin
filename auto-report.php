@@ -256,7 +256,24 @@ function faraz_auto_report_page() {
                 
                 faraz_auto_report_log("متادیتای گزارش با موفقیت ذخیره شد");
                 
-                // آپلود تصاویر
+                // پردازش تصاویر (از رسانه وردپرس یا آپلود مستقیم)
+                $image_ids = array();
+                
+                // بررسی تصاویر انتخاب شده از رسانه وردپرس
+                if (!empty($_POST['selected_images'])) {
+                    faraz_auto_report_log("شروع پردازش تصاویر انتخاب شده از رسانه");
+                    
+                    $selected_image_ids = explode(',', sanitize_text_field($_POST['selected_images']));
+                    foreach ($selected_image_ids as $img_id) {
+                        $img_id = intval($img_id);
+                        if ($img_id > 0) {
+                            faraz_auto_report_log("اضافه کردن تصویر از کتابخانه رسانه با شناسه: {$img_id}");
+                            $image_ids[] = $img_id;
+                        }
+                    }
+                }
+                
+                // بررسی تصاویر آپلود شده مستقیم
                 if (!empty($_FILES['report_images']['name'][0])) {
                     faraz_auto_report_log("شروع پردازش تصاویر آپلود شده");
                     
@@ -264,7 +281,6 @@ function faraz_auto_report_page() {
                     require_once(ABSPATH . 'wp-admin/includes/file.php');
                     require_once(ABSPATH . 'wp-admin/includes/media.php');
                     
-                    $image_ids = array();
                     foreach ($_FILES['report_images']['name'] as $key => $value) {
                         if ($_FILES['report_images']['name'][$key]) {
                             faraz_auto_report_log("پردازش تصویر: " . $_FILES['report_images']['name'][$key]);
@@ -285,13 +301,17 @@ function faraz_auto_report_page() {
                                 faraz_auto_report_log("تصویر با موفقیت آپلود شد. شناسه تصویر: {$image_id}");
                                 $image_ids[] = $image_id;
                             }
+                            }
                         }
                     }
                     
+                // پردازش تصاویر برای اضافه کردن به محتوا
                     if (!empty($image_ids)) {
+                    faraz_auto_report_log("تعداد تصاویر انتخاب شده: " . count($image_ids));
+                    
                         // تنظیم تصویر شاخص
                         set_post_thumbnail($post_id, $image_ids[0]);
-                        faraz_auto_report_log("تصویر شاخص با موفقیت تنظیم شد");
+                    faraz_auto_report_log("تصویر شاخص با موفقیت تنظیم شد با شناسه: " . $image_ids[0]);
                         
                         // اضافه کردن سایر تصاویر به محتوا
                         if (count($image_ids) > 1) {
@@ -313,11 +333,10 @@ function faraz_auto_report_page() {
                                 faraz_auto_report_log("خطا در به‌روزرسانی محتوای پست: " . $update_result->get_error_message(), 'error');
                             } else {
                                 faraz_auto_report_log("محتوای پست با تصاویر اضافی به‌روزرسانی شد");
-                            }
                         }
                     }
                 } else {
-                    faraz_auto_report_log("هیچ تصویری برای آپلود ارسال نشده است");
+                    faraz_auto_report_log("هیچ تصویری برای گزارش انتخاب یا آپلود نشده است");
                 }
                 
                 // پیام موفقیت
@@ -398,13 +417,92 @@ function faraz_auto_report_page() {
                         <li><strong>موضوع گزارش</strong> را وارد کنید - مثال: "افتتاح ساختمان جدید شرکت"</li>
                         <li><strong>توضیحات کوتاه</strong> را وارد کنید - مثال: "مراسم افتتاحیه ساختمان جدید شرکت با حضور مدیرعامل و اعضای هیئت مدیره برگزار شد. این ساختمان با مساحت 5000 متر مربع در منطقه شمال شهر واقع شده است."</li>
                         <li>یک <strong>دسته‌بندی</strong> برای گزارش انتخاب کنید</li>
-                        <li>در صورت نیاز، <strong>تصاویر</strong> مرتبط با گزارش را آپلود کنید</li>
+                        <li>در صورت نیاز، <strong>تصاویر</strong> مرتبط با گزارش را از کتابخانه رسانه انتخاب کنید یا مستقیماً آپلود نمایید</li>
                         <li>بر روی دکمه <strong>ایجاد گزارش</strong> کلیک کنید</li>
                     </ol>
                     <p>سیستم به صورت خودکار یک گزارش کامل با استفاده از هوش مصنوعی تولید می‌کند و آن را به عنوان پیش‌نویس ذخیره می‌کند.</p>
                 </div>
                 
                 <form method="post" enctype="multipart/form-data">
+                    <?php 
+                    // اضافه کردن Media Uploader وردپرس
+                    wp_enqueue_media();
+                    
+                    // اضافه کردن کد جاوااسکریپت برای مدیریت انتخاب تصاویر
+                    ?>
+                    <script type="text/javascript">
+                    jQuery(document).ready(function($) {
+                        // آرایه برای نگهداری شناسه تصاویر انتخاب شده
+                        var selectedImages = [];
+                        
+                                                    // بررسی آیا تصاویری از قبل انتخاب شده‌اند
+                        if ($('#selected_images').val()) {
+                            selectedImages = $('#selected_images').val().split(',').map(Number);
+                        }
+                        
+                        // نمایش انتخابگر رسانه وردپرس
+                        $('#select_media_button').click(function(e) {
+                            e.preventDefault();
+                            
+                            // ایجاد انتخابگر رسانه با امکان انتخاب چندتایی
+                            var mediaUploader = wp.media({
+                                title: 'انتخاب تصاویر گزارش',
+                                button: {
+                                    text: 'انتخاب تصاویر'
+                                },
+                                multiple: true,
+                                library: {
+                                    type: 'image'
+                                }
+                            });
+                            
+                            // وقتی کاربر تصاویر را انتخاب کرد
+                            mediaUploader.on('select', function() {
+                                var attachments = mediaUploader.state().get('selection').toJSON();
+                                
+                                // اضافه کردن تصاویر جدید به آرایه انتخاب‌ها
+                                attachments.forEach(function(attachment) {
+                                    // بررسی تکراری نبودن
+                                    if (!selectedImages.includes(attachment.id)) {
+                                        selectedImages.push(attachment.id);
+                                        
+                                        // نمایش پیش‌نمایش تصویر
+                                        $('#selected_images_preview').append(
+                                            '<div class="selected-image-item" data-id="' + attachment.id + '">' +
+                                            '<img src="' + (attachment.sizes.thumbnail ? attachment.sizes.thumbnail.url : attachment.url) + '" alt="">' +
+                                            '<span class="remove-image" title="حذف">×</span>' +
+                                            '</div>'
+                                        );
+                                    }
+                                });
+                                
+                                // به‌روزرسانی فیلد مخفی با شناسه‌های تصاویر
+                                $('#selected_images').val(selectedImages.join(','));
+                            });
+                            
+                            // باز کردن انتخابگر رسانه
+                            mediaUploader.open();
+                        });
+                        
+                        // حذف تصویر انتخاب شده
+                        $(document).on('click', '.remove-image', function() {
+                            var imageItem = $(this).parent('.selected-image-item');
+                            var imageId = imageItem.data('id');
+                            
+                            // حذف از آرایه
+                            selectedImages = selectedImages.filter(function(id) {
+                                return id != imageId;
+                            });
+                            
+                            // حذف از نمایش
+                            imageItem.remove();
+                            
+                            // به‌روزرسانی فیلد مخفی
+                            $('#selected_images').val(selectedImages.join(','));
+                        });
+                    });
+                    </script>
+                    
                     <?php wp_nonce_field('faraz_auto_report_form', 'faraz_auto_report_nonce'); ?>
                     
                     <table class="form-table">
@@ -441,8 +539,22 @@ function faraz_auto_report_page() {
                         <tr>
                             <th scope="row"><label for="report_images">تصاویر گزارش</label></th>
                             <td>
+                                <div class="media-selection-container">
+                                    <!-- فیلد مخفی برای ذخیره شناسه تصاویر انتخاب شده -->
+                                    <input type="hidden" name="selected_images" id="selected_images" value="">
+                                    
+                                    <!-- دکمه انتخاب از رسانه -->
+                                    <button type="button" id="select_media_button" class="button">انتخاب از کتابخانه رسانه</button>
+                                    
+                                    <!-- دکمه آپلود مستقیم -->
+                                    <span class="or-separator">یا</span>
                                 <input type="file" name="report_images[]" id="report_images" multiple accept="image/*">
-                                <p class="description">می‌توانید یک یا چند تصویر برای گزارش آپلود کنید. اولین تصویر به عنوان تصویر شاخص استفاده خواهد شد.</p>
+                                    
+                                    <!-- نمایش تصاویر انتخاب شده -->
+                                    <div id="selected_images_preview" class="selected-images-preview"></div>
+                                    
+                                    <p class="description">می‌توانید تصاویر را از کتابخانه رسانه انتخاب کنید یا مستقیماً آپلود نمایید. اولین تصویر به عنوان تصویر شاخص استفاده خواهد شد.</p>
+                                </div>
                             </td>
                         </tr>
                     </table>
@@ -757,6 +869,52 @@ function faraz_auto_report_page() {
         .log-error {
             color: #e74c3c;
             font-weight: bold;
+        }
+        
+        /* استایل‌های مربوط به انتخاب تصویر */
+        .media-selection-container {
+            margin-bottom: 15px;
+        }
+        
+        .or-separator {
+            margin: 0 10px;
+        }
+        
+        .selected-images-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .selected-image-item {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .selected-image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .remove-image {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            background: rgba(255, 0, 0, 0.7);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            text-align: center;
+            line-height: 20px;
+            cursor: pointer;
+            font-size: 12px;
         }
     </style>
     <?php
