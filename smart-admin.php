@@ -11,6 +11,9 @@ require_once plugin_dir_path(__FILE__) . 'smart-admin-human-tone.php';
 // وارد کردن فایل یکپارچه‌سازی با Rank Math SEO
 require_once plugin_dir_path(__FILE__) . 'smart-admin-rank-math-seo.php';
 
+// وارد کردن فایل زمان‌بندی محتوا
+require_once plugin_dir_path(__FILE__) . 'smart-admin-scheduler.php';
+
 // ریدایرکت مسیر smart-admin در wp-admin به آدرس صحیح
 add_action('admin_init', 'smart_admin_redirect');
 
@@ -658,6 +661,7 @@ function smart_admin_page() {
             <a href="#" class="tab-link" data-tab="templates">قالب‌های آماده</a>
             <a href="#" class="tab-link" data-tab="saved">پرامپت‌های ذخیره شده</a>
             <a href="#" class="tab-link" data-tab="drafts">پیش‌نویس‌ها</a>
+            <a href="#" class="tab-link" data-tab="scheduler">زمان‌بندی محتوا</a>
             <a href="#" class="tab-link" data-tab="settings">تنظیمات</a>
         </div>
         
@@ -855,6 +859,13 @@ function smart_admin_page() {
                 <?php submit_button('ذخیره تنظیمات', 'submit-button', 'submit', false); ?>
             </form>
         </div>
+        
+        <?php
+        // فراخوانی تابع برای نمایش محتوای تب زمان‌بندی
+        if (function_exists('smart_admin_scheduler_tab_content')) {
+            smart_admin_scheduler_tab_content();
+        }
+        ?>
     </div>
     
     <script>
@@ -874,9 +885,21 @@ function smart_admin_page() {
                 // افزودن کلاس active به تب انتخاب شده
                 this.classList.add('active');
                 document.getElementById(this.getAttribute('data-tab')).classList.add('active');
+                
+                // ذخیره تب فعال در localStorage
+                localStorage.setItem('smartAdminActiveTab', this.getAttribute('data-tab'));
             });
         });
         
+        // بازیابی تب فعال از localStorage
+        const activeTab = localStorage.getItem('smartAdminActiveTab');
+        if (activeTab) {
+            const link = document.querySelector(`.tab-link[data-tab="${activeTab}"]`);
+            if (link) {
+                link.click();
+            }
+        }
+
         // فیلتر کردن پرامپت‌ها
         const promptFilters = document.querySelectorAll('.prompt-filter');
         const promptCards = document.querySelectorAll('.prompt-card');
