@@ -361,6 +361,7 @@ function handle_request()
                 $post_status = get_post_status($post_id);
                 if($post_status === 'faraz'){
                     delete_post($post_id);
+                    $post_title = get_the_title($post_id);
                     send_to_telegram($post_title . " با موفقیت حذف شد!" );
                 }
             }
@@ -368,6 +369,11 @@ function handle_request()
                 $post_id = str_replace('edited_post_', '', $callback_data);
  
                 send_post_to_telegram($post_id , $update['callback_query']['from']['id']);
+            }
+            if (strpos($callback_data, 'show_post_') === 0) {
+                $post_id = str_replace('show_post_', '', $callback_data);
+                $user_id = $callback_query['from']['id'];
+                send_post_to_telegram($post_id, $user_id);
             }
             // send_to_telegram("پست در حالت فراز نیست و قبلا پاک یا حذف شده است!");
         }
@@ -475,7 +481,7 @@ function send_post_to_telegram($post_id, $chat_id)
 
     // این تابع برای نمایش و تغییر پست به ادمین ها ارسال می‌شود
     // در اینجا همیشه باید پارامتر false ارسال شود تا امضا اضافه نشود
-    send_telegram_photo_with_caption($post_thumbnail_url, $message, $post_id, false, $chat_id);
+    send_telegram_photo_with_caption($post_thumbnail_url, $message, $post_id, 'edit', $chat_id);
 }
 function send_all_draft_posts($chat_id)
 {

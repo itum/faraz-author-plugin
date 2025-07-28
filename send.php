@@ -39,22 +39,32 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
         sendErrorToTelegram("Error: Photo URL is empty", $errorChatId, $token);
         return;
     }
-    if(!$has)
+
+    $inline_keyboard = [];
+    if($has === false)
     {
         $inline_keyboard = [
-        [
-            ['text' => 'منتشر کردن پست', 'callback_data' => 'publish_post_' . $post_id],
-            ['text' => 'پاک کردن پست', 'callback_data' => 'delete_post_' . $post_id]
-        ]
-    ];
-    }else     
-    $inline_keyboard = [
-        [
-            ['text' => 'منتشر کردن پست', 'callback_data' => 'publish_post_' . $post_id],
-            ['text' => 'پاک کردن پست', 'callback_data' => 'delete_post_' . $post_id]
-        ]
-    ];
-
+            [
+                ['text' => '✅ منتشر کردن', 'callback_data' => 'publish_post_' . $post_id],
+                ['text' => '🗑️ پاک کردن', 'callback_data' => 'delete_post_' . $post_id],
+                ['text' => '👁️ نمایش پست', 'callback_data' => 'show_post_' . $post_id]
+            ]
+        ];
+    } elseif($has === 'edit') {
+        $inline_keyboard = [
+            [
+                ['text' => '📝 ویرایش و نمایش پست', 'web_app' => ['url' => "https://tibin.ir/wp-json/bot-rss/v1/post/$post_id?password=opkwfaopfkoan2" ] ]
+            ],
+            [
+                ['text' => '✅ منتشر کردن پست', 'callback_data' => 'publish_post_' . $post_id]
+            ],
+            [
+                ['text' => '🗑️ پاک کردن پست', 'callback_data' => 'delete_post_' . $post_id]
+            ]
+        ];
+    } else {
+        $inline_keyboard = [];
+    }
     
     $data = [
         'chatid' => $chat_id,

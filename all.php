@@ -18,7 +18,7 @@ function downloadPhoto($url) {
     
     if ($httpCode === 200 && $imageData !== false) {
         file_put_contents($tempFile, $imageData);
-        return $tempFile;
+    return $tempFile;
     } else {
         // Log error
         $log_file_all = dirname(__FILE__) . '/all_logs.txt';
@@ -82,12 +82,12 @@ function sendToTelegram($request) {
             ];
         } else {
             file_put_contents($log_file_all, "Photo downloaded to: " . $photoFilePath . "\n", FILE_APPEND);
-            $body = [
-                'chat_id' => $chatId,
-                'photo' => new CURLFile($photoFilePath),
-                'caption' => $caption,
-                'parse_mode' => 'HTML'
-            ]; 
+        $body = [
+            'chat_id' => $chatId,
+            'photo' => new CURLFile($photoFilePath),
+            'caption' => $caption,
+            'parse_mode' => 'HTML'
+        ]; 
         }
     }
  
