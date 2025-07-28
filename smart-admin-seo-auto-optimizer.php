@@ -183,6 +183,10 @@ class Smart_Admin_SEO_Auto_Optimizer {
      * @return array نتیجه بهینه‌سازی
      */
     private function optimize_seo($post) {
+        // اطمینان از لود نسخهٔ جدید در صورت فعال بودن OPcache
+        if (function_exists('opcache_invalidate')) {
+            opcache_invalidate(__FILE__, true);
+        }
         $optimization_log = array();
         $updated_data = array();
         
@@ -222,13 +226,91 @@ class Smart_Admin_SEO_Auto_Optimizer {
         update_post_meta($post->ID, 'rank_math_focus_keyword', $focus_keyword);
         $updated_data['focus_keywords'] = $focus_keyword;
         $optimization_log[] = 'کلمات کلیدی اصلی تنظیم شدند: ' . $focus_keyword;
+
+        /*
+         * 5.5 بهینه‌سازی تصاویر و لینک‌سازی هوشمند
+         *  - افزودن alt به تصاویر فاقد alt
+         *  - لینک‌سازی داخلی بر اساس کلمات کلیدی و پست‌های موجود
+         *  - لینک‌سازی خارجی (ویکی‌پدیا به‌عنوان منبع معتبر پیش‌فرض)
+         */
+
+        $content_before = $post->post_content;
+        $primary_kw     = !empty($keywords[0]) ? $keywords[0] : '';
+
+        $internal_links_added = array();
+        $external_links_added = array();
+        $skipped_tasks         = array();
+
+        // افزودن alt به تصاویر
+        $alt_result        = $this->optimize_images_alt($content_before, $primary_kw);
+        $optimized_content = $alt_result['content'];
+        $alt_added_count   = $alt_result['added_count'];
+
+        if ($alt_added_count > 0) {
+            $optimization_log[]           = $alt_added_count . ' ویژگی alt به تصاویر افزوده شد';
+            $updated_data['alt_added']    = $alt_added_count;
+        } else {
+            $skipped_tasks[] = 'هیچ تصویری بدون alt یافت نشد';
+        }
+
+        // لینک‌سازی داخلی
+        $optimized_content = $this->add_internal_links($optimized_content, $keywords, $post->ID, $internal_links_added);
+        if (empty($internal_links_added)) {
+            $skipped_tasks[] = 'هیچ لینک داخلی مناسب یافت نشد';
+        }
+
+        // لینک‌سازی خارجی
+        $optimized_content = $this->add_external_links($optimized_content, $keywords, $external_links_added);
+
+        if (empty($external_links_added)) {
+            $skipped_tasks[] = 'هیچ لینک خارجی مناسب یافت نشد';
+        }
+
+        // اگر محتوا تغییر کرد، ذخیره کنیم
+        if ($optimized_content !== $content_before) {
+            wp_update_post(array(
+                'ID'           => $post->ID,
+                'post_content' => $optimized_content
+            ));
+            $optimization_log[] = 'محتوا با موفقیت بروزرسانی شد (تصاویر و لینک‌ها)';
+        }
+
+        // گزارش لینک‌ها و شمارش
+        $updated_data['internal_links_count'] = count($internal_links_added);
+        $updated_data['external_links_count'] = count($external_links_added);
+
+        if (!empty($internal_links_added)) {
+            $updated_data['internal_links'] = $internal_links_added;
+            $optimization_log[] = 'لینک‌های داخلی افزوده شد: ' . implode(', ', $internal_links_added);
+        } else {
+            $optimization_log[] = 'هیچ لینک داخلی افزوده نشد';
+        }
+
+        if (!empty($external_links_added)) {
+            $updated_data['external_links'] = $external_links_added;
+            $optimization_log[] = 'لینک‌های خارجی افزوده شد: ' . implode(', ', $external_links_added);
+        } else {
+            $optimization_log[] = 'هیچ لینک خارجی افزوده نشد';
+        }
+
+        if (!empty($skipped_tasks)) {
+            $updated_data['skipped'] = $skipped_tasks;
+            $optimization_log[] = 'موارد انجام‌نشده: ' . implode(' | ', $skipped_tasks);
+        }
         
         // 6. بررسی و توصیه برای بهبود محتوا
         $content_recommendations = $this->analyze_content($post, $keywords);
         $updated_data['recommendations'] = $content_recommendations;
         
         // 7. محاسبه و ذخیره امتیاز SEO
-        $seo_score = $this->calculate_seo_score($post, $keywords, $content_recommendations);
+        $seo_score = $this->calculate_seo_score(
+            $post,
+            $keywords,
+            $content_recommendations,
+            count($internal_links_added),
+            count($external_links_added),
+            $alt_added_count
+        );
         update_post_meta($post->ID, 'rank_math_seo_score', $seo_score);
         $updated_data['seo_score'] = $seo_score;
         $optimization_log[] = 'امتیاز SEO محاسبه شده: ' . $seo_score;
@@ -250,59 +332,78 @@ class Smart_Admin_SEO_Auto_Optimizer {
      * @param array $recommendations توصیه‌های محتوایی
      * @return int امتیاز SEO (از 0 تا 100)
      */
-    private function calculate_seo_score($post, $keywords, $recommendations) {
-        $score = 50; // امتیاز پایه
-        $content = $post->post_content;
-        $title = $post->post_title;
-        
-        // 1. طول محتوا (20 امتیاز)
-        $content_length = mb_strlen(strip_tags($content), 'UTF-8');
-        if ($content_length > 1500) {
-            $score += 20;
-        } elseif ($content_length > 1000) {
-            $score += 15;
-        } elseif ($content_length > 600) {
-            $score += 10;
-        } elseif ($content_length > 300) {
-            $score += 5;
-        }
-        
-        // 2. وجود کلمه کلیدی اصلی در عنوان (10 امتیاز)
-        if (!empty($keywords[0]) && stripos($title, $keywords[0]) !== false) {
-            $score += 10;
-        }
-        
-        // 3. وجود عناوین فرعی (H2, H3) (10 امتیاز)
-        if (preg_match('/<h[2-3][^>]*>.*?<\/h[2-3]>/i', $content)) {
-            $score += 10;
-        }
-        
-        // 4. وجود تصاویر (10 امتیاز)
-        $img_count = substr_count($content, '<img');
-        if ($img_count > 2) {
-            $score += 10;
-        } elseif ($img_count > 0) {
-            $score += 5;
-        }
-        
-        // 5. تراکم کلمات کلیدی (10 امتیاز)
-        if (!empty($keywords[0])) {
-            $keyword_density = substr_count(strtolower(strip_tags($content)), strtolower($keywords[0])) / max(1, $content_length) * 100;
-            if ($keyword_density >= 0.5 && $keyword_density <= 2.5) {
-                $score += 10;
-            } elseif ($keyword_density > 0 && $keyword_density < 5) {
-                $score += 5;
-            }
-        }
-        
-        // 6. پنالتی برای موارد نیازمند بهبود
-        $score -= count($recommendations) * 2;
-        
-        // محدود کردن امتیاز بین 0 تا 100
-        $score = max(0, min(100, $score));
-        
-        return intval($score);
-    }
+    private function calculate_seo_score($post, $keywords, $recommendations, $internal_links = 0, $external_links = 0, $alt_added = 0) {
+         $score = 40; // امتیاز پایه واقع‌بینانه
+         $content = $post->post_content;
+         $title = $post->post_title;
+         
+         // 1. طول محتوا (20 امتیاز)
+         $content_length = mb_strlen(strip_tags($content), 'UTF-8');
+         if ($content_length > 1500) {
+             $score += 20;
+         } elseif ($content_length > 1000) {
+             $score += 15;
+         } elseif ($content_length > 600) {
+             $score += 10;
+         } elseif ($content_length > 300) {
+             $score += 5;
+         }
+         
+         // 2. وجود کلمه کلیدی اصلی در عنوان (10 امتیاز)
+         if (!empty($keywords[0]) && stripos($title, $keywords[0]) !== false) {
+             $score += 10;
+         }
+         
+         // 3. وجود عناوین فرعی (H2, H3) (10 امتیاز)
+         if (preg_match('/<h[2-3][^>]*>.*?<\/h[2-3]>/i', $content)) {
+             $score += 10;
+         }
+         
+         // 4. وجود تصاویر (10 امتیاز)
+         $img_count = substr_count($content, '<img');
+         if ($img_count > 2) {
+             $score += 10;
+         } elseif ($img_count > 0) {
+             $score += 5;
+         }
+         
+         // 5. تراکم کلمات کلیدی (10 امتیاز)
+         if (!empty($keywords[0])) {
+             $keyword_density = substr_count(strtolower(strip_tags($content)), strtolower($keywords[0])) / max(1, $content_length) * 100;
+             if ($keyword_density >= 0.5 && $keyword_density <= 2.5) {
+                 $score += 10;
+             } elseif ($keyword_density > 0 && $keyword_density < 5) {
+                 $score += 5;
+             }
+         }
+         
+         // 6. لینک‌های داخلی (پاداش/جریمه)
+         if ($internal_links > 0) {
+             $score += 10;
+         } else {
+             $score -= 10;
+         }
+
+         // ۷. لینک‌های خارجی (پاداش/جریمه)
+         if ($external_links > 0) {
+             $score += 5;
+         } else {
+             $score -= 5;
+         }
+
+         // ۸. alt تصاویر (۵ امتیاز در صورت وجود)
+         if ($alt_added > 0) {
+             $score += 5;
+         }
+
+         // ۹. پنالتی برای توصیه‌ها (۲ امتیاز)
+         $score -= count($recommendations) * 2;
+ 
+         // محدود کردن امتیاز بین 0 تا 90 (کمی فضای بهبود نگه داریم)
+         $score = max(0, min(90, $score));
+ 
+         return intval($score);
+     }
     
     /**
      * استخراج کلمات کلیدی از محتوا
@@ -561,6 +662,154 @@ class Smart_Admin_SEO_Auto_Optimizer {
         }
         
         return $recommendations;
+    }
+
+    /**
+     * افزودن alt به تصاویر فاقد alt
+     * 
+     * @param string $content محتوای پست قبل از بهینه‌سازی
+     * @param string $primary_keyword کلمه کلیدی اصلی
+     * @return string محتوای پست با alt‌های تصاویر
+     */
+    private function optimize_images_alt($content, $primary_keyword) {
+         $pattern_all_imgs = '/<img[^>]*>/i';
+         preg_match_all($pattern_all_imgs, $content, $all_imgs);
+
+         $added_count = 0;
+         $optimized_content = $content;
+
+         foreach ($all_imgs[0] as $img_tag) {
+             // اگر alt موجود نیست یا خالی است
+             if (!preg_match('/alt="[^"]*"/i', $img_tag)) {
+                 $new_tag = preg_replace('/<img/i', '<img alt="' . esc_attr($primary_keyword) . '"', $img_tag, 1);
+                 $optimized_content = str_replace($img_tag, $new_tag, $optimized_content);
+                 $added_count++;
+             }
+         }
+
+         return array(
+             'content'     => $optimized_content,
+             'added_count' => $added_count,
+         );
+     }
+
+    /**
+     * لینک‌سازی داخلی بر اساس کلمات کلیدی و پست‌های موجود
+     * 
+     * @param string $content محتوای پست قبل از بهینه‌سازی
+     * @param array $keywords آرایه کلمات کلیدی
+     * @param int $post_id شناسه پست
+     * @param array $internal_links_added آرایه برای ذخیره لینک‌های اضافه شده
+     * @return string محتوای پست با لینک‌های داخلی
+     */
+    private function add_internal_links($content, $keywords, $post_id, &$internal_links_added) {
+         $optimized = $content;
+         $inserted  = 0;
+
+         foreach ($keywords as $kw) {
+             if ($inserted >= 3) { // سقف ۳ لینک داخلی برای جلوگیری از افراط
+                 break;
+             }
+
+             // اگر anchor قبلاً وجود دارد، رد شو
+             if ($this->link_exists($optimized, $kw)) {
+                 continue;
+             }
+
+             $related_posts = $this->get_related_posts($post_id, $kw);
+             if (empty($related_posts)) {
+                 continue;
+             }
+
+             $post_obj = $related_posts[0];
+             $url      = esc_url( get_permalink($post_obj->ID) );
+             $pattern  = '/('.preg_quote($kw, '/').')/iu';
+
+             if (preg_match($pattern, $optimized, $m)) {
+                 $replacement = '<a href="'.$url.'" rel="internal">'.$m[0].'</a>';
+                 $optimized   = preg_replace($pattern, $replacement, $optimized, 1);
+                 $internal_links_added[] = $kw.' ('.$url.')';
+                 $inserted++;
+             }
+         }
+
+         // اگر هنوز لینکی اضافه نشده است، حداقل «صفحه اصلی» لینک شود.
+         if ($inserted === 0) {
+             $home_pattern = '/صفحه\s+اصلی/iu';
+             if (preg_match($home_pattern, $optimized)) {
+                 $optimized = preg_replace($home_pattern, '<a href="'.esc_url( home_url() ).'" rel="internal">صفحه اصلی</a>', $optimized, 1);
+                 $internal_links_added[] = 'صفحه اصلی ('.home_url().')';
+             }
+         }
+
+         return $optimized;
+     }
+
+     // بررسی وجود anchor برای یک کلمه در متن
+     private function link_exists($html, $keyword) {
+         return preg_match('/<a[^>]*>[^<]*'.preg_quote($keyword, '/').'[^<]*<\/a>/iu', $html);
+     }
+
+     /**
+      * لینک‌سازی خارجی هوشمند
+      */
+     private function add_external_links($content, $keywords, &$external_links_added) {
+         $optimized = $content;
+         $inserted  = 0;
+
+         foreach ($keywords as $kw) {
+             if ($inserted >= 2) break; // سقف دو لینک خارجی
+
+             $wiki = 'https://fa.wikipedia.org/wiki/'.urlencode($kw);
+             $wiki = esc_url_raw($wiki);
+
+             // اگر anchor قبلاً وجود ندارد
+             if (!$this->link_exists($optimized, $kw)) {
+                 $pattern = '/('.preg_quote($kw, '/').')/iu';
+                 if (preg_match($pattern, $optimized, $m)) {
+                     $replacement = '<a href="'.$wiki.'" target="_blank" rel="noopener noreferrer nofollow">'.$m[0].'</a>';
+                     $optimized   = preg_replace($pattern, $replacement, $optimized, 1);
+                     $external_links_added[] = $kw.' ('.$wiki.')';
+                     $inserted++;
+                     continue;
+                 }
+             }
+
+             // اگر در متن نبود با پاراگراف پایانی اضافه کن
+             if ($inserted === 0) {
+                 $optimized .= '<p><a href="'.$wiki.'" target="_blank" rel="noopener noreferrer nofollow">بیشتر درباره '.$kw.'</a></p>';
+                 $external_links_added[] = $kw.' ('.$wiki.')';
+                 $inserted++;
+             }
+         }
+
+         return $optimized;
+     }
+
+    /**
+     * دریافت پست‌های مرتبط با کلمه کلیدی از پست فعلی
+     * 
+     * @param int $current_post_id شناسه پست فعلی
+     * @param string $keyword کلمه کلیدی
+     * @return array آرایه پست‌های مرتبط
+     */
+    private function get_related_posts($current_post_id, $keyword) {
+        $args = array(
+            'post_type' => 'post',
+            'posts_per_page' => 5, // تعداد پست‌های مرتبط
+            'post__not_in' => array($current_post_id), // حذف پست فعلی از نتیجه
+            'meta_key' => 'rank_math_focus_keyword', // فیلتر بر اساس کلمات کلیدی
+            'meta_value' => $keyword,
+            'meta_query' => array(
+                'relation' => 'OR',
+                array(
+                    'key' => 'rank_math_focus_keyword',
+                    'value' => $keyword,
+                    'compare' => 'LIKE'
+                )
+            )
+        );
+        return get_posts($args);
     }
     
     /**

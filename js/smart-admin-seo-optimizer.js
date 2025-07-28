@@ -125,6 +125,26 @@
                 '<div class="smart-admin-seo-result-value">' + data.focus_keywords + '</div>' +
             '</div>';
         }
+
+        // لینک‌های داخلی
+        if (data.internal_links && data.internal_links.length > 0) {
+            html += '<div class="smart-admin-seo-result-item">' +
+                '<div class="smart-admin-seo-result-title">لینک‌های داخلی:</div><ul>';
+            $.each(data.internal_links, function(index, linkText) {
+                html += '<li>' + linkText + '</li>';
+            });
+            html += '</ul></div>';
+        }
+
+        // لینک‌های خارجی
+        if (data.external_links && data.external_links.length > 0) {
+            html += '<div class="smart-admin-seo-result-item">' +
+                '<div class="smart-admin-seo-result-title">لینک‌های خارجی:</div><ul>';
+            $.each(data.external_links, function(index, linkText) {
+                html += '<li>' + linkText + '</li>';
+            });
+            html += '</ul></div>';
+        }
         
         // توصیه‌ها
         if (data.recommendations && data.recommendations.length > 0) {
@@ -136,6 +156,16 @@
             });
             
             html += '</div>';
+        }
+        
+        // موارد انجام‌نشده
+        if (data.skipped && data.skipped.length > 0) {
+            html += '<div class="smart-admin-seo-result-item">' +
+                '<div class="smart-admin-seo-result-title">موارد انجام‌نشده:</div><ul>';
+            $.each(data.skipped, function(index, item) {
+                html += '<li>' + item + '</li>';
+            });
+            html += '</ul></div>';
         }
         
         // دکمه بستن
