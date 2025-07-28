@@ -227,7 +227,13 @@ function bot_rss_display_post_full_text($data) {
     $post_thumbnail_url = get_the_post_thumbnail_url($post, 'full');
     $post_categories = get_the_category($post_id);
     $post_tags = wp_get_post_tags($post_id, array('fields' => 'names'));
-    $all_categories = get_categories(array('hide_empty' => 0)); 
+
+    // اضافه‌شده: اطلاعات سئو موجود و آدرس پوشه پلاگین
+    $focus_keywords = get_post_meta($post_id, 'rank_math_focus_keyword', true);
+    $seo_score      = get_post_meta($post_id, 'rank_math_seo_score', true);
+    $plugin_url     = plugin_dir_url(__FILE__);
+
+    $all_categories = get_categories(array('hide_empty' => 0));
     $all_tags = []; 
     $current_category_id = !empty($post_categories) ? $post_categories[0]->term_id : '';
 
@@ -241,6 +247,8 @@ function bot_rss_display_post_full_text($data) {
     $output .= '<link rel="icon" type="image/x-icon" href="assets/favicon.ico">';
     $output .= '<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">';
     $output .= '<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />';
+    // اضافه‌شده: استایل بهینه‌ساز SEO
+    $output .= '<link href="' . $plugin_url . 'css/smart-admin-seo-optimizer.css" rel="stylesheet">';
     $output .= '<script src="https://cdn.ckeditor.com/ckeditor5/34.2.0/classic/ckeditor.js"></script>';
     $output .= '<style>
                     body {
@@ -313,8 +321,20 @@ function bot_rss_display_post_full_text($data) {
     $output .= '</select>';
     $output .= '</div>';
 
+    // اضافه‌شده: فیلد پنهان شناسه پست برای اسکریپت سئو
+    $output .= '<input type="hidden" id="post_ID" value="' . $post_id . '">';
+
     $output .= '<button type="submit" class="btn btn-primary mt-3">به‌روزرسانی پست</button>';
     $output .= '</form>';
+
+    // اضافه‌شده: نمایش اطلاعات سئو و دکمه بهینه‌سازی
+    $output .= '<div id="seo-info" class="mt-4">';
+    $output .= '<h5>اطلاعات SEO</h5>';
+    $output .= '<p><strong>کلمات کلیدی:</strong> <span id="focus_keywords_display">' . (!empty($focus_keywords) ? esc_html($focus_keywords) : 'تنظیم نشده') . '</span></p>';
+    $output .= '<p><strong>امتیاز Rank Math:</strong> <span id="seo_score_display">' . (is_numeric($seo_score) ? intval($seo_score) : '---') . '</span></p>';
+    $output .= '<button type="button" id="smart-admin-seo-optimizer-button" class="btn btn-success mt-2">بهینه‌سازی خودکار SEO</button>';
+    $output .= '</div>';
+
     $output .= '<p class="mt-4"><strong>خلاصه:</strong> ' . $post_excerpt . '</p>';
     $output .= '</div>';  
     $output .= '</div>'; 
@@ -322,6 +342,11 @@ function bot_rss_display_post_full_text($data) {
     $output .= '<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>';
     $output .= '<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>';
     $output .= '<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.full.min.js"></script>';
+
+    // اضافه‌شده: متغیرهای موردنیاز اسکریپت سئو و بارگذاری فایل جاوااسکریپت
+    $output .= '<script>var smartAdminSEO = {ajax_url: "' . admin_url('admin-ajax.php') . '", nonce: "' . wp_create_nonce('smart_admin_seo_optimizer') . '"};</script>';
+    $output .= '<script src="' . $plugin_url . 'js/smart-admin-seo-optimizer.js"></script>';
+
     $output .= '<script>
                     ClassicEditor
                         .create(document.querySelector("#post_content"), {

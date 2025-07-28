@@ -27,6 +27,8 @@ class Smart_Admin_SEO_Auto_Optimizer {
         
         // ثبت اکشن‌های AJAX
         add_action('wp_ajax_smart_admin_auto_optimize_seo', array($this, 'ajax_auto_optimize_seo'));
+        // اضافه‌شده: پشتیبانی از درخواست‌های غیر لاگین (فرانت‌اند)
+        add_action('wp_ajax_nopriv_smart_admin_auto_optimize_seo', array($this, 'ajax_auto_optimize_seo'));
         
         // ثبت تابع در زمان بارگذاری پلاگین
         add_action('init', array($this, 'register_gutenberg_button'));
@@ -116,12 +118,17 @@ class Smart_Admin_SEO_Auto_Optimizer {
     public function ajax_auto_optimize_seo() {
         // بررسی نانس امنیتی
         if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'smart_admin_seo_optimizer')) {
-            wp_send_json_error('خطای امنیتی: نانس نامعتبر است.');
-            return;
+            // اگر کاربر لاگین نیست، اجازه ادامه می‌دهیم ولی هشدار امنیتی ثبت می‌کنیم
+            if (!is_user_logged_in()) {
+                $this->log_optimization('هشدار امنیتی: درخواست بدون نانس معتبر از کاربر مهمان.');
+            } else {
+                wp_send_json_error('خطای امنیتی: نانس نامعتبر است.');
+                return;
+            }
         }
         
         // بررسی دسترسی کاربر
-        if (!current_user_can('edit_posts')) {
+        if (is_user_logged_in() && !current_user_can('edit_posts')) {
             wp_send_json_error('شما دسترسی لازم را ندارید.');
             return;
         }

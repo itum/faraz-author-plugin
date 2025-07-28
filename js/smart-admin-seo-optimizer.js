@@ -144,6 +144,13 @@
         '</div>';
         
         $('.smart-admin-seo-modal-body').html(html);
+        // به‌روزرسانی اطلاعات سئو در بخش ثابت صفحه
+        if (data.focus_keywords) {
+            $('#focus_keywords_display').text(data.focus_keywords);
+        }
+        if (data.seo_score !== undefined && data.seo_score !== null) {
+            $('#seo_score_display').text(parseInt(data.seo_score));
+        }
         
         // بروزرسانی فیلدهای Rank Math
         setTimeout(function() {
