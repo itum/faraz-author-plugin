@@ -24,6 +24,12 @@ function send_to_private_channel($post_id) {
     write_log("Channel ID: " . $channel_id, $log_file);
     write_log("Bot Token: " . substr($bot_token, 0, 10) . '...', $log_file);
     write_log("Host Type: " . $host_type, $log_file);
+    
+    // اضافه کردن لاگ برای بررسی تنظیمات
+    write_log("Debug - Channel ID empty: " . (empty($channel_id) ? 'YES' : 'NO'), $log_file);
+    write_log("Debug - Bot Token empty: " . (empty($bot_token) ? 'YES' : 'NO'), $log_file);
+    write_log("Debug - Host Type: " . $host_type, $log_file);
+    write_log("Debug - Proxy URL: " . get_option('telegram_proxy_url', 'NOT_SET'), $log_file);
 
     $thumbnail = get_the_post_thumbnail_url($post_id, 'medium');
     $title = get_the_title($post_id);
@@ -307,19 +313,34 @@ function send_to_whatsapp_group($post_id) {
 }
 
 function farazautur_newsroom_page() {
+    // اضافه کردن لاگ برای دیباگ کلی
+    $debug_log = plugin_dir_path(__FILE__) . 'debug_newsroom.txt';
+    $debug_message = sprintf("[%s] farazautur_newsroom_page() called - POST data: %s\n", 
+        current_time('mysql'), 
+        print_r($_POST, true)
+    );
+    error_log($debug_message, 3, $debug_log);
+    
     // Handle post actions
     if (isset($_POST['post_id'])) {
         $post_id = intval($_POST['post_id']);
+        
+        // اضافه کردن لاگ برای دیباگ
+        $debug_log = plugin_dir_path(__FILE__) . 'debug_newsroom.txt';
+        $debug_message = sprintf("[%s] POST received - post_id: %s, approve_post: %s\n", 
+            current_time('mysql'), 
+            $post_id, 
+            isset($_POST['approve_post']) ? 'YES' : 'NO'
+        );
+        error_log($debug_message, 3, $debug_log);
 
         if (isset($_POST['approve_post'])) {
-            // Send to private channel if auto-post is enabled
-            if (get_option('farazautur_auto_post_enabled', '0') === '1') {
-                $sent = send_to_private_channel($post_id);
-                if ($sent) {
-                    echo '<div class="notice notice-success is-dismissible"><p>خبر با موفقیت در کانال خصوصی منتشر شد. برای مشاهده جزئیات به فایل telegram_logs.txt مراجعه کنید.</p></div>';
-                } else {
-                    echo '<div class="notice notice-error is-dismissible"><p>خطا در ارسال خبر به کانال خصوصی. لطفاً فایل telegram_logs.txt را بررسی کنید.</p></div>';
-                }
+            // ارسال به کانال خصوصی
+            $sent = send_to_private_channel($post_id);
+            if ($sent) {
+                echo '<div class="notice notice-success is-dismissible"><p>خبر با موفقیت در کانال خصوصی منتشر شد. برای مشاهده جزئیات به فایل telegram_logs.txt مراجعه کنید.</p></div>';
+            } else {
+                echo '<div class="notice notice-error is-dismissible"><p>خطا در ارسال خبر به کانال خصوصی. لطفاً فایل telegram_logs.txt را بررسی کنید.</p></div>';
             }
         } elseif (isset($_POST['send_to_whatsapp'])) {
             // Handle sending to WhatsApp
@@ -334,6 +355,18 @@ function farazautur_newsroom_page() {
     ?>
     <div class="wrap">
         <h1>اتاق خبر</h1>
+        <?php
+        // اضافه کردن لاگ برای دیباگ صفحه
+        $page_debug_log = plugin_dir_path(__FILE__) . 'page_debug.txt';
+        $page_debug_message = sprintf("[%s] Newsroom page loaded\n", current_time('mysql'));
+        error_log($page_debug_message, 3, $page_debug_log);
+        
+        // تست ساده برای بررسی اجرای PHP
+        file_put_contents(plugin_dir_path(__FILE__) . 'test.txt', 'PHP is working at ' . current_time('mysql'));
+        
+        // تست با echo
+        echo "<!-- DEBUG: PHP is working -->";
+        ?>
         <style>
             .newsroom-container {
                 max-width: 1200px;
