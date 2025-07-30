@@ -296,9 +296,22 @@ function telegram_bot_settings_page()
             webhookStatus.style.display = 'block';
         }
 
-        function performWebhookAction(action) {
-            const token = document.getElementById('telegram_bot_token').value;
-            const hostType = document.querySelector('input[name="telegram_host_type"]:checked')?.value || 'foreign';
+        function performWebhookAction(action, buttonElement) {
+            console.log('performWebhookAction called with:', action, buttonElement);
+            
+            const tokenElement = document.getElementById('telegram_bot_token');
+            if (!tokenElement) {
+                console.error('Token element not found');
+                alert('خطا: فیلد توکن یافت نشد.');
+                return;
+            }
+            
+            const token = tokenElement.value;
+            const hostType = document.querySelector('input[name="telegram_host_type"]:checked');
+            const hostTypeValue = hostType ? hostType.value : 'foreign';
+            
+            console.log('Token:', token ? 'Present' : 'Empty');
+            console.log('Host type:', hostTypeValue);
             
             if (!token) {
                 alert('لطفاً ابتدا توکن ربات را وارد کنید.');
@@ -306,9 +319,9 @@ function telegram_bot_settings_page()
             }
 
             // نمایش loading
-            const originalText = event.target.textContent;
-            event.target.textContent = 'در حال پردازش...';
-            event.target.disabled = true;
+            const originalText = buttonElement.textContent;
+            buttonElement.textContent = 'در حال پردازش...';
+            buttonElement.disabled = true;
 
             fetch(ajaxurl, {
                 method: 'POST',
@@ -319,44 +332,56 @@ function telegram_bot_settings_page()
                     action: 'telegram_webhook_action',
                     webhook_action: action,
                     token: token,
-                    host_type: hostType,
+                    host_type: hostTypeValue,
                     nonce: '<?php echo wp_create_nonce('telegram_webhook_action'); ?>'
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showWebhookResult(data.data);
-                } else {
-                    showWebhookResult('خطا: ' + data.data);
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                return response.text();
+            })
+            .then(text => {
+                console.log('Raw response:', text);
+                try {
+                    const data = JSON.parse(text);
+                    if (data.success) {
+                        showWebhookResult(data.data);
+                    } else {
+                        showWebhookResult('خطا: ' + data.data);
+                    }
+                } catch (e) {
+                    console.error('JSON parse error:', e);
+                    showWebhookResult('خطا در پردازش پاسخ: ' + text.substring(0, 200));
                 }
             })
             .catch(error => {
+                console.error('Fetch error:', error);
                 showWebhookResult('خطا در ارتباط: ' + error.message);
             })
             .finally(() => {
-                event.target.textContent = originalText;
-                event.target.disabled = false;
+                buttonElement.textContent = originalText;
+                buttonElement.disabled = false;
             });
         }
 
         if (checkWebhookBtn) {
             checkWebhookBtn.addEventListener('click', function(event) {
-                performWebhookAction('check');
+                performWebhookAction('check', this);
             });
         }
 
         if (deleteWebhookBtn) {
             deleteWebhookBtn.addEventListener('click', function(event) {
                 if (confirm('آیا از حذف وب‌هوک اطمینان دارید؟')) {
-                    performWebhookAction('delete');
+                    performWebhookAction('delete', this);
                 }
             });
         }
 
         if (testWebhookBtn) {
             testWebhookBtn.addEventListener('click', function(event) {
-                performWebhookAction('test');
+                performWebhookAction('test', this);
             });
         }
 
@@ -638,6 +663,11 @@ function send_to_telegram($message)
     $host_type = get_option('telegram_host_type', 'foreign');
     $chat_id = get_option('telegram_bot_Chat_id');
     
+    if (empty($token) || empty($chat_id)) {
+        error_log('Telegram: Token or Chat ID is empty');
+        return;
+    }
+    
     // Log file
     $log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
     
@@ -841,7 +871,8 @@ add_action('wp_ajax_telegram_webhook_action', 'handle_telegram_webhook_action');
 function handle_telegram_webhook_action() {
     // بررسی nonce برای امنیت
     if (!wp_verify_nonce($_POST['nonce'], 'telegram_webhook_action')) {
-        wp_die('خطای امنیتی');
+        wp_send_json_error('خطای امنیتی');
+        return;
     }
     
     $action = sanitize_text_field($_POST['webhook_action']);
