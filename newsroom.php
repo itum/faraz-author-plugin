@@ -21,6 +21,8 @@ function send_to_private_channel($post_id) {
     
     if (empty($channel_id) || empty($bot_token)) {
         write_log("Error: Missing required settings (channel_id or bot_token)", $log_file);
+        write_log("Debug - Channel ID: '" . $channel_id . "'", $log_file);
+        write_log("Debug - Bot Token: '" . substr($bot_token, 0, 10) . "...'", $log_file);
         return false;
     }
 

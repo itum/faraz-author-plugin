@@ -424,7 +424,14 @@ function telegram_bot_save_token()
         update_option('telegram_proxy_url', $proxy_url);
         update_option('telegram_webhook_proxy', $webhook_proxy);
         
-        telegram_bot_set_webhook($token, $url_p, $host_type);
+        // تنظیم وب‌هوک و نمایش نتیجه
+        $webhook_result = telegram_bot_set_webhook($token, $url_p, $host_type);
+        
+        if ($webhook_result) {
+            echo '<div class="updated"><p>تنظیمات با موفقیت ذخیره شد و وب‌هوک تنظیم شد!</p></div>';
+        } else {
+            echo '<div class="error"><p>تنظیمات ذخیره شد ولی خطا در تنظیم وب‌هوک!</p></div>';
+        }
     }
 }
 
@@ -439,12 +446,26 @@ function telegram_bot_set_webhook($token, $url_p, $host_type = 'foreign')
         
         if (!empty($webhook_proxy)) {
             // استفاده از میانجی tibin.php
-            $cloud = 'Location: ' . $webhook_proxy . '?bot=' . $token . '&url=' . $url_p . '&setWebP=True';
+            $webhook_url = $webhook_proxy . '?bot=' . $token . '&url=' . urlencode($url_p) . '&setWebP=True';
         } else {
             // fallback به روش قدیمی
             $proxy_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
-            $cloud = 'Location: ' . $proxy_url . '?bot=' . $token . '&url=' . $url_p . '&setWebP=True';
+            $webhook_url = $proxy_url . '?bot=' . $token . '&url=' . urlencode($url_p) . '&setWebP=True';
         }
+        
+        // ارسال درخواست به پروکسی
+        $response = wp_remote_get($webhook_url, array(
+            'timeout' => 30,
+            'sslverify' => false
+        ));
+        
+        if (is_wp_error($response)) {
+            return false;
+        } else {
+            $body = wp_remote_retrieve_body($response);
+            return true; // موفقیت
+        }
+        
     } else {
         // برای هاست خارجی مستقیماً به API تلگرام متصل می‌شویم
         $webhook_url = "https://api.telegram.org/bot{$token}/setWebhook?url=" . urlencode($url_p);
@@ -456,25 +477,19 @@ function telegram_bot_set_webhook($token, $url_p, $host_type = 'foreign')
         ));
         
         if (is_wp_error($response)) {
-            // در صورت خطا، به روش قدیمی برگردیم
-            $cloud = 'Location: ' . $url_p . '?bot=' . $token . '&url=' . $url_p . '&setWebP=True';
+            return false;
         } else {
-            // نمایش نتیجه تنظیم وب‌هوک
+            // بررسی نتیجه تنظیم وب‌هوک
             $body = wp_remote_retrieve_body($response);
             $result = json_decode($body, true);
             
             if (isset($result['ok']) && $result['ok']) {
-                wp_redirect(admin_url('admin.php?page=telegram-webhook-plugin&webhook_status=success'));
-                exit;
+                return true; // موفقیت
             } else {
-                wp_redirect(admin_url('admin.php?page=telegram-webhook-plugin&webhook_status=error&error_msg=' . urlencode($result['description'] ?? 'خطای نامشخص')));
-                exit;
+                return false; // خطا
             }
         }
     }
-    
-    header($cloud);
-    exit;
 }
 
  
