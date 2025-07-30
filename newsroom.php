@@ -14,16 +14,16 @@ function send_to_private_channel($post_id) {
 
     $channel_id = get_option('farazautur_private_channel_id', '');
     $bot_token = get_option('telegram_bot_token', '');
-    $hook_url = 'https://arz.appwordpresss.ir/all.php';
-
-    if (empty($channel_id) || empty($bot_token) || empty($hook_url)) {
-        write_log("Error: Missing required settings (channel_id, bot_token, or hook_url)", $log_file);
+    $host_type = get_option('telegram_host_type', 'foreign');
+    
+    if (empty($channel_id) || empty($bot_token)) {
+        write_log("Error: Missing required settings (channel_id or bot_token)", $log_file);
         return false;
     }
 
     write_log("Channel ID: " . $channel_id, $log_file);
     write_log("Bot Token: " . substr($bot_token, 0, 10) . '...', $log_file);
-    write_log("Hook URL: " . $hook_url, $log_file);
+    write_log("Host Type: " . $host_type, $log_file);
 
     $thumbnail = get_the_post_thumbnail_url($post_id, 'medium');
     $title = get_the_title($post_id);
@@ -55,30 +55,53 @@ function send_to_private_channel($post_id) {
 
     // Attempt to send photo first if available
     if ($thumbnail) {
-        write_log("Attempting to send photo as JSON", $log_file);
+        write_log("Attempting to send photo", $log_file);
         
-        $photo_payload = array(
-            'bot' => $bot_token,
-            'chatid' => $channel_id,
-            'photo' => $thumbnail,
-            'caption' => $message,
-            'is_photo' => 'true'
-        );
+        if ($host_type === 'iranian') {
+            // استفاده از پروکسی برای هاست ایرانی
+            $hook_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+            
+            $photo_payload = array(
+                'bot' => $bot_token,
+                'chatid' => $channel_id,
+                'photo' => $thumbnail,
+                'caption' => $message,
+                'is_photo' => 'true'
+            );
 
-        $photo_args = array(
-            'method' => 'POST',
-            'timeout' => 30,
-            'redirection' => 5,
-            'blocking' => true,
-            'headers' => array(
-                'Content-Type' => 'application/json; charset=utf-8'
-            ),
-            'body' => wp_json_encode($photo_payload),
-            'sslverify' => false
-        );
+            $photo_args = array(
+                'method' => 'POST',
+                'timeout' => 30,
+                'redirection' => 5,
+                'blocking' => true,
+                'headers' => array(
+                    'Content-Type' => 'application/json; charset=utf-8'
+                ),
+                'body' => wp_json_encode($photo_payload),
+                'sslverify' => false
+            );
 
-        write_log("Sending photo with JSON payload: " . wp_json_encode($photo_payload), $log_file);
-        $photo_response = wp_remote_post($hook_url, $photo_args);
+            write_log("Sending photo via proxy: " . $hook_url, $log_file);
+            $photo_response = wp_remote_post($hook_url, $photo_args);
+            
+        } else {
+            // اتصال مستقیم به API تلگرام برای هاست خارجی
+            $telegram_api_url = "https://api.telegram.org/bot{$bot_token}/sendPhoto";
+            
+            $photo_data = array(
+                'chat_id' => $channel_id,
+                'photo' => $thumbnail,
+                'caption' => $message,
+                'parse_mode' => 'HTML'
+            );
+            
+            write_log("Sending photo directly to Telegram API", $log_file);
+            $photo_response = wp_remote_post($telegram_api_url, array(
+                'body' => $photo_data,
+                'timeout' => 30,
+                'sslverify' => false
+            ));
+        }
 
         if (is_wp_error($photo_response)) {
             write_log("Error sending photo (wp_error): " . $photo_response->get_error_message(), $log_file);
@@ -86,42 +109,78 @@ function send_to_private_channel($post_id) {
         } else {
             $photo_response_code = wp_remote_retrieve_response_code($photo_response);
             $photo_response_body = wp_remote_retrieve_body($photo_response);
-            write_log("Photo Hook Response Code: " . $photo_response_code, $log_file);
-            write_log("Photo Hook Response Body: " . $photo_response_body, $log_file);
+            write_log("Photo Response Code: " . $photo_response_code, $log_file);
+            write_log("Photo Response Body: " . $photo_response_body, $log_file);
             
-            $response_data = json_decode($photo_response_body, true);
-            if ($photo_response_code == 200 && isset($response_data['status']) && $response_data['status'] === 'success') {
-                write_log("Photo sent successfully via JSON", $log_file);
-                return true; // Successfully sent photo
+            if ($host_type === 'iranian') {
+                // بررسی پاسخ پروکسی
+                $response_data = json_decode($photo_response_body, true);
+                if ($photo_response_code == 200 && isset($response_data['status']) && $response_data['status'] === 'success') {
+                    write_log("Photo sent successfully via proxy", $log_file);
+                    return true; // Successfully sent photo
+                } else {
+                    write_log("Failed to send photo via proxy. Response: " . $photo_response_body, $log_file);
+                    // If photo sending failed, proceed to send as text message
+                }
             } else {
-                write_log("Failed to send photo via JSON or hook returned error. Response: " . $photo_response_body, $log_file);
-                // If photo sending failed, proceed to send as text message
+                // بررسی پاسخ مستقیم تلگرام
+                $response_data = json_decode($photo_response_body, true);
+                if (isset($response_data['ok']) && $response_data['ok']) {
+                    write_log("Photo sent successfully via direct API", $log_file);
+                    return true; // Successfully sent photo
+                } else {
+                    write_log("Failed to send photo via direct API. Response: " . $photo_response_body, $log_file);
+                    // If photo sending failed, proceed to send as text message
+                }
             }
         }
     }
 
     // If no thumbnail, or if sending photo failed, send as a plain text message
-    write_log("Attempting to send message as JSON", $log_file);
-    $message_payload = array(
-        'bot' => $bot_token,
-        'chatid' => $channel_id,
-        'message' => $message
-    );
+    write_log("Attempting to send message", $log_file);
+    
+    if ($host_type === 'iranian') {
+        // استفاده از پروکسی برای هاست ایرانی
+        $hook_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+        
+        $message_payload = array(
+            'bot' => $bot_token,
+            'chatid' => $channel_id,
+            'message' => $message
+        );
 
-    $message_args = array(
-        'method' => 'POST',
-        'timeout' => 30,
-        'redirection' => 5,
-        'blocking' => true,
-        'headers' => array(
-            'Content-Type' => 'application/json; charset=utf-8'
-        ),
-        'body' => wp_json_encode($message_payload),
-        'sslverify' => false
-    );
+        $message_args = array(
+            'method' => 'POST',
+            'timeout' => 30,
+            'redirection' => 5,
+            'blocking' => true,
+            'headers' => array(
+                'Content-Type' => 'application/json; charset=utf-8'
+            ),
+            'body' => wp_json_encode($message_payload),
+            'sslverify' => false
+        );
 
-    write_log("Sending message with JSON payload: " . wp_json_encode($message_payload), $log_file);
-    $response = wp_remote_post($hook_url, $message_args);
+        write_log("Sending message via proxy: " . $hook_url, $log_file);
+        $response = wp_remote_post($hook_url, $message_args);
+        
+    } else {
+        // اتصال مستقیم به API تلگرام برای هاست خارجی
+        $telegram_api_url = "https://api.telegram.org/bot{$bot_token}/sendMessage";
+        
+        $message_data = array(
+            'chat_id' => $channel_id,
+            'text' => $message,
+            'parse_mode' => 'HTML'
+        );
+        
+        write_log("Sending message directly to Telegram API", $log_file);
+        $response = wp_remote_post($telegram_api_url, array(
+            'body' => $message_data,
+            'timeout' => 30,
+            'sslverify' => false
+        ));
+    }
 
     if (is_wp_error($response)) {
         write_log("Error sending message (wp_error): " . $response->get_error_message(), $log_file);
@@ -130,17 +189,30 @@ function send_to_private_channel($post_id) {
 
     $response_code = wp_remote_retrieve_response_code($response);
     $response_body = wp_remote_retrieve_body($response);
-    write_log("Message Hook Response Code: " . $response_code, $log_file);
-    write_log("Message Hook Response Body: " . $response_body, $log_file);
+    write_log("Message Response Code: " . $response_code, $log_file);
+    write_log("Message Response Body: " . $response_body, $log_file);
 
-    $response_data = json_decode($response_body, true);
-    if ($response_code == 200 && isset($response_data['status']) && $response_data['status'] === 'success') {
-        write_log("Message sent successfully via JSON", $log_file);
-        return true;
+    if ($host_type === 'iranian') {
+        // بررسی پاسخ پروکسی
+        $response_data = json_decode($response_body, true);
+        if ($response_code == 200 && isset($response_data['status']) && $response_data['status'] === 'success') {
+            write_log("Message sent successfully via proxy", $log_file);
+            return true;
+        } else {
+            write_log("Failed to send message via proxy. Response: " . $response_body, $log_file);
+            return false;
+        }
+    } else {
+        // بررسی پاسخ مستقیم تلگرام
+        $response_data = json_decode($response_body, true);
+        if (isset($response_data['ok']) && $response_data['ok']) {
+            write_log("Message sent successfully via direct API", $log_file);
+            return true;
+        } else {
+            write_log("Failed to send message via direct API. Response: " . $response_body, $log_file);
+            return false;
+        }
     }
-
-    write_log("Failed to send message via JSON. Response: " . $response_body, $log_file);
-    return false;
 }
 
 function write_whatsapp_log($message) {
