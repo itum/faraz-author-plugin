@@ -10,6 +10,9 @@ function send_to_private_channel($post_id) {
         error_log($log_message, 3, $log_file);
     }
 
+    // تست ساده برای بررسی لاگ
+    file_put_contents($log_file, "TEST: Function called at " . current_time('mysql') . "\n", FILE_APPEND);
+    
     write_log("Starting to send post ID: " . $post_id, $log_file);
 
     $channel_id = get_option('farazautur_private_channel_id', '');
@@ -346,7 +349,9 @@ function farazautur_newsroom_page() {
             echo '<div class="notice notice-info is-dismissible"><p>در حال ارسال به کانال...</p></div>';
             
             // ارسال به کانال خصوصی
+            echo "<!-- DEBUG: About to call send_to_private_channel -->";
             $sent = send_to_private_channel($post_id);
+            echo "<!-- DEBUG: send_to_private_channel returned: " . ($sent ? 'true' : 'false') . " -->";
             if ($sent) {
                 echo '<div class="notice notice-success is-dismissible"><p>خبر با موفقیت در کانال خصوصی منتشر شد. برای مشاهده جزئیات به فایل telegram_logs.txt مراجعه کنید.</p></div>';
             } else {
