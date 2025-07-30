@@ -317,4 +317,3 @@ function smart_admin_generate_and_send_articles() {
         sleep(5);
     }
 }
-?> 

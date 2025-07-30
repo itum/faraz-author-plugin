@@ -1,6 +1,4 @@
-<?php 
-
- 
+<?php
 function downloadPhoto($url) { 
     $tempFile = tempnam(sys_get_temp_dir(), 'photo_');
     
@@ -150,5 +148,3 @@ file_put_contents(dirname(__FILE__) . '/all_logs.txt', "Final response from all.
 
 header('Content-Type: application/json');
 echo $response;
-
-?>

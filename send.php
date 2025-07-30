@@ -148,5 +148,3 @@ function sendErrorToTelegram($message, $chatId = 1016239559, $token = null) {
 
     return $response;
 }
-
-?>

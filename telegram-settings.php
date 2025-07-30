@@ -573,5 +573,3 @@ function publish_all_draft_posts()
         wp_reset_postdata();
     }
 }
-
-?>

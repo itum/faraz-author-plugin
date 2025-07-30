@@ -123,4 +123,3 @@ class Response {
 }
 
 handleRequest()->send();
-?>

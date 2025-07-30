@@ -1,4 +1,4 @@
-<?php 
+<?php
 define( 'CUSTOM_STATUS', 'faraz' );  
 function custom_post_status_faraz() {
     register_post_status('faraz', array(

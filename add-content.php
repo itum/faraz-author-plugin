@@ -401,6 +401,3 @@ function attach_thumbnail($post_id, $thumbnail_url) {
         error_log('Failed to sideload image: ' . $image_id->get_error_message());
     }
 }
-
-
-?>

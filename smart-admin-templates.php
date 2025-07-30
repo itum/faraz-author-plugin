@@ -233,4 +233,3 @@ function add_default_prompts_to_settings() {
 
 // افزودن پرامپت‌های پیش‌فرض هنگام بارگذاری ادمین
 add_action('admin_init', 'add_default_prompts_to_settings');
-?> 
