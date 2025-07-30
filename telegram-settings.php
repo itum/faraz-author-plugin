@@ -126,6 +126,19 @@ function telegram_bot_settings_page()
 
     <div class="telegram-settings-wrap">
         <h2>تنظیمات ربات تلگرام</h2>
+        
+        <?php
+        // نمایش پیام‌های وضعیت وب‌هوک
+        if (isset($_GET['webhook_status'])) {
+            if ($_GET['webhook_status'] === 'success') {
+                echo '<div class="success-message" style="display: block;">وب‌هوک با موفقیت تنظیم شد!</div>';
+            } elseif ($_GET['webhook_status'] === 'error') {
+                $error_msg = isset($_GET['error_msg']) ? urldecode($_GET['error_msg']) : 'خطای نامشخص';
+                echo '<div class="error-message" style="display: block;">خطا در تنظیم وب‌هوک: ' . esc_html($error_msg) . '</div>';
+            }
+        }
+        ?>
+        
         <form method="post" action="" class="telegram-settings-form">
             <?php wp_nonce_field('save_telegram_bot_token', 'telegram_bot_nonce'); ?>
             
@@ -151,6 +164,37 @@ function telegram_bot_settings_page()
             </div>
 
             <div class="form-group">
+                <label>نوع هاست:</label>
+                <div style="margin-top: 10px;">
+                    <label style="display: inline-flex; align-items: center; margin-left: 20px;">
+                        <input type="radio" name="telegram_host_type" value="foreign" 
+                               <?php checked(get_option('telegram_host_type', 'foreign'), 'foreign'); ?> 
+                               style="margin-left: 8px;">
+                        هاست خارجی (اتصال مستقیم به تلگرام)
+                    </label>
+                    <label style="display: inline-flex; align-items: center;">
+                        <input type="radio" name="telegram_host_type" value="iranian" 
+                               <?php checked(get_option('telegram_host_type', 'foreign'), 'iranian'); ?> 
+                               style="margin-left: 8px;">
+                        هاست ایرانی (استفاده از پروکسی)
+                    </label>
+                </div>
+                <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                    اگر هاست شما در ایران است و تلگرام فیلتر است، گزینه "هاست ایرانی" را انتخاب کنید.
+                </small>
+            </div>
+
+            <div class="form-group" id="proxy_url_group" style="display: none;">
+                <label for="telegram_proxy_url">آدرس پروکسی:</label>
+                <input type="text" id="telegram_proxy_url" name="telegram_proxy_url" 
+                       value="<?php echo esc_attr(get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php')); ?>" 
+                       placeholder="مثال: https://your-proxy.com/proxy.php">
+                <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                    آدرس سرور پروکسی برای ارسال درخواست‌ها به تلگرام
+                </small>
+            </div>
+
+            <div class="form-group">
                 <label for="telegram_bot_info">پیام خوش‌آمدگویی ربات:</label>
                 <textarea id="telegram_bot_info" name="telegram_bot_info" 
                           placeholder="پیام خوش‌آمدگویی و راهنمای دستورات ربات را وارد کنید"><?php echo esc_attr(get_option('telegram_bot_info')); ?></textarea>
@@ -162,20 +206,143 @@ function telegram_bot_settings_page()
             </button>
         </form>
 
+        <!-- بخش مدیریت وب‌هوک -->
+        <div style="margin-top: 40px; padding: 20px; background: #f0f9ff; border-radius: 6px; border-right: 4px solid #3498db;">
+            <h3 style="margin-top: 0; color: #2c3e50;">مدیریت وب‌هوک تلگرام</h3>
+            <p style="color: #666; margin-bottom: 20px;">
+                از این بخش می‌توانید وضعیت وب‌هوک ربات تلگرام خود را بررسی و مدیریت کنید.
+            </p>
+            
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <button type="button" id="check-webhook-btn" class="submit-button" style="background: #27ae60;">
+                    بررسی وضعیت وب‌هوک
+                </button>
+                <button type="button" id="delete-webhook-btn" class="submit-button" style="background: #e74c3c;">
+                    حذف وب‌هوک
+                </button>
+                <button type="button" id="test-webhook-btn" class="submit-button" style="background: #f39c12;">
+                    تست ارسال پیام
+                </button>
+            </div>
+            
+            <div id="webhook-status" style="margin-top: 20px; padding: 15px; background: white; border-radius: 4px; display: none;">
+                <h4 style="margin-top: 0;">نتیجه:</h4>
+                <pre id="webhook-result" style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 12px; overflow-x: auto;"></pre>
+            </div>
+        </div>
+
         <div class="success-message">تنظیمات با موفقیت ذخیره شد!</div>
         <div class="error-message">خطا در ذخیره تنظیمات!</div>
     </div>
 
     <script>
+    var ajaxurl = '<?php echo admin_url('admin-ajax.php'); ?>';
+    
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.querySelector('.telegram-settings-form');
         const loading = document.querySelector('.loading');
         const successMessage = document.querySelector('.success-message');
         const errorMessage = document.querySelector('.error-message');
+        const hostTypeRadios = document.querySelectorAll('input[name="telegram_host_type"]');
+        const proxyUrlGroup = document.getElementById('proxy_url_group');
+
+        // نمایش/مخفی کردن فیلد پروکسی بر اساس نوع هاست
+        function toggleProxyField() {
+            const selectedHostType = document.querySelector('input[name="telegram_host_type"]:checked');
+            if (selectedHostType && selectedHostType.value === 'iranian') {
+                proxyUrlGroup.style.display = 'block';
+            } else {
+                proxyUrlGroup.style.display = 'none';
+            }
+        }
+
+        // اجرای تابع در ابتدا
+        toggleProxyField();
+
+        // اضافه کردن event listener برای تغییر نوع هاست
+        hostTypeRadios.forEach(function(radio) {
+            radio.addEventListener('change', toggleProxyField);
+        });
 
         form.addEventListener('submit', function() {
             loading.style.display = 'inline-block';
         });
+
+        // مدیریت دکمه‌های وب‌هوک
+        const checkWebhookBtn = document.getElementById('check-webhook-btn');
+        const deleteWebhookBtn = document.getElementById('delete-webhook-btn');
+        const testWebhookBtn = document.getElementById('test-webhook-btn');
+        const webhookStatus = document.getElementById('webhook-status');
+        const webhookResult = document.getElementById('webhook-result');
+
+        function showWebhookResult(result) {
+            webhookResult.textContent = result;
+            webhookStatus.style.display = 'block';
+        }
+
+        function performWebhookAction(action) {
+            const token = document.getElementById('telegram_bot_token').value;
+            const hostType = document.querySelector('input[name="telegram_host_type"]:checked')?.value || 'foreign';
+            
+            if (!token) {
+                alert('لطفاً ابتدا توکن ربات را وارد کنید.');
+                return;
+            }
+
+            // نمایش loading
+            const originalText = event.target.textContent;
+            event.target.textContent = 'در حال پردازش...';
+            event.target.disabled = true;
+
+            fetch(ajaxurl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    action: 'telegram_webhook_action',
+                    webhook_action: action,
+                    token: token,
+                    host_type: hostType,
+                    nonce: '<?php echo wp_create_nonce('telegram_webhook_action'); ?>'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showWebhookResult(data.data);
+                } else {
+                    showWebhookResult('خطا: ' + data.data);
+                }
+            })
+            .catch(error => {
+                showWebhookResult('خطا در ارتباط: ' + error.message);
+            })
+            .finally(() => {
+                event.target.textContent = originalText;
+                event.target.disabled = false;
+            });
+        }
+
+        if (checkWebhookBtn) {
+            checkWebhookBtn.addEventListener('click', function(event) {
+                performWebhookAction('check');
+            });
+        }
+
+        if (deleteWebhookBtn) {
+            deleteWebhookBtn.addEventListener('click', function(event) {
+                if (confirm('آیا از حذف وب‌هوک اطمینان دارید؟')) {
+                    performWebhookAction('delete');
+                }
+            });
+        }
+
+        if (testWebhookBtn) {
+            testWebhookBtn.addEventListener('click', function(event) {
+                performWebhookAction('test');
+            });
+        }
 
         <?php if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_token'])) : ?>
             <?php if (check_admin_referer('save_telegram_bot_token', 'telegram_bot_nonce')) : ?>
@@ -204,19 +371,57 @@ function telegram_bot_save_token()
         $url_p = sanitize_textarea_field($_POST['telegram_bot_url']);
         $botinfo = sanitize_textarea_field($_POST['telegram_bot_info']);
         $chat_id = sanitize_textarea_field($_POST['telegram_bot_Chat_id']);
+        $host_type = sanitize_text_field($_POST['telegram_host_type']);
+        $proxy_url = sanitize_text_field($_POST['telegram_proxy_url']);
+        
         update_option('telegram_bot_Chat_id', $chat_id);
         update_option('telegram_bot_info', $botinfo);
         update_option('telegram_bot_token', $token);
         update_option('telegram_bot_url', $url_p);
-        telegram_bot_set_webhook($token, $url_p);
+        update_option('telegram_host_type', $host_type);
+        update_option('telegram_proxy_url', $proxy_url);
+        
+        telegram_bot_set_webhook($token, $url_p, $host_type);
     }
 }
 
-function telegram_bot_set_webhook($token, $url_p)
+function telegram_bot_set_webhook($token, $url_p, $host_type = 'foreign')
 {
     $admin_login = false;
     update_option('admin_login_p', $admin_login);
-    $cloud = 'Location: ' . $url_p . '?bot=' . $token . '&url=' . $url_p .  '?bot=' . $token . '&setWebP=True';
+    
+    if ($host_type === 'iranian') {
+        // برای هاست ایرانی از پروکسی استفاده می‌کنیم
+        $proxy_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+        $cloud = 'Location: ' . $proxy_url . '?bot=' . $token . '&url=' . $url_p . '&setWebP=True';
+    } else {
+        // برای هاست خارجی مستقیماً به API تلگرام متصل می‌شویم
+        $webhook_url = "https://api.telegram.org/bot{$token}/setWebhook?url=" . urlencode($url_p);
+        
+        // ارسال درخواست مستقیم به تلگرام
+        $response = wp_remote_get($webhook_url, array(
+            'timeout' => 30,
+            'sslverify' => false
+        ));
+        
+        if (is_wp_error($response)) {
+            // در صورت خطا، به روش قدیمی برگردیم
+            $cloud = 'Location: ' . $url_p . '?bot=' . $token . '&url=' . $url_p . '&setWebP=True';
+        } else {
+            // نمایش نتیجه تنظیم وب‌هوک
+            $body = wp_remote_retrieve_body($response);
+            $result = json_decode($body, true);
+            
+            if (isset($result['ok']) && $result['ok']) {
+                wp_redirect(admin_url('admin.php?page=telegram-webhook-plugin&webhook_status=success'));
+                exit;
+            } else {
+                wp_redirect(admin_url('admin.php?page=telegram-webhook-plugin&webhook_status=error&error_msg=' . urlencode($result['description'] ?? 'خطای نامشخص')));
+                exit;
+            }
+        }
+    }
+    
     header($cloud);
     exit;
 }
@@ -403,34 +608,64 @@ function edit_telegram_message( $message_id, $new_text)
 
 function send_to_telegram($message)
 {
-    if(is_null($token)) $token = get_option('telegram_bot_token');
-    $workerUrl = 'https://bold-scene-ab65.alireza63ad.workers.dev';   
-  
-    $data = array(
-        'chatid' =>  get_option('telegram_bot_Chat_id'),
-        'bot' => $token,
-        'message' => $message,
-        'isphoto' => 'false'  
-    );
-
-     
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $workerUrl);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
-
-    $response = curl_exec($ch);
-
-    // Log the response from the worker
+    $token = get_option('telegram_bot_token');
+    $host_type = get_option('telegram_host_type', 'foreign');
+    $chat_id = get_option('telegram_bot_Chat_id');
+    
+    // Log file
     $log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
-    file_put_contents($log_file, "Telegram send response: " . $response . "\n", FILE_APPEND);
+    
+    if ($host_type === 'iranian') {
+        // استفاده از پروکسی برای هاست ایرانی
+        $workerUrl = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+        
+        $data = array(
+            'chatid' => $chat_id,
+            'bot' => $token,
+            'message' => $message,
+            'isphoto' => 'false'  
+        );
 
-    if (curl_errno($ch)) {
-        echo 'Error:' . curl_error($ch);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $workerUrl);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+
+        $response = curl_exec($ch);
+        
+        if (curl_errno($ch)) {
+            file_put_contents($log_file, "Proxy Error: " . curl_error($ch) . "\n", FILE_APPEND);
+        }
+        curl_close($ch);
+        
+    } else {
+        // اتصال مستقیم به API تلگرام برای هاست خارجی
+        $telegram_api_url = "https://api.telegram.org/bot{$token}/sendMessage";
+        
+        $data = array(
+            'chat_id' => $chat_id,
+            'text' => $message,
+            'parse_mode' => 'HTML'
+        );
+        
+        $response = wp_remote_post($telegram_api_url, array(
+            'body' => $data,
+            'timeout' => 30,
+            'sslverify' => false
+        ));
+        
+        if (is_wp_error($response)) {
+            file_put_contents($log_file, "Direct API Error: " . $response->get_error_message() . "\n", FILE_APPEND);
+            $response = 'Error: ' . $response->get_error_message();
+        } else {
+            $response = wp_remote_retrieve_body($response);
+        }
     }
-    curl_close($ch);
+
+    // Log the response
+    file_put_contents($log_file, "Telegram send response (host_type: {$host_type}): " . $response . "\n", FILE_APPEND);
 }
 
 //start conuter 
@@ -571,5 +806,170 @@ function publish_all_draft_posts()
             }
         }
         wp_reset_postdata();
+    }
+}
+
+// AJAX handler برای مدیریت وب‌هوک
+add_action('wp_ajax_telegram_webhook_action', 'handle_telegram_webhook_action');
+
+function handle_telegram_webhook_action() {
+    // بررسی nonce برای امنیت
+    if (!wp_verify_nonce($_POST['nonce'], 'telegram_webhook_action')) {
+        wp_die('خطای امنیتی');
+    }
+    
+    $action = sanitize_text_field($_POST['webhook_action']);
+    $token = sanitize_text_field($_POST['token']);
+    $host_type = sanitize_text_field($_POST['host_type']);
+    
+    if (empty($token)) {
+        wp_send_json_error('توکن ربات خالی است');
+        return;
+    }
+    
+    switch ($action) {
+        case 'check':
+            $result = check_telegram_webhook($token, $host_type);
+            break;
+            
+        case 'delete':
+            $result = delete_telegram_webhook($token, $host_type);
+            break;
+            
+        case 'test':
+            $result = test_telegram_message($token, $host_type);
+            break;
+            
+        default:
+            wp_send_json_error('عملیات نامعتبر');
+            return;
+    }
+    
+    wp_send_json_success($result);
+}
+
+function check_telegram_webhook($token, $host_type) {
+    if ($host_type === 'iranian') {
+        return "برای هاست ایرانی، بررسی وضعیت وب‌هوک از طریق پروکسی امکان‌پذیر نیست.\nوب‌هوک از طریق پروکسی تنظیم شده است.";
+    }
+    
+    $url = "https://api.telegram.org/bot{$token}/getWebhookInfo";
+    
+    $response = wp_remote_get($url, array(
+        'timeout' => 30,
+        'sslverify' => false
+    ));
+    
+    if (is_wp_error($response)) {
+        return 'خطا در اتصال: ' . $response->get_error_message();
+    }
+    
+    $body = wp_remote_retrieve_body($response);
+    $data = json_decode($body, true);
+    
+    if (isset($data['ok']) && $data['ok']) {
+        return json_encode($data['result'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    } else {
+        return 'خطا: ' . ($data['description'] ?? 'نامشخص');
+    }
+}
+
+function delete_telegram_webhook($token, $host_type) {
+    if ($host_type === 'iranian') {
+        return "برای هاست ایرانی، حذف وب‌هوک از طریق پروکسی امکان‌پذیر نیست.\nلطفاً مستقیماً با مدیر پروکسی تماس بگیرید.";
+    }
+    
+    $url = "https://api.telegram.org/bot{$token}/deleteWebhook";
+    
+    $response = wp_remote_get($url, array(
+        'timeout' => 30,
+        'sslverify' => false
+    ));
+    
+    if (is_wp_error($response)) {
+        return 'خطا در اتصال: ' . $response->get_error_message();
+    }
+    
+    $body = wp_remote_retrieve_body($response);
+    $data = json_decode($body, true);
+    
+    if (isset($data['ok']) && $data['ok']) {
+        return 'وب‌هوک با موفقیت حذف شد.';
+    } else {
+        return 'خطا در حذف وب‌هوک: ' . ($data['description'] ?? 'نامشخص');
+    }
+}
+
+function test_telegram_message($token, $host_type) {
+    $chat_id = get_option('telegram_bot_Chat_id');
+    
+    if (empty($chat_id)) {
+        return 'شناسه چت تنظیم نشده است.';
+    }
+    
+    $message = "🤖 تست ارسال پیام از افزونه فراز\n\n" .
+               "⏰ زمان: " . current_time('Y-m-d H:i:s') . "\n" .
+               "🌐 نوع هاست: " . ($host_type === 'iranian' ? 'ایرانی (پروکسی)' : 'خارجی (مستقیم)') . "\n" .
+               "✅ ارتباط برقرار است!";
+    
+    if ($host_type === 'iranian') {
+        $proxy_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+        
+        $data = array(
+            'chatid' => $chat_id,
+            'bot' => $token,
+            'message' => $message,
+            'isphoto' => 'false'
+        );
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $proxy_url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+        
+        $response = curl_exec($ch);
+        
+        if (curl_errno($ch)) {
+            return 'خطا در ارسال از طریق پروکسی: ' . curl_error($ch);
+        }
+        
+        curl_close($ch);
+        
+        $result = json_decode($response, true);
+        if (isset($result['status']) && $result['status'] === 'success') {
+            return 'پیام تست با موفقیت از طریق پروکسی ارسال شد!';
+        } else {
+            return 'خطا در ارسال پیام: ' . $response;
+        }
+        
+    } else {
+        $url = "https://api.telegram.org/bot{$token}/sendMessage";
+        
+        $data = array(
+            'chat_id' => $chat_id,
+            'text' => $message,
+            'parse_mode' => 'HTML'
+        );
+        
+        $response = wp_remote_post($url, array(
+            'body' => $data,
+            'timeout' => 30,
+            'sslverify' => false
+        ));
+        
+        if (is_wp_error($response)) {
+            return 'خطا در اتصال مستقیم: ' . $response->get_error_message();
+        }
+        
+        $body = wp_remote_retrieve_body($response);
+        $result = json_decode($body, true);
+        
+        if (isset($result['ok']) && $result['ok']) {
+            return 'پیام تست با موفقیت به صورت مستقیم ارسال شد!';
+        } else {
+            return 'خطا در ارسال پیام: ' . ($result['description'] ?? 'نامشخص');
+        }
     }
 }

@@ -4,8 +4,8 @@
 
 function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has =false , $chat_id = null) {
     $token = get_option('telegram_bot_token');
-    //$workerUrl = 'https://bot.alirea.ir/fakhrzd/cloud.php';
-    $workerUrl = 'https://arz.appwordpresss.ir/all.php'; 
+    $host_type = get_option('telegram_host_type', 'foreign');
+    
     if(is_null($chat_id))
         $chat_id = get_option('telegram_bot_Chat_id');
     $errorChatId = 80266430;
@@ -66,22 +66,58 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
         $inline_keyboard = [];
     }
     
-    $data = [
-        'chatid' => $chat_id,
-        'bot' => $token,
-        'photo' => $photo_url,
-        'caption' => $caption,
-        'reply_markup' => json_encode(['inline_keyboard' => $inline_keyboard]),
-        'is_photo' => 'true'
-    ];
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $workerUrl);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    if ($host_type === 'iranian') {
+        // استفاده از پروکسی برای هاست ایرانی
+        $workerUrl = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+        
+        $data = [
+            'chatid' => $chat_id,
+            'bot' => $token,
+            'photo' => $photo_url,
+            'caption' => $caption,
+            'reply_markup' => json_encode(['inline_keyboard' => $inline_keyboard]),
+            'is_photo' => 'true'
+        ];
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $workerUrl);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 
-    $response = curl_exec($ch);
+        $response = curl_exec($ch);
+        
+    } else {
+        // اتصال مستقیم به API تلگرام برای هاست خارجی
+        $telegram_api_url = "https://api.telegram.org/bot{$token}/sendPhoto";
+        
+        $data = array(
+            'chat_id' => $chat_id,
+            'photo' => $photo_url,
+            'caption' => $caption,
+            'parse_mode' => 'HTML'
+        );
+        
+        if (!empty($inline_keyboard)) {
+            $data['reply_markup'] = json_encode(['inline_keyboard' => $inline_keyboard]);
+        }
+        
+        $response = wp_remote_post($telegram_api_url, array(
+            'body' => $data,
+            'timeout' => 30,
+            'sslverify' => false
+        ));
+        
+        if (is_wp_error($response)) {
+            $response = json_encode(['ok' => false, 'error' => $response->get_error_message()]);
+        } else {
+            $response = wp_remote_retrieve_body($response);
+        }
+        
+        // برای سازگاری با کد موجود، curl handle را تعریف می‌کنیم
+        $ch = curl_init();
+    }
     // sendErrorToTelegram(json_encode([$response, $data ]));
 
     if ($response === false) {
@@ -118,7 +154,7 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
 
 function sendErrorToTelegram($message, $chatId = 1016239559, $token = null) {
     if (is_null($token)) $token = get_option('telegram_bot_token');
-    $workerUrl = 'https://bot.alirea.ir/fakhrzd/cloud.php';  
+    $host_type = get_option('telegram_host_type', 'foreign');
 
     // بررسی اینکه message خالی نباشد
     if (empty($message)) {
@@ -126,25 +162,53 @@ function sendErrorToTelegram($message, $chatId = 1016239559, $token = null) {
         return;
     }
 
-    $data = array(
-        'chatid' => $chatId,
-        'bot' => $token,
-        'message' => $message,
-        'isphoto' => 'false'  
-    );
+    if ($host_type === 'iranian') {
+        // استفاده از پروکسی برای هاست ایرانی
+        $workerUrl = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+        
+        $data = array(
+            'chatid' => $chatId,
+            'bot' => $token,
+            'message' => $message,
+            'isphoto' => 'false'  
+        );
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $workerUrl);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $workerUrl);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
 
-    $response = curl_exec($ch);
-    if (curl_errno($ch)) {
-        echo 'Error:' . curl_error($ch);
+        $response = curl_exec($ch);
+        if (curl_errno($ch)) {
+            error_log('Proxy Error: ' . curl_error($ch));
+        }
+        curl_close($ch);
+        
+    } else {
+        // اتصال مستقیم به API تلگرام برای هاست خارجی
+        $telegram_api_url = "https://api.telegram.org/bot{$token}/sendMessage";
+        
+        $data = array(
+            'chat_id' => $chatId,
+            'text' => $message,
+            'parse_mode' => 'HTML'
+        );
+        
+        $response = wp_remote_post($telegram_api_url, array(
+            'body' => $data,
+            'timeout' => 30,
+            'sslverify' => false
+        ));
+        
+        if (is_wp_error($response)) {
+            error_log('Direct API Error: ' . $response->get_error_message());
+            $response = 'Error: ' . $response->get_error_message();
+        } else {
+            $response = wp_remote_retrieve_body($response);
+        }
     }
-    curl_close($ch);
 
     return $response;
 }
