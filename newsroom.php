@@ -335,6 +335,16 @@ function farazautur_newsroom_page() {
         error_log($debug_message, 3, $debug_log);
 
         if (isset($_POST['approve_post'])) {
+            // اضافه کردن لاگ برای دیباگ
+            $debug_message = sprintf("[%s] Calling send_to_private_channel with post_id: %s\n", 
+                current_time('mysql'), 
+                $post_id
+            );
+            error_log($debug_message, 3, $debug_log);
+            
+            // تست ساده
+            echo '<div class="notice notice-info is-dismissible"><p>در حال ارسال به کانال...</p></div>';
+            
             // ارسال به کانال خصوصی
             $sent = send_to_private_channel($post_id);
             if ($sent) {
