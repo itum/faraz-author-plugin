@@ -160,7 +160,10 @@ function telegram_bot_settings_page()
                 <label for="telegram_bot_url">آدرس وب‌هوک ربات:</label>
                 <input type="text" id="telegram_bot_url" name="telegram_bot_url" 
                        value="<?php echo esc_attr(get_option('telegram_bot_url')); ?>" 
-                       placeholder="مثال: https://example.com/webhook">
+                       placeholder="مثال: https://yoursite.com/wp-json/faraz/v1/handle/">
+                <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                    آدرس endpoint سایت شما که تلگرام پیام‌ها را به آن ارسال می‌کند
+                </small>
             </div>
 
             <div class="form-group">
@@ -185,12 +188,22 @@ function telegram_bot_settings_page()
             </div>
 
             <div class="form-group" id="proxy_url_group" style="display: none;">
-                <label for="telegram_proxy_url">آدرس پروکسی:</label>
+                <label for="telegram_proxy_url">آدرس پروکسی ارسال:</label>
                 <input type="text" id="telegram_proxy_url" name="telegram_proxy_url" 
                        value="<?php echo esc_attr(get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php')); ?>" 
-                       placeholder="مثال: https://your-proxy.com/proxy.php">
+                       placeholder="مثال: https://proxy-server.com/all.php">
                 <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
-                    آدرس سرور پروکسی برای ارسال درخواست‌ها به تلگرام
+                    آدرس سرور پروکسی برای ارسال پیام‌های خروجی به تلگرام (فایل all.php)
+                </small>
+            </div>
+
+            <div class="form-group" id="webhook_proxy_group" style="display: none;">
+                <label for="telegram_webhook_proxy">آدرس میانجی وب‌هوک:</label>
+                <input type="text" id="telegram_webhook_proxy" name="telegram_webhook_proxy" 
+                       value="<?php echo esc_attr(get_option('telegram_webhook_proxy', 'https://your-proxy.com/tibin.php')); ?>" 
+                       placeholder="مثال: https://proxy-server.com/tibin.php">
+                <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                    آدرس میانجی برای تنظیم وب‌هوک (فایل tibin.php) - اختیاری
                 </small>
             </div>
 
@@ -245,14 +258,17 @@ function telegram_bot_settings_page()
         const errorMessage = document.querySelector('.error-message');
         const hostTypeRadios = document.querySelectorAll('input[name="telegram_host_type"]');
         const proxyUrlGroup = document.getElementById('proxy_url_group');
+        const webhookProxyGroup = document.getElementById('webhook_proxy_group');
 
-        // نمایش/مخفی کردن فیلد پروکسی بر اساس نوع هاست
+        // نمایش/مخفی کردن فیلدهای پروکسی بر اساس نوع هاست
         function toggleProxyField() {
             const selectedHostType = document.querySelector('input[name="telegram_host_type"]:checked');
             if (selectedHostType && selectedHostType.value === 'iranian') {
                 proxyUrlGroup.style.display = 'block';
+                webhookProxyGroup.style.display = 'block';
             } else {
                 proxyUrlGroup.style.display = 'none';
+                webhookProxyGroup.style.display = 'none';
             }
         }
 
@@ -373,6 +389,7 @@ function telegram_bot_save_token()
         $chat_id = sanitize_textarea_field($_POST['telegram_bot_Chat_id']);
         $host_type = sanitize_text_field($_POST['telegram_host_type']);
         $proxy_url = sanitize_text_field($_POST['telegram_proxy_url']);
+        $webhook_proxy = sanitize_text_field($_POST['telegram_webhook_proxy']);
         
         update_option('telegram_bot_Chat_id', $chat_id);
         update_option('telegram_bot_info', $botinfo);
@@ -380,6 +397,7 @@ function telegram_bot_save_token()
         update_option('telegram_bot_url', $url_p);
         update_option('telegram_host_type', $host_type);
         update_option('telegram_proxy_url', $proxy_url);
+        update_option('telegram_webhook_proxy', $webhook_proxy);
         
         telegram_bot_set_webhook($token, $url_p, $host_type);
     }
@@ -391,9 +409,17 @@ function telegram_bot_set_webhook($token, $url_p, $host_type = 'foreign')
     update_option('admin_login_p', $admin_login);
     
     if ($host_type === 'iranian') {
-        // برای هاست ایرانی از پروکسی استفاده می‌کنیم
-        $proxy_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
-        $cloud = 'Location: ' . $proxy_url . '?bot=' . $token . '&url=' . $url_p . '&setWebP=True';
+        // برای هاست ایرانی از میانجی وب‌هوک استفاده می‌کنیم
+        $webhook_proxy = get_option('telegram_webhook_proxy', '');
+        
+        if (!empty($webhook_proxy)) {
+            // استفاده از میانجی tibin.php
+            $cloud = 'Location: ' . $webhook_proxy . '?bot=' . $token . '&url=' . $url_p . '&setWebP=True';
+        } else {
+            // fallback به روش قدیمی
+            $proxy_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+            $cloud = 'Location: ' . $proxy_url . '?bot=' . $token . '&url=' . $url_p . '&setWebP=True';
+        }
     } else {
         // برای هاست خارجی مستقیماً به API تلگرام متصل می‌شویم
         $webhook_url = "https://api.telegram.org/bot{$token}/setWebhook?url=" . urlencode($url_p);
@@ -641,7 +667,7 @@ function send_to_telegram($message)
         curl_close($ch);
         
     } else {
-        // اتصال مستقیم به API تلگرام برای هاست خارجی
+        // اتصال مستقیم به API تلگرام برای هاست خارجی - بدون واسطه
         $telegram_api_url = "https://api.telegram.org/bot{$token}/sendMessage";
         
         $data = array(
