@@ -964,9 +964,20 @@ function test_telegram_message($token, $host_type) {
         return 'شناسه چت تنظیم نشده است.';
     }
     
+    // تشخیص نوع مقصد
+    $destination_type = '';
+    if (strpos($chat_id, '-100') === 0) {
+        $destination_type = 'کانال تلگرام';
+    } elseif (strpos($chat_id, '-') === 0) {
+        $destination_type = 'گروه تلگرام';
+    } else {
+        $destination_type = 'چت خصوصی';
+    }
+    
     $message = "🤖 تست ارسال پیام از افزونه فراز\n\n" .
                "⏰ زمان: " . current_time('Y-m-d H:i:s') . "\n" .
                "🌐 نوع هاست: " . ($host_type === 'iranian' ? 'ایرانی (پروکسی)' : 'خارجی (مستقیم)') . "\n" .
+               "📱 مقصد: " . $destination_type . " (" . $chat_id . ")\n" .
                "✅ ارتباط برقرار است!";
     
     if ($host_type === 'iranian') {
@@ -996,7 +1007,11 @@ function test_telegram_message($token, $host_type) {
         
         $result = json_decode($response, true);
         if (isset($result['status']) && $result['status'] === 'success') {
-            return 'پیام تست با موفقیت از طریق پروکسی ارسال شد!';
+            return 'پیام تست با موفقیت از طریق پروکسی ارسال شد!' .
+                   "\n\n📊 اطلاعات ارسال:" .
+                   "\n• مقصد: " . $destination_type . " (" . $chat_id . ")" .
+                   "\n• روش: ارسال از طریق پروکسی" .
+                   "\n• زمان: " . current_time('Y-m-d H:i:s');
         } else {
             return 'خطا در ارسال پیام: ' . $response;
         }
@@ -1024,7 +1039,11 @@ function test_telegram_message($token, $host_type) {
         $result = json_decode($body, true);
         
         if (isset($result['ok']) && $result['ok']) {
-            return 'پیام تست با موفقیت به صورت مستقیم ارسال شد!';
+            return 'پیام تست با موفقیت به صورت مستقیم ارسال شد!' . 
+                   "\n\n📊 اطلاعات ارسال:" .
+                   "\n• مقصد: " . $destination_type . " (" . $chat_id . ")" .
+                   "\n• روش: اتصال مستقیم به API تلگرام" .
+                   "\n• زمان: " . current_time('Y-m-d H:i:s');
         } else {
             return 'خطا در ارسال پیام: ' . ($result['description'] ?? 'نامشخص');
         }
