@@ -14,9 +14,6 @@ require_once plugin_dir_path(__FILE__) . 'smart-admin-rank-math-seo.php';
 // وارد کردن فایل زمان‌بندی محتوا
 require_once plugin_dir_path(__FILE__) . 'smart-admin-scheduler.php';
 
-// وارد کردن فایل تنظیمات
-require_once plugin_dir_path(__FILE__) . 'smart-admin-settings.php';
-
 // ریدایرکت مسیر smart-admin در wp-admin به آدرس صحیح
 add_action('admin_init', 'smart_admin_redirect');
 
@@ -56,16 +53,6 @@ function smart_admin_add_menu()
         65 // موقعیت منو
     );
     
-    // اضافه کردن زیرمنوی تنظیمات
-    add_submenu_page(
-        'smart-admin', // منوی والد
-        'تنظیمات ادمین هوشمند', // عنوان صفحه
-        'تنظیمات', // عنوان منو
-        'manage_options', // مجوز دسترسی
-        'smart-admin-settings', // slug صفحه
-        'smart_admin_metabox_settings' // تابع نمایش صفحه
-    );
-    
     // همچنین اضافه کردن به زیرمنو
     add_submenu_page(
         'faraz-telegram-plugin', // منوی والد
@@ -81,6 +68,8 @@ function smart_admin_add_menu()
 function smart_admin_register_settings() {
     register_setting('smart_admin_settings', 'smart_admin_api_key');
     register_setting('smart_admin_settings', 'smart_admin_model');
+    register_setting('smart_admin_settings', 'smart_admin_unsplash_access_key');
+    register_setting('smart_admin_settings', 'smart_admin_enable_auto_image');
 }
 add_action('admin_init', 'smart_admin_register_settings');
 
@@ -859,6 +848,18 @@ function smart_admin_page() {
                     <input type="text" id="smart_admin_api_key" name="smart_admin_api_key" value="<?php echo esc_attr(get_option('smart_admin_api_key', 'sk-8exa7q6H5GpW2BO7v72z50Nd5zCiEhK13hiz4nzJ9XuXyEYO')); ?>" placeholder="کلید API خود را وارد کنید" />
                 </div>
                 
+                <div class="form-group">
+                    <label for="smart_admin_unsplash_access_key">کلید دسترسی Unsplash:</label>
+                    <input type="text" id="smart_admin_unsplash_access_key" name="smart_admin_unsplash_access_key" value="<?php echo esc_attr(get_option('smart_admin_unsplash_access_key', '')); ?>" placeholder="Unsplash Access Key" />
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="smart_admin_enable_auto_image" name="smart_admin_enable_auto_image" value="1" <?php checked(get_option('smart_admin_enable_auto_image'), '1'); ?> />
+                        فعال‌سازی ساخت خودکار تصویر از Unsplash
+                    </label>
+                </div>
+
                 <div class="form-group">
                     <label for="default_model">مدل پیش‌فرض:</label>
                     <select id="default_model" name="smart_admin_model">

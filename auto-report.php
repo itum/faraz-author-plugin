@@ -336,7 +336,11 @@ function faraz_auto_report_page() {
                         }
                     }
                 } else {
-                    faraz_auto_report_log("هیچ تصویری برای گزارش انتخاب یا آپلود نشده است");
+                    faraz_auto_report_log("هیچ تصویری برای گزارش انتخاب یا آپلود نشده است - تلاش برای دریافت تصویر از Unsplash");
+                    if ( function_exists( 'smart_admin_fetch_unsplash_image_for_post' ) ) {
+                        $keyword_for_image = !empty( $subject ) ? $subject : wp_strip_all_tags( wp_trim_words( $report_content, 5, '' ) );
+                        smart_admin_fetch_unsplash_image_for_post( $post_id, $keyword_for_image );
+                    }
                 }
                 
                 // پیام موفقیت
@@ -919,15 +923,6 @@ function faraz_auto_report_page() {
     </style>
     <?php
 }
-
-// اضافه کردن هوک برای اضافه کردن تصویر خودکار به گزارش‌ها
-function faraz_auto_report_add_image_hook($post_id, $post) {
-    // فراخوانی هوک برای اضافه کردن تصویر Unsplash
-    do_action('faraz_auto_report_after_save', $post_id, $post);
-}
-
-// اضافه کردن هوک به save_post برای گزارش‌ها
-add_action('save_post', 'faraz_auto_report_add_image_hook', 20, 2);
 
 // تابع ارسال درخواست به API Gemini
 function send_to_gemini_api($prompt, $model, $api_key) {

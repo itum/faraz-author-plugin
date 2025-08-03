@@ -159,10 +159,16 @@ function telegram_bot_settings_page()
             <div class="form-group">
                 <label for="telegram_bot_url">آدرس وب‌هوک ربات:</label>
                 <input type="text" id="telegram_bot_url" name="telegram_bot_url" 
-                       value="<?php echo esc_attr(get_option('telegram_bot_url')); ?>" 
+                       value="<?php echo esc_attr(get_option('telegram_bot_url', home_url('/wp-json/faraz/v1/handle/'))); ?>" 
                        placeholder="مثال: https://yoursite.com/wp-json/faraz/v1/handle/">
                 <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
                     آدرس endpoint سایت شما که تلگرام پیام‌ها را به آن ارسال می‌کند
+                </small>
+                <small style="color: #e74c3c; font-size: 12px; margin-top: 5px; display: block;">
+                    ⚠️ مهم: آدرس باید با https شروع شود و به /handle/ ختم شود
+                </small>
+                <small style="color: #3498db; font-size: 12px; margin-top: 5px; display: block;">
+                    💡 پیشنهاد: از آدرس پیش‌فرض استفاده کنید
                 </small>
             </div>
 
@@ -200,10 +206,13 @@ function telegram_bot_settings_page()
             <div class="form-group" id="webhook_proxy_group" style="display: none;">
                 <label for="telegram_webhook_proxy">آدرس میانجی وب‌هوک:</label>
                 <input type="text" id="telegram_webhook_proxy" name="telegram_webhook_proxy" 
-                       value="<?php echo esc_attr(get_option('telegram_webhook_proxy', 'https://your-proxy.com/tibin.php')); ?>" 
+                       value="<?php echo esc_attr(get_option('telegram_webhook_proxy', 'https://arz.appwordpresss.ir/tibin.php')); ?>" 
                        placeholder="مثال: https://proxy-server.com/tibin.php">
                 <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
-                    آدرس میانجی برای تنظیم وب‌هوک (فایل tibin.php) - اختیاری
+                    آدرس میانجی برای تنظیم وب‌هوک (فایل tibin.php) - برای هاست ایرانی ضروری است
+                </small>
+                <small style="color: #e74c3c; font-size: 12px; margin-top: 5px; display: block;">
+                    ⚠️ مهم: این فیلد برای تنظیم webhook در هاست ایرانی ضروری است
                 </small>
             </div>
 
@@ -235,6 +244,27 @@ function telegram_bot_settings_page()
                 </button>
                 <button type="button" id="test-webhook-btn" class="submit-button" style="background: #f39c12;">
                     تست ارسال پیام
+                </button>
+                <button type="button" id="test-callback-btn" class="submit-button" style="background: #9b59b6;">
+                    تست Callback Query
+                </button>
+                <button type="button" id="test-url-btn" class="submit-button" style="background: #e67e22;">
+                    تست URL وب‌هوک
+                </button>
+                <button type="button" id="fix-webhook-btn" class="submit-button" style="background: #2c3e50;">
+                    🔧 اصلاح Webhook
+                </button>
+                <button type="button" id="manual-webhook-btn" class="submit-button" style="background: #8e44ad;">
+                    ⚙️ تنظیم دستی Webhook
+                </button>
+                <button type="button" id="test-proxy-btn" class="submit-button" style="background: #16a085;">
+                    🔍 تست پروکسی
+                </button>
+                <button type="button" id="switch-foreign-btn" class="submit-button" style="background: #e74c3c;">
+                    🌍 تغییر به هاست خارجی
+                </button>
+                <button type="button" id="full-test-btn" class="submit-button" style="background: #f1c40f;">
+                    🧪 تست کامل
                 </button>
             </div>
             
@@ -288,6 +318,13 @@ function telegram_bot_settings_page()
         const checkWebhookBtn = document.getElementById('check-webhook-btn');
         const deleteWebhookBtn = document.getElementById('delete-webhook-btn');
         const testWebhookBtn = document.getElementById('test-webhook-btn');
+        const testCallbackBtn = document.getElementById('test-callback-btn'); // New button
+        const testUrlBtn = document.getElementById('test-url-btn'); // New button
+        const fixWebhookBtn = document.getElementById('fix-webhook-btn'); // New button
+        const manualWebhookBtn = document.getElementById('manual-webhook-btn'); // New button
+        const testProxyBtn = document.getElementById('test-proxy-btn'); // New button
+        const switchForeignBtn = document.getElementById('switch-foreign-btn'); // New button
+        const fullTestBtn = document.getElementById('full-test-btn'); // New button
         const webhookStatus = document.getElementById('webhook-status');
         const webhookResult = document.getElementById('webhook-result');
 
@@ -382,6 +419,48 @@ function telegram_bot_settings_page()
         if (testWebhookBtn) {
             testWebhookBtn.addEventListener('click', function(event) {
                 performWebhookAction('test', this);
+            });
+        }
+
+        if (testCallbackBtn) {
+            testCallbackBtn.addEventListener('click', function(event) {
+                performWebhookAction('test_callback', this); // Assuming 'test_callback' is the action for testing callback query
+            });
+        }
+
+        if (testUrlBtn) {
+            testUrlBtn.addEventListener('click', function(event) {
+                performWebhookAction('test_url', this); // Assuming 'test_url' is the action for testing webhook URL
+            });
+        }
+
+        if (fixWebhookBtn) {
+            fixWebhookBtn.addEventListener('click', function(event) {
+                performWebhookAction('fix_webhook', this); // Assuming 'fix_webhook' is the action for fixing webhook URL
+            });
+        }
+
+        if (manualWebhookBtn) {
+            manualWebhookBtn.addEventListener('click', function(event) {
+                performWebhookAction('manual_webhook', this); // Assuming 'manual_webhook' is the action for setting manual webhook
+            });
+        }
+
+        if (testProxyBtn) {
+            testProxyBtn.addEventListener('click', function(event) {
+                performWebhookAction('test_proxy', this); // Assuming 'test_proxy' is the action for testing proxy connection
+            });
+        }
+
+        if (switchForeignBtn) {
+            switchForeignBtn.addEventListener('click', function(event) {
+                performWebhookAction('switch_to_foreign', this); // Assuming 'switch_to_foreign' is the action for switching to foreign host
+            });
+        }
+
+        if (fullTestBtn) {
+            fullTestBtn.addEventListener('click', function(event) {
+                performWebhookAction('full_test', this); // Assuming 'full_test' is the action for full test
             });
         }
 
@@ -499,13 +578,39 @@ add_action('rest_api_init', function() {
         'callback' => 'handle_request',
         'permission_callback' => '__return_true',
     ));
+    
+    // اضافه کردن endpoint تست
+    register_rest_route('faraz/v1', '/test/', array(
+        'methods' => 'GET',
+        'callback' => 'test_webhook_endpoint',
+        'permission_callback' => '__return_true',
+    ));
 });
+
+function test_webhook_endpoint() {
+    $log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
+    file_put_contents($log_file, "=== WEBHOOK TEST ===\n", FILE_APPEND);
+    file_put_contents($log_file, "Time: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
+    file_put_contents($log_file, "Webhook endpoint is working!\n", FILE_APPEND);
+    
+    return array(
+        'status' => 'success',
+        'message' => 'Webhook endpoint is working',
+        'time' => date('Y-m-d H:i:s')
+    );
+}
 function handle_request()
 {
     // Log all incoming requests
     $log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
     $update_raw = file_get_contents('php://input');
-    file_put_contents($log_file, "Received update: " . $update_raw . "\n", FILE_APPEND);
+    file_put_contents($log_file, "=== NEW REQUEST ===\n", FILE_APPEND);
+    file_put_contents($log_file, "Time: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
+    file_put_contents($log_file, "Raw update: " . $update_raw . "\n", FILE_APPEND);
+    file_put_contents($log_file, "Request method: " . $_SERVER['REQUEST_METHOD'] . "\n", FILE_APPEND);
+    file_put_contents($log_file, "Content type: " . ($_SERVER['CONTENT_TYPE'] ?? 'not set') . "\n", FILE_APPEND);
+    file_put_contents($log_file, "User agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'not set') . "\n", FILE_APPEND);
+    file_put_contents($log_file, "Remote IP: " . ($_SERVER['REMOTE_ADDR'] ?? 'not set') . "\n", FILE_APPEND);
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $update = json_decode($update_raw, true);
@@ -518,86 +623,69 @@ function handle_request()
             $token = get_option('telegram_bot_token');
             $url_p = get_option('telegram_bot_url');
             $admin_login = get_option('admin_login_p');
-            $chat_id = get_option('telegram_bot_token');
-                if (strpos($message_text, '/start') === 0) { 
-                    
-                    
-                    $botinfo = get_option('telegram_bot_info');
-                    if ($botinfo == "") {
-                        $botinfo = "
-                        به بات فراز خوش اومدی :)
+            $chat_id = get_option('telegram_bot_Chat_id'); // اصلاح شده
+            
+            file_put_contents($log_file, "Processing message: $message_text\n", FILE_APPEND);
+            
+            if (strpos($message_text, '/start') === 0) { 
+                $botinfo = get_option('telegram_bot_info');
+                if ($botinfo == "") {
+                    $botinfo = "
+                    به بات فراز خوش اومدی :)
+
+            از کامند های زیر استفاده کن : 
+            /start 
+            /send_drafts
+            /publish_all_drafts
+                    ";
+                }
                 
-                از کامند های زیر استفاده کن : 
-                /start 
-                /send_drafts
-                /publish_all_drafts
-                        ";
-                    }
-                    
-                    $response_message = $botinfo;
-                    update_option('chat_id', get_option('telegram_bot_Chat_id') );
-                    update_option('admin_login_p', false) ;
-                    $starter_conuter  = starter_conuter();
-                    send_to_telegram($response_message);
-                }
-                if (strpos($message_text, '/ping') === 0) { 
-                    send_to_telegram("hello");
-                }
-                elseif (strpos($message_text, '/send_drafts') === 0) {
-                    send_to_telegram("پست ها در حال ارسال هستند..."); 
-                    send_all_draft_posts($chat_id);
-                }elseif(strpos($message_text, '/publish_all_drafts') === 0) {
- 
-                    // $args = array(
-                    //     'post_type'      => 'post',
-                    //     'post_status'    => 'faraz',
-                    //     'posts_per_page' => -1,
-                    // );
- 
-                    // $draft_posts = new WP_Query($args);
- 
-                    // if ($draft_posts->have_posts()) {
-                        // while ($draft_posts->have_posts()) {
-                            // $draft_posts->the_post();
-                            // $post_id = get_the_ID();
-                             
-                            // $updated = wp_update_post(array(
-                            //     'ID'           => $post_id,
-                            //     'post_status'  => 'publish'
-                            // ));
-                            
-                            // if (is_wp_error($updated)) {
-                            //      sendErrorToTelegram('Failed to publish post with ID: ' . $post_id);
-                            // } else {
-                            //      sendErrorToTelegram('Successfully published post with ID: ' . $post_id);
-                            // }
-                        // }
-                        //  wp_reset_postdata();
-                    // } else {
-                    //     sendErrorToTelegram('No draft posts found with status "faraz".');
-                    // }
-                }elseif (strpos($message_text, $token) === 0) {
-                    $admin_login = true ;
-                    update_option('admin_login_p', $admin_login);
-                    send_to_telegram("به عنوان ادمین وارد شدید! ");
-                }
-            // send_to_telegram($message_text);
+                $response_message = $botinfo;
+                update_option('chat_id', get_option('telegram_bot_Chat_id') );
+                update_option('admin_login_p', false) ;
+                $starter_conuter  = starter_conuter();
+                send_to_telegram($response_message);
+            }
+            elseif (strpos($message_text, '/ping') === 0) { 
+                send_to_telegram("hello");
+            }
+            elseif (strpos($message_text, '/send_drafts') === 0) {
+                send_to_telegram("پست ها در حال ارسال هستند..."); 
+                send_all_draft_posts($chat_id);
+            }
+            elseif(strpos($message_text, '/publish_all_drafts') === 0) {
+                // کد منتشر کردن همه پست‌ها
+            }
+            elseif (strpos($message_text, $token) === 0) {
+                $admin_login = true ;
+                update_option('admin_login_p', $admin_login);
+                send_to_telegram("به عنوان ادمین وارد شدید! ");
+            }
         }
         elseif (isset($update['callback_query'])) {
             $callback_query = $update['callback_query'];
             $callback_data = $callback_query['data'];
-            $chat_id = $callback_query['message']['user']['id'];
+            $chat_id = $callback_query['from']['id']; // اصلاح شده - از from استفاده می‌کنیم
             $message_id = $callback_query['message']['message_id'];
 
             // Log callback query data
-            file_put_contents($log_file, "Callback query data: " . $callback_data . "\n", FILE_APPEND);
+            file_put_contents($log_file, "=== CALLBACK QUERY DETECTED ===\n", FILE_APPEND);
+            file_put_contents($log_file, "Callback data: " . $callback_data . "\n", FILE_APPEND);
+            file_put_contents($log_file, "Chat ID: " . $chat_id . "\n", FILE_APPEND);
+            file_put_contents($log_file, "Message ID: " . $message_id . "\n", FILE_APPEND);
+            file_put_contents($log_file, "Full callback query: " . print_r($callback_query, true) . "\n", FILE_APPEND);
+
+            // پاسخ به callback_query برای حذف loading
+            answer_callback_query($callback_query['id']);
 
             if (strpos($callback_data, 'publish_post_') === 0) {
                 $post_id = str_replace('publish_post_', '', $callback_data);
                 $post_status = get_post_status($post_id);
 
-                // Log post status
                 file_put_contents($log_file, "Processing publish_post for post ID: $post_id with status: $post_status\n", FILE_APPEND);
+                
+                // اضافه کردن debug
+                debug_callback_query($callback_data, $post_id);
 
                 if($post_status === 'faraz'){
                     // ابتدا پست را منتشر کنیم
@@ -625,32 +713,129 @@ function handle_request()
                     $confirmation_message = $post_title . " با موفقیت منتشر شد!";
                     file_put_contents($log_file, "Sending confirmation to admin: $confirmation_message\n", FILE_APPEND);
                     send_to_telegram($confirmation_message);
+                } else {
+                    send_to_telegram("پست در حالت فراز نیست و قابل انتشار نیست!");
                 }
             }
-            if (strpos($callback_data, 'delete_post_') === 0) {
+            elseif (strpos($callback_data, 'delete_post_') === 0) {
                 $post_id = str_replace('delete_post_', '', $callback_data);
                 $post_status = get_post_status($post_id);
+                
+                file_put_contents($log_file, "Processing delete_post for post ID: $post_id with status: $post_status\n", FILE_APPEND);
+                
+                // اضافه کردن debug
+                debug_callback_query($callback_data, $post_id);
+                
                 if($post_status === 'faraz'){
                     delete_post($post_id);
                     $post_title = get_the_title($post_id);
                     send_to_telegram($post_title . " با موفقیت حذف شد!" );
+                } else {
+                    send_to_telegram("پست در حالت فراز نیست و قابل حذف نیست!");
                 }
             }
-            if (strpos($callback_data, 'edited_post_') === 0) {
+            elseif (strpos($callback_data, 'edited_post_') === 0) {
                 $post_id = str_replace('edited_post_', '', $callback_data);
- 
+                file_put_contents($log_file, "Processing edited_post for post ID: $post_id\n", FILE_APPEND);
+                
+                // اضافه کردن debug
+                debug_callback_query($callback_data, $post_id);
+                
                 send_post_to_telegram($post_id , $update['callback_query']['from']['id']);
             }
-            if (strpos($callback_data, 'show_post_') === 0) {
+            elseif (strpos($callback_data, 'show_post_') === 0) {
                 $post_id = str_replace('show_post_', '', $callback_data);
                 $user_id = $callback_query['from']['id'];
+                file_put_contents($log_file, "Processing show_post for post ID: $post_id to user: $user_id\n", FILE_APPEND);
+                
+                // اضافه کردن debug
+                debug_callback_query($callback_data, $post_id);
+                
                 send_post_to_telegram($post_id, $user_id);
             }
-            // send_to_telegram("پست در حالت فراز نیست و قبلا پاک یا حذف شده است!");
+            
+            file_put_contents($log_file, "=== END CALLBACK QUERY ===\n", FILE_APPEND);
+        } else {
+            file_put_contents($log_file, "No message or callback_query found in update\n", FILE_APPEND);
+            file_put_contents($log_file, "Available keys in update: " . implode(', ', array_keys($update)) . "\n", FILE_APPEND);
         }
+    } else {
+        file_put_contents($log_file, "Request method is not POST\n", FILE_APPEND);
     }
     
+    // اگر callback_query در update نبود، بررسی کنیم که آیا در جای دیگری است
+    if (isset($_POST['callback_query'])) {
+        file_put_contents($log_file, "=== CALLBACK QUERY IN POST ===\n", FILE_APPEND);
+        file_put_contents($log_file, "POST callback_query: " . print_r($_POST['callback_query'], true) . "\n", FILE_APPEND);
+    }
+    
+    file_put_contents($log_file, "=== END REQUEST ===\n\n", FILE_APPEND);
 }
+
+// تابع جدید برای پاسخ به callback_query
+function answer_callback_query($callback_query_id) {
+    $token = get_option('telegram_bot_token');
+    $host_type = get_option('telegram_host_type', 'foreign');
+    
+    if ($host_type === 'iranian') {
+        // برای هاست ایرانی از پروکسی استفاده می‌کنیم
+        $proxy_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+        
+        $data = array(
+            'callback_query_id' => $callback_query_id,
+            'bot' => $token
+        );
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $proxy_url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+        
+        $response = curl_exec($ch);
+        curl_close($ch);
+        
+    } else {
+        // برای هاست خارجی مستقیماً به API تلگرام متصل می‌شویم
+        $url = "https://api.telegram.org/bot{$token}/answerCallbackQuery";
+        
+        $data = array(
+            'callback_query_id' => $callback_query_id
+        );
+        
+        $response = wp_remote_post($url, array(
+            'body' => $data,
+            'timeout' => 30,
+            'sslverify' => false
+        ));
+    }
+}
+
+// تابع debug برای بررسی وضعیت callback_query
+function debug_callback_query($callback_data, $post_id = null) {
+    $log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
+    $debug_info = array(
+        'callback_data' => $callback_data,
+        'post_id' => $post_id,
+        'post_status' => $post_id ? get_post_status($post_id) : 'N/A',
+        'post_title' => $post_id ? get_the_title($post_id) : 'N/A',
+        'time' => date('Y-m-d H:i:s')
+    );
+    
+    file_put_contents($log_file, "DEBUG INFO: " . json_encode($debug_info, JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
+    
+    // ارسال پیام debug به تلگرام
+    $debug_message = "🔍 Debug Info:\n" .
+                    "Callback: $callback_data\n" .
+                    "Post ID: " . ($post_id ?: 'N/A') . "\n" .
+                    "Status: " . ($post_id ? get_post_status($post_id) : 'N/A') . "\n" .
+                    "Title: " . ($post_id ? get_the_title($post_id) : 'N/A') . "\n" .
+                    "Time: " . date('Y-m-d H:i:s');
+    
+    send_to_telegram($debug_message);
+}
+
 // Edit Telegram message
 function edit_telegram_message( $message_id, $new_text)
 {
@@ -912,6 +1097,34 @@ function handle_telegram_webhook_action() {
             $result = test_telegram_message($token, $host_type);
             break;
             
+        case 'test_callback':
+            $result = test_callback_query($token, $host_type);
+            break;
+            
+        case 'full_test':
+            $result = full_callback_test($token, $host_type);
+            break;
+            
+        case 'test_url':
+            $result = test_webhook_url($token, $host_type);
+            break;
+            
+        case 'fix_webhook':
+            $result = fix_webhook_url($token, $host_type);
+            break;
+            
+        case 'manual_webhook':
+            $result = manual_set_webhook($token, $host_type);
+            break;
+            
+        case 'test_proxy':
+            $result = test_proxy_connection($token, $host_type);
+            break;
+            
+        case 'switch_to_foreign':
+            $result = switch_to_foreign_host($token);
+            break;
+            
         default:
             wp_send_json_error('عملیات نامعتبر');
             return;
@@ -1059,6 +1272,545 @@ function test_telegram_message($token, $host_type) {
                    "\n• مقصد: " . $destination_type . " (" . $chat_id . ")" .
                    "\n• روش: اتصال مستقیم به API تلگرام" .
                    "\n• زمان: " . current_time('Y-m-d H:i:s');
+        } else {
+            return 'خطا در ارسال پیام: ' . ($result['description'] ?? 'نامشخص');
+        }
+    }
+}
+
+function test_webhook_url($token, $host_type) {
+    $url_p = get_option('telegram_bot_url');
+    if (empty($url_p)) {
+        return 'آدرس وب‌هوک تنظیم نشده است.';
+    }
+
+    $destination_type = '';
+    if (strpos($url_p, 'faraz/v1/handle/') !== false) {
+        $destination_type = 'آدرس endpoint فراز';
+    } elseif (strpos($url_p, 'faraz/v1/test/') !== false) {
+        $destination_type = 'آدرس endpoint تست';
+    } else {
+        $destination_type = 'آدرس دلخواه';
+    }
+
+    $message = "🌐 تست آدرس وب‌هوک\n\n" .
+               "⏰ زمان: " . current_time('Y-m-d H:i:s') . "\n" .
+               "🌐 نوع هاست: " . ($host_type === 'iranian' ? 'ایرانی (پروکسی)' : 'خارجی (مستقیم)') . "\n" .
+               "📝 آدرس مقصد: " . $url_p . "\n" .
+               "🔗 ارتباط برقرار است!";
+
+    if ($host_type === 'iranian') {
+        $proxy_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+        
+        // برای تست webhook، از روش صحیح استفاده می‌کنیم
+        $webhook_proxy = get_option('telegram_webhook_proxy', '');
+        
+        if (!empty($webhook_proxy)) {
+            // استفاده از میانجی tibin.php
+            $webhook_url = $webhook_proxy . '?bot=' . $token . '&url=' . urlencode($url_p) . '&setWebP=True';
+        } else {
+            // fallback به روش قدیمی
+            $webhook_url = $proxy_url . '?bot=' . $token . '&url=' . urlencode($url_p) . '&setWebP=True';
+        }
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $webhook_url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($http_code == 200) {
+            return 'آدرس وب‌هوک با موفقیت از طریق پروکسی تنظیم شد!' .
+                   "\n\n📊 اطلاعات ارسال:" .
+                   "\n• مقصد: " . $destination_type . " (" . $url_p . ")" .
+                   "\n• روش: ارسال از طریق پروکسی" .
+                   "\n• زمان: " . current_time('Y-m-d H:i:s') .
+                   "\n• پاسخ: " . $response;
+        } else {
+            return 'خطا در تنظیم آدرس وب‌هوک: HTTP ' . $http_code . ' - ' . $response;
+        }
+    } else {
+        $url = "https://api.telegram.org/bot{$token}/setWebhook?url=" . urlencode($url_p);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $result = json_decode($response, true);
+        if (isset($result['ok']) && $result['ok']) {
+            return 'آدرس وب‌هوک با موفقیت به صورت مستقیم تنظیم شد!' .
+                   "\n\n📊 اطلاعات ارسال:" .
+                   "\n• مقصد: " . $destination_type . " (" . $url_p . ")" .
+                   "\n• روش: اتصال مستقیم به API تلگرام" .
+                   "\n• زمان: " . current_time('Y-m-d H:i:s') .
+                   "\n• پاسخ: " . $response;
+        } else {
+            return 'خطا در تنظیم آدرس وب‌هوک: ' . ($result['description'] ?? 'نامشخص') . ' - ' . $response;
+        }
+    }
+}
+
+function test_callback_query($token, $host_type) {
+    $chat_id = get_option('telegram_bot_Chat_id');
+    
+    if (empty($chat_id)) {
+        return 'شناسه چت تنظیم نشده است.';
+    }
+    
+    $message = "🧪 تست Callback Query\n\n" .
+               "⏰ زمان: " . current_time('Y-m-d H:i:s') . "\n" .
+               "🔧 این پیام برای تست callback_query ارسال شده است\n" .
+               "📝 دکمه‌های زیر باید کار کنند";
+    
+    if ($host_type === 'iranian') {
+        $proxy_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+        
+        $inline_keyboard = [
+            [
+                ['text' => '✅ تست منتشر کردن', 'callback_data' => 'publish_post_123'],
+                ['text' => '🗑️ تست پاک کردن', 'callback_data' => 'delete_post_123'],
+                ['text' => '👁️ تست نمایش پست', 'callback_data' => 'show_post_123']
+            ]
+        ];
+        
+        $data = array(
+            'chatid' => $chat_id,
+            'bot' => $token,
+            'message' => $message,
+            'reply_markup' => json_encode(['inline_keyboard' => $inline_keyboard]),
+            'isphoto' => 'false'
+        );
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $proxy_url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+        
+        $response = curl_exec($ch);
+        
+        if (curl_errno($ch)) {
+            return 'خطا در ارسال از طریق پروکسی: ' . curl_error($ch);
+        }
+        
+        curl_close($ch);
+        
+        $result = json_decode($response, true);
+        if (isset($result['status']) && $result['status'] === 'success') {
+            return 'پیام تست callback_query با موفقیت از طریق پروکسی ارسال شد!' .
+                   "\n\n📊 اطلاعات ارسال:" .
+                   "\n• مقصد: " . $chat_id .
+                   "\n• روش: ارسال از طریق پروکسی" .
+                   "\n• زمان: " . current_time('Y-m-d H:i:s') .
+                   "\n\n🔧 حالا دکمه‌های callback_query را تست کنید!";
+        } else {
+            return 'خطا در ارسال پیام: ' . $response;
+        }
+        
+    } else {
+        $url = "https://api.telegram.org/bot{$token}/sendMessage";
+        
+        $inline_keyboard = [
+            [
+                ['text' => '✅ تست منتشر کردن', 'callback_data' => 'publish_post_123'],
+                ['text' => '🗑️ تست پاک کردن', 'callback_data' => 'delete_post_123'],
+                ['text' => '👁️ تست نمایش پست', 'callback_data' => 'show_post_123']
+            ]
+        ];
+        
+        $data = array(
+            'chat_id' => $chat_id,
+            'text' => $message,
+            'parse_mode' => 'HTML',
+            'reply_markup' => json_encode(['inline_keyboard' => $inline_keyboard])
+        );
+        
+        $response = wp_remote_post($url, array(
+            'body' => $data,
+            'timeout' => 30,
+            'sslverify' => false
+        ));
+        
+        if (is_wp_error($response)) {
+            return 'خطا در اتصال مستقیم: ' . $response->get_error_message();
+        }
+        
+        $body = wp_remote_retrieve_body($response);
+        $result = json_decode($body, true);
+        
+        if (isset($result['ok']) && $result['ok']) {
+            return 'پیام تست callback_query با موفقیت به صورت مستقیم ارسال شد!' . 
+                   "\n\n📊 اطلاعات ارسال:" .
+                   "\n• مقصد: " . $chat_id .
+                   "\n• روش: اتصال مستقیم به API تلگرام" .
+                   "\n• زمان: " . current_time('Y-m-d H:i:s') .
+                   "\n\n🔧 حالا دکمه‌های callback_query را تست کنید!";
+        } else {
+            return 'خطا در ارسال پیام: ' . ($result['description'] ?? 'نامشخص');
+        }
+    }
+}
+
+function fix_webhook_url($token, $host_type) {
+    // تنظیم مجدد webhook URL
+    $current_url = get_option('telegram_bot_url');
+    $site_url = home_url('/wp-json/faraz/v1/handle/');
+    
+    // اگر URL خالی است یا اشتباه است، آن را اصلاح کنیم
+    if (empty($current_url) || strpos($current_url, 'faraz/v1/handle/') === false) {
+        update_option('telegram_bot_url', $site_url);
+        $current_url = $site_url;
+    }
+    
+    if ($host_type === 'iranian') {
+        $proxy_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+        
+        // برای پروکسی ایرانی، از روش صحیح استفاده می‌کنیم
+        $webhook_proxy = get_option('telegram_webhook_proxy', '');
+        
+        if (!empty($webhook_proxy)) {
+            // استفاده از میانجی tibin.php
+            $webhook_url = $webhook_proxy . '?bot=' . $token . '&url=' . urlencode($current_url) . '&setWebP=True';
+        } else {
+            // fallback به روش قدیمی
+            $webhook_url = $proxy_url . '?bot=' . $token . '&url=' . urlencode($current_url) . '&setWebP=True';
+        }
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $webhook_url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($http_code == 200) {
+            return '✅ Webhook URL اصلاح و تنظیم شد!' .
+                   "\n\n📊 اطلاعات:" .
+                   "\n• آدرس جدید: " . $current_url .
+                   "\n• روش: پروکسی ایرانی" .
+                   "\n• زمان: " . current_time('Y-m-d H:i:s') .
+                   "\n• پاسخ: " . $response;
+        } else {
+            return '❌ خطا در تنظیم webhook: HTTP ' . $http_code . ' - ' . $response;
+        }
+    } else {
+        $url = "https://api.telegram.org/bot{$token}/setWebhook?url=" . urlencode($current_url);
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        $result = json_decode($response, true);
+        if (isset($result['ok']) && $result['ok']) {
+            return '✅ Webhook URL اصلاح و تنظیم شد!' .
+                   "\n\n📊 اطلاعات:" .
+                   "\n• آدرس جدید: " . $current_url .
+                   "\n• روش: اتصال مستقیم" .
+                   "\n• زمان: " . current_time('Y-m-d H:i:s') .
+                   "\n• پاسخ: " . $response;
+        } else {
+            return '❌ خطا در تنظیم webhook: ' . ($result['description'] ?? 'نامشخص') . ' - ' . $response;
+        }
+    }
+}
+
+function manual_set_webhook($token, $host_type) {
+    $url_p = get_option('telegram_bot_url');
+    if (empty($url_p)) {
+        return 'آدرس وب‌هوک تنظیم نشده است. لطفاً ابتدا آدرس را تنظیم کنید.';
+    }
+
+    $destination_type = '';
+    if (strpos($url_p, 'faraz/v1/handle/') !== false) {
+        $destination_type = 'آدرس endpoint فراز';
+    } elseif (strpos($url_p, 'faraz/v1/test/') !== false) {
+        $destination_type = 'آدرس endpoint تست';
+    } else {
+        $destination_type = 'آدرس دلخواه';
+    }
+
+    $message = "🔧 تنظیم وب‌هوک دستی\n\n" .
+               "⏰ زمان: " . current_time('Y-m-d H:i:s') . "\n" .
+               "🌐 نوع هاست: " . ($host_type === 'iranian' ? 'ایرانی (پروکسی)' : 'خارجی (مستقیم)') . "\n" .
+               "📝 آدرس مقصد: " . $url_p . "\n" .
+               "🔗 ارتباط برقرار است!";
+
+    if ($host_type === 'iranian') {
+        $proxy_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+        
+        // برای پروکسی ایرانی، از روش صحیح استفاده می‌کنیم
+        $webhook_proxy = get_option('telegram_webhook_proxy', 'https://arz.appwordpresss.ir/tibin.php');
+        
+        if (!empty($webhook_proxy)) {
+            // استفاده از میانجی tibin.php
+            $webhook_url = $webhook_proxy . '?bot=' . $token . '&url=' . urlencode($url_p) . '&setWebP=True';
+        } else {
+            // fallback به روش قدیمی
+            $webhook_url = $proxy_url . '?bot=' . $token . '&url=' . urlencode($url_p) . '&setWebP=True';
+        }
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $webhook_url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($error) {
+            return '❌ خطا در تنظیم webhook: ' . $error;
+        }
+
+        if ($http_code == 200) {
+            return '✅ Webhook URL با موفقیت تنظیم شد!' .
+                   "\n\n📊 اطلاعات:" .
+                   "\n• آدرس مقصد: " . $url_p .
+                   "\n• روش: پروکسی ایرانی" .
+                   "\n• زمان: " . current_time('Y-m-d H:i:s') .
+                   "\n• پاسخ: " . $response;
+        } else {
+            return '❌ خطا در تنظیم webhook: HTTP ' . $http_code . ' - ' . $response;
+        }
+    } else {
+        $url = "https://api.telegram.org/bot{$token}/setWebhook?url=" . urlencode($url_p);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $result = json_decode($response, true);
+        if (isset($result['ok']) && $result['ok']) {
+            return '✅ Webhook URL با موفقیت تنظیم شد!' .
+                   "\n\n📊 اطلاعات:" .
+                   "\n• آدرس مقصد: " . $url_p .
+                   "\n• روش: اتصال مستقیم" .
+                   "\n• زمان: " . current_time('Y-m-d H:i:s') .
+                   "\n• پاسخ: " . $response;
+        } else {
+            return '❌ خطا در تنظیم webhook: ' . ($result['description'] ?? 'نامشخص') . ' - ' . $response;
+        }
+    }
+}
+
+function test_proxy_connection($token, $host_type) {
+    $proxy_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+    $webhook_proxy = get_option('telegram_webhook_proxy', 'https://arz.appwordpresss.ir/tibin.php');
+    
+    $message = "🧪 تست ارتباط با پروکسی\n\n" .
+               "⏰ زمان: " . current_time('Y-m-d H:i:s') . "\n" .
+               "🌐 پروکسی ارسال: " . $proxy_url . "\n" .
+               "🔗 میانجی وب‌هوک: " . $webhook_proxy . "\n" .
+               "🔧 تست ارتباط...";
+    
+    // تست پروکسی ارسال
+    $test_data = array(
+        'chatid' => get_option('telegram_bot_Chat_id'),
+        'bot' => $token,
+        'message' => $message,
+        'isphoto' => 'false'
+    );
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $proxy_url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($test_data));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60); // افزایش timeout
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30); // timeout اتصال
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+    
+    if ($error) {
+        return '❌ خطا در ارتباط با پروکسی ارسال: ' . $error . 
+               "\n\n🔧 پیشنهادات:" .
+               "\n• بررسی اتصال اینترنت" .
+               "\n• بررسی آدرس پروکسی" .
+               "\n• استفاده از VPN" .
+               "\n• تغییر به هاست خارجی";
+    }
+    
+    if ($http_code == 200) {
+        $result = json_decode($response, true);
+        if (isset($result['status']) && $result['status'] === 'success') {
+            return '✅ ارتباط با پروکسی ارسال برقرار شد!' .
+                   "\n\n📊 اطلاعات:" .
+                   "\n• پروکسی: " . $proxy_url .
+                   "\n• پاسخ: " . $response .
+                   "\n• زمان: " . current_time('Y-m-d H:i:s');
+        } else {
+            return '⚠️ پروکسی پاسخ داد اما خطا: ' . $response;
+        }
+    } else {
+        return '❌ خطا در ارتباط با پروکسی: HTTP ' . $http_code . ' - ' . $response;
+    }
+}
+
+function switch_to_foreign_host($token) {
+    // تنظیم مجدد آدرس وب‌هوک به هاست خارجی
+    $url_p = get_option('telegram_bot_url');
+    $host_type = 'foreign';
+    
+    // تنظیم وب‌هوک به هاست خارجی
+    $webhook_result = telegram_bot_set_webhook($token, $url_p, $host_type);
+    
+    if ($webhook_result) {
+        return '✅ آدرس وب‌هوک با موفقیت به هاست خارجی تنظیم شد!';
+    } else {
+        return '❌ خطا در تنظیم وب‌هوک به هاست خارجی!';
+    }
+}
+
+function full_callback_test($token, $host_type) {
+    $chat_id = get_option('telegram_bot_Chat_id');
+    
+    if (empty($chat_id)) {
+        return 'شناسه چت تنظیم نشده است.';
+    }
+    
+    // مرحله 1: تنظیم webhook
+    $url_p = get_option('telegram_bot_url');
+    $webhook_result = telegram_bot_set_webhook($token, $url_p, $host_type);
+    
+    if (!$webhook_result) {
+        return '❌ خطا در تنظیم webhook!';
+    }
+    
+    // مرحله 2: ارسال پیام با callback_query
+    $message = "🧪 تست کامل Callback Query\n\n" .
+               "⏰ زمان: " . current_time('Y-m-d H:i:s') . "\n" .
+               "🌐 نوع هاست: " . ($host_type === 'iranian' ? 'ایرانی (پروکسی)' : 'خارجی (مستقیم)') . "\n" .
+               "📝 این پیام برای تست کامل callback_query ارسال شده است\n" .
+               "🔧 دکمه‌های زیر باید کار کنند";
+    
+    if ($host_type === 'iranian') {
+        $proxy_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+        
+        $inline_keyboard = [
+            [
+                ['text' => '✅ تست منتشر کردن', 'callback_data' => 'publish_post_123'],
+                ['text' => '🗑️ تست پاک کردن', 'callback_data' => 'delete_post_123'],
+                ['text' => '👁️ تست نمایش پست', 'callback_data' => 'show_post_123']
+            ]
+        ];
+        
+        $data = array(
+            'chatid' => $chat_id,
+            'bot' => $token,
+            'message' => $message,
+            'reply_markup' => json_encode(['inline_keyboard' => $inline_keyboard]),
+            'isphoto' => 'false'
+        );
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $proxy_url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+        
+        $response = curl_exec($ch);
+        
+        if (curl_errno($ch)) {
+            return 'خطا در ارسال از طریق پروکسی: ' . curl_error($ch);
+        }
+        
+        curl_close($ch);
+        
+        $result = json_decode($response, true);
+        if (isset($result['status']) && $result['status'] === 'success') {
+            return '✅ تست کامل با موفقیت انجام شد!' .
+                   "\n\n📊 اطلاعات:" .
+                   "\n• Webhook: تنظیم شد" .
+                   "\n• پیام: ارسال شد" .
+                   "\n• دکمه‌ها: اضافه شد" .
+                   "\n• زمان: " . current_time('Y-m-d H:i:s') .
+                   "\n\n🔧 حالا دکمه‌های callback_query را در تلگرام کلیک کنید!";
+        } else {
+            return 'خطا در ارسال پیام: ' . $response;
+        }
+        
+    } else {
+        $url = "https://api.telegram.org/bot{$token}/sendMessage";
+        
+        $inline_keyboard = [
+            [
+                ['text' => '✅ تست منتشر کردن', 'callback_data' => 'publish_post_123'],
+                ['text' => '🗑️ تست پاک کردن', 'callback_data' => 'delete_post_123'],
+                ['text' => '👁️ تست نمایش پست', 'callback_data' => 'show_post_123']
+            ]
+        ];
+        
+        $data = array(
+            'chat_id' => $chat_id,
+            'text' => $message,
+            'parse_mode' => 'HTML',
+            'reply_markup' => json_encode(['inline_keyboard' => $inline_keyboard])
+        );
+        
+        $response = wp_remote_post($url, array(
+            'body' => $data,
+            'timeout' => 60,
+            'sslverify' => false
+        ));
+        
+        if (is_wp_error($response)) {
+            return 'خطا در اتصال مستقیم: ' . $response->get_error_message();
+        }
+        
+        $body = wp_remote_retrieve_body($response);
+        $result = json_decode($body, true);
+        
+        if (isset($result['ok']) && $result['ok']) {
+            return '✅ تست کامل با موفقیت انجام شد!' . 
+                   "\n\n📊 اطلاعات:" .
+                   "\n• Webhook: تنظیم شد" .
+                   "\n• پیام: ارسال شد" .
+                   "\n• دکمه‌ها: اضافه شد" .
+                   "\n• زمان: " . current_time('Y-m-d H:i:s') .
+                   "\n\n🔧 حالا دکمه‌های callback_query را در تلگرام کلیک کنید!";
         } else {
             return 'خطا در ارسال پیام: ' . ($result['description'] ?? 'نامشخص');
         }

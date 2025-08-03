@@ -16,6 +16,7 @@ require_once plugin_dir_path(__FILE__) . 'smart-admin-templates.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin-save-post.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin-human-tone.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin-rank-math-seo.php';
+require_once plugin_dir_path(__FILE__) . 'smart-admin-unsplash.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin-seo-auto-optimizer.php';
 require_once plugin_dir_path(__FILE__) . 'auto-report.php';
   

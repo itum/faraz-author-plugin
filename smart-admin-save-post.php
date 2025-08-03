@@ -50,6 +50,19 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
     // درج پست جدید
     $post_id = wp_insert_post($post_data);
     
+    // افزودن تصویر شاخص به‌صورت خودکار از Unsplash (در صورت فعال بودن)
+    if ( ! is_wp_error( $post_id ) && function_exists( 'smart_admin_fetch_unsplash_image_for_post' ) ) {
+        // تعیین کلیدواژه مناسب برای جستجو
+        $primary_keyword = '';
+        if ( ! empty( $keywords ) ) {
+            $primary_keyword = is_array( $keywords ) ? $keywords[0] : $keywords;
+        }
+        if ( empty( $primary_keyword ) ) {
+            $primary_keyword = $title;
+        }
+        smart_admin_fetch_unsplash_image_for_post( $post_id, $primary_keyword );
+    }
+    
     // فقط ارسال کلمات کلیدی به Rank Math بدون اضافه کردن به برچسب‌های وردپرس
     if (!empty($keywords) && !is_wp_error($post_id)) {
         // استفاده از تایمر تاخیری برای اطمینان از ذخیره‌سازی کامل پست
