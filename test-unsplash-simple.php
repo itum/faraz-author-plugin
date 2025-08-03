@@ -1,6 +1,6 @@
 <?php
 /**
- * تست ساده Unsplash API بدون وردپرس
+ * تست ساده Unsplash API برای هاست وردپرس
  */
 
 // تنظیمات
@@ -34,6 +34,8 @@ curl_setopt($ch, CURLOPT_URL, $api_url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_TIMEOUT, 15);
 curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; Test Script)');
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // برای هاست‌های قدیمی
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // برای هاست‌های قدیمی
 
 $response = curl_exec($ch);
 $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -78,6 +80,8 @@ $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $image_url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // برای هاست‌های قدیمی
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // برای هاست‌های قدیمی
 
 $image_data = curl_exec($ch);
 $image_size = strlen($image_data);
