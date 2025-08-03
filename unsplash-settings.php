@@ -4,7 +4,7 @@
  */
 
 // Add submenu for Unsplash settings
-add_action('admin_menu', 'faraz_unsplash_add_submenu');
+add_action('admin_menu', 'faraz_unsplash_add_submenu', 30);
 
 function faraz_unsplash_add_submenu() {
     add_submenu_page(
