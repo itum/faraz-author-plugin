@@ -29,6 +29,9 @@ require_once plugin_dir_path(__FILE__) . 'smart-admin-seo-auto-optimizer.php';
 // وارد کردن فایل بهینه‌ساز هوشمند تصاویر
 require_once plugin_dir_path(__FILE__) . 'smart-admin-image-optimizer.php';
 
+// وارد کردن فایل تنظیمات متاباکس‌ها
+require_once plugin_dir_path(__FILE__) . 'smart-admin-settings.php';
+
 // ریدایرکت مسیر smart-admin در wp-admin به آدرس صحیح
 add_action('admin_init', 'smart_admin_redirect');
 
@@ -76,6 +79,16 @@ function smart_admin_add_menu()
         'manage_options', // مجوز دسترسی
         'smart-admin', // slug صفحه (باید با منوی اصلی یکسان باشد)
         'smart_admin_page' // تابع نمایش صفحه
+    );
+    
+    // اضافه کردن زیرمنوی تنظیمات متاباکس‌ها
+    add_submenu_page(
+        'smart-admin', // منوی والد
+        'تنظیمات متاباکس‌ها', // عنوان صفحه
+        'تنظیمات متاباکس‌ها', // عنوان منو
+        'manage_options', // مجوز دسترسی
+        'smart-admin-metabox-settings', // slug صفحه
+        'smart_admin_metabox_settings' // تابع نمایش صفحه
     );
 }
 
