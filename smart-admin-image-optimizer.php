@@ -31,6 +31,7 @@ class Smart_Admin_Image_Optimizer {
         add_action('wp_ajax_smart_admin_auto_suggest_images', array($this, 'ajax_auto_suggest_images'));
         add_action('wp_ajax_smart_admin_insert_image', array($this, 'ajax_insert_image'));
         add_action('wp_ajax_smart_admin_test_permissions', array($this, 'ajax_test_permissions'));
+        add_action('wp_ajax_smart_admin_test_image_download', array($this, 'ajax_test_image_download'));
         
         // هوک برای تولید خودکار تصویر شاخص
         add_action('wp_after_insert_post', array($this, 'auto_generate_featured_image'), 10, 2);
@@ -416,21 +417,34 @@ class Smart_Admin_Image_Optimizer {
         require_once(ABSPATH . 'wp-admin/includes/file.php');
         require_once(ABSPATH . 'wp-admin/includes/image.php');
         
+        // لاگ شروع عملیات
+        error_log('[Smart Admin Image Optimizer] Starting image insertion for post: ' . $post_id);
+        error_log('[Smart Admin Image Optimizer] Image URL: ' . $image_url);
+        error_log('[Smart Admin Image Optimizer] Insert type: ' . $insert_type);
+        
         // بررسی مجوزهای فایل
         $permission_check = $this->check_file_permissions();
         if (is_wp_error($permission_check)) {
+            error_log('[Smart Admin Image Optimizer] Permission error: ' . $permission_check->get_error_message());
             return $permission_check;
         }
+        error_log('[Smart Admin Image Optimizer] File permissions OK');
         
         // بررسی محدودیت‌های سرور
-        $this->check_server_limits();
+        $server_warnings = $this->check_server_limits();
+        if (!empty($server_warnings)) {
+            error_log('[Smart Admin Image Optimizer] Server warnings: ' . implode(', ', $server_warnings));
+        }
         
         // بررسی URL تصویر
         if (empty($image_url) || !filter_var($image_url, FILTER_VALIDATE_URL)) {
+            error_log('[Smart Admin Image Optimizer] Invalid URL: ' . $image_url);
             return new WP_Error('invalid_url', 'نشانی تصویر نامعتبر است.');
         }
+        error_log('[Smart Admin Image Optimizer] URL validation OK');
         
         // بررسی دسترسی به فایل
+        error_log('[Smart Admin Image Optimizer] Checking file access...');
         $headers = wp_remote_head($image_url, array(
             'timeout' => 15,
             'sslverify' => false,
@@ -438,31 +452,43 @@ class Smart_Admin_Image_Optimizer {
         ));
         
         if (is_wp_error($headers)) {
+            error_log('[Smart Admin Image Optimizer] Head request error: ' . $headers->get_error_message());
             return new WP_Error('connection_error', 'خطا در اتصال به تصویر: ' . $headers->get_error_message());
         }
         
         $response_code = wp_remote_retrieve_response_code($headers);
+        error_log('[Smart Admin Image Optimizer] Response code: ' . $response_code);
+        
         if ($response_code !== 200) {
+            error_log('[Smart Admin Image Optimizer] HTTP error: ' . $response_code);
             return new WP_Error('download_error', 'خطا در دانلود تصویر: کد پاسخ ' . $response_code);
         }
         
         // بررسی نوع فایل
         $content_type = wp_remote_retrieve_header($headers, 'content-type');
+        error_log('[Smart Admin Image Optimizer] Content type: ' . $content_type);
+        
         if (!preg_match('/^image\/(jpeg|jpg|png|gif|webp)$/i', $content_type)) {
+            error_log('[Smart Admin Image Optimizer] Invalid content type: ' . $content_type);
             return new WP_Error('invalid_type', 'فایل تصویر نامعتبر است. نوع فایل: ' . $content_type);
         }
         
         // بررسی اندازه فایل
         $content_length = wp_remote_retrieve_header($headers, 'content-length');
+        error_log('[Smart Admin Image Optimizer] Content length: ' . $content_length);
+        
         if ($content_length && $content_length > 10 * 1024 * 1024) { // بیش از 10MB
+            error_log('[Smart Admin Image Optimizer] File too large: ' . $content_length);
             return new WP_Error('file_too_large', 'فایل تصویر بسیار بزرگ است. حداکثر اندازه: 10MB');
         }
         
         // دانلود و درج تصویر
+        error_log('[Smart Admin Image Optimizer] Starting media_sideload_image...');
         $attachment_id = media_sideload_image($image_url, $post_id, $alt_text, 'id');
         
         if (is_wp_error($attachment_id)) {
             $error_message = $attachment_id->get_error_message();
+            error_log('[Smart Admin Image Optimizer] media_sideload_image error: ' . $error_message);
             
             // بررسی خطاهای خاص
             if (strpos($error_message, 'HTTP') !== false) {
@@ -476,37 +502,51 @@ class Smart_Admin_Image_Optimizer {
             }
         }
         
+        error_log('[Smart Admin Image Optimizer] media_sideload_image success, attachment_id: ' . $attachment_id);
+        
         // بررسی موفقیت‌آمیز بودن درج
         if (!$attachment_id || !is_numeric($attachment_id)) {
+            error_log('[Smart Admin Image Optimizer] Invalid attachment_id: ' . $attachment_id);
             return new WP_Error('insert_error', 'خطا در درج تصویر به کتابخانه رسانه');
         }
         
         // تنظیم متن جایگزین
         update_post_meta($attachment_id, '_wp_attachment_image_alt', $alt_text);
+        error_log('[Smart Admin Image Optimizer] Alt text set for attachment: ' . $attachment_id);
         
         // به‌روزرسانی اطلاعات فایل
         $file_path = get_attached_file($attachment_id);
+        error_log('[Smart Admin Image Optimizer] File path: ' . $file_path);
+        
         if ($file_path && file_exists($file_path)) {
+            error_log('[Smart Admin Image Optimizer] File exists, updating metadata...');
             wp_update_attachment_metadata($attachment_id, wp_generate_attachment_metadata($attachment_id, $file_path));
+        } else {
+            error_log('[Smart Admin Image Optimizer] File does not exist: ' . $file_path);
         }
         
         if ($insert_type === 'featured') {
             // تنظیم به عنوان تصویر شاخص
+            error_log('[Smart Admin Image Optimizer] Setting as featured image...');
             $result = set_post_thumbnail($post_id, $attachment_id);
             
             if (!$result) {
+                error_log('[Smart Admin Image Optimizer] Failed to set featured image');
                 return new WP_Error('featured_error', 'خطا در تنظیم تصویر شاخص');
             }
             
             $image_url = get_the_post_thumbnail_url($post_id, 'full');
+            error_log('[Smart Admin Image Optimizer] Featured image URL: ' . $image_url);
             
             // اگر URL تصویر شاخص در دسترس نباشد، از attachment استفاده کن
             if (!$image_url) {
                 $image_url = wp_get_attachment_url($attachment_id);
+                error_log('[Smart Admin Image Optimizer] Using attachment URL: ' . $image_url);
             }
         } else {
             // درج در محتوا
             $image_url = wp_get_attachment_url($attachment_id);
+            error_log('[Smart Admin Image Optimizer] Content image URL: ' . $image_url);
         }
         
         // لاگ کردن موفقیت
@@ -636,6 +676,101 @@ class Smart_Admin_Image_Optimizer {
         // درج تصویر شاخص
         $image = $images[0];
         $this->insert_image_to_post($post_id, $image['url'], $image['alt'], 'featured');
+    }
+
+    /**
+     * تست مستقیم دانلود تصویر
+     */
+    public function test_image_download($image_url) {
+        error_log('[Smart Admin Image Optimizer] Testing image download: ' . $image_url);
+        
+        // تست 1: بررسی URL
+        if (empty($image_url) || !filter_var($image_url, FILTER_VALIDATE_URL)) {
+            return array('status' => 'error', 'message' => 'URL نامعتبر');
+        }
+        
+        // تست 2: بررسی دسترسی
+        $headers = wp_remote_head($image_url, array(
+            'timeout' => 15,
+            'sslverify' => false,
+            'user-agent' => 'WordPress/' . get_bloginfo('version') . '; ' . get_bloginfo('url')
+        ));
+        
+        if (is_wp_error($headers)) {
+            return array('status' => 'error', 'message' => 'خطا در اتصال: ' . $headers->get_error_message());
+        }
+        
+        $response_code = wp_remote_retrieve_response_code($headers);
+        if ($response_code !== 200) {
+            return array('status' => 'error', 'message' => 'کد پاسخ: ' . $response_code);
+        }
+        
+        // تست 3: دانلود مستقیم
+        $response = wp_remote_get($image_url, array(
+            'timeout' => 30,
+            'sslverify' => false,
+            'user-agent' => 'WordPress/' . get_bloginfo('version') . '; ' . get_bloginfo('url')
+        ));
+        
+        if (is_wp_error($response)) {
+            return array('status' => 'error', 'message' => 'خطا در دانلود: ' . $response->get_error_message());
+        }
+        
+        $body = wp_remote_retrieve_body($response);
+        if (empty($body)) {
+            return array('status' => 'error', 'message' => 'بدنه پاسخ خالی است');
+        }
+        
+        // تست 4: ذخیره موقت
+        $upload_dir = wp_upload_dir();
+        $temp_file = $upload_dir['basedir'] . '/temp_test_image.jpg';
+        
+        $file_result = file_put_contents($temp_file, $body);
+        if ($file_result === false) {
+            return array('status' => 'error', 'message' => 'خطا در ذخیره فایل موقت');
+        }
+        
+        // تست 5: بررسی نوع فایل
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime_type = finfo_file($finfo, $temp_file);
+        finfo_close($finfo);
+        
+        if (!preg_match('/^image\/(jpeg|jpg|png|gif|webp)$/i', $mime_type)) {
+            unlink($temp_file);
+            return array('status' => 'error', 'message' => 'نوع فایل نامعتبر: ' . $mime_type);
+        }
+        
+        // پاکسازی فایل موقت
+        unlink($temp_file);
+        
+        return array('status' => 'success', 'message' => 'دانلود موفقیت‌آمیز', 'size' => strlen($body));
+    }
+    
+    /**
+     * اکشن AJAX برای تست دانلود تصویر
+     */
+    public function ajax_test_image_download() {
+        check_ajax_referer('smart_admin_image_optimizer', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('شما دسترسی لازم را ندارید.');
+            return;
+        }
+        
+        $image_url = isset($_POST['image_url']) ? esc_url_raw($_POST['image_url']) : '';
+        
+        if (empty($image_url)) {
+            wp_send_json_error('URL تصویر ارائه نشده است.');
+            return;
+        }
+        
+        $result = $this->test_image_download($image_url);
+        
+        if ($result['status'] === 'success') {
+            wp_send_json_success($result);
+        } else {
+            wp_send_json_error($result['message']);
+        }
     }
 }
 
