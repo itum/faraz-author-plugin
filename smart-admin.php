@@ -1,4 +1,13 @@
 <?php
+// --- Smart Admin Debug Setup ---
+if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+    @ini_set( 'log_errors', 'On' );
+    @ini_set( 'display_errors', 'Off' );
+    if ( ! ini_get( 'error_log' ) || stripos( ini_get( 'error_log' ), 'debug.log' ) === false ) {
+        @ini_set( 'error_log', WP_CONTENT_DIR . '/debug.log' );
+    }
+}
+
 // افزودن منوی ادمین هوشمند به افزونه
 add_action('admin_menu', 'smart_admin_add_menu');
 
