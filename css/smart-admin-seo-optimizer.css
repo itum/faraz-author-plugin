@@ -1,5 +1,5 @@
 /**
- * استایل‌های بهینه‌ساز خودکار SEO
+ * استایل‌های بهینه‌ساز خودکار SEO و Image Optimizer
  */
 
 /* دکمه بهینه‌ساز SEO */
@@ -11,6 +11,18 @@
 
 #smart-admin-seo-optimizer-button:hover {
     background-color: #45a049;
+}
+
+/* دکمه جستجوی تصویر */
+#smart-admin-image-search-button {
+    background-color: #2196f3;
+    color: white;
+    border-color: #1976d2;
+    margin-right: 5px;
+}
+
+#smart-admin-image-search-button:hover {
+    background-color: #1976d2;
 }
 
 /* مودال نتایج */
@@ -99,84 +111,405 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 15px 0;
+    margin: 20px 0;
 }
 
 .smart-admin-seo-score-circle {
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    background-color: #f5f5f5;
     display: flex;
-    justify-content: center;
     align-items: center;
-    font-size: 24px;
+    justify-content: center;
+    font-size: 18px;
     font-weight: bold;
-    position: relative;
+    color: white;
 }
 
 .smart-admin-seo-score-text {
-    margin-right: 15px;
-    font-weight: bold;
-    font-size: 16px;
+    font-size: 14px;
+    margin-top: 10px;
+    text-align: center;
 }
 
-/* رنگ‌بندی امتیاز */
 .smart-admin-seo-score-good {
-    background-color: #63c76a;
-    color: white;
+    background-color: #4caf50;
 }
 
 .smart-admin-seo-score-ok {
-    background-color: #ffb900;
-    color: white;
+    background-color: #ff9800;
 }
 
 .smart-admin-seo-score-bad {
-    background-color: #dc3232;
-    color: white;
+    background-color: #f44336;
 }
 
-/* آیکن بهینه‌ساز در ویرایشگر گوتنبرگ */
+/* دکمه Gutenberg */
 .smart-admin-seo-gutenberg-button {
-    display: flex;
-    align-items: center;
-    padding: 6px 10px;
-    border-radius: 4px;
-    background-color: #4caf50;
+    background-color: #0073aa;
     color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 3px;
     cursor: pointer;
-    margin-bottom: 10px;
+    font-size: 12px;
+    margin: 5px;
 }
 
 .smart-admin-seo-gutenberg-button:hover {
-    background-color: #45a049;
+    background-color: #005a87;
 }
 
 .smart-admin-seo-gutenberg-button .dashicons {
-    margin-left: 5px;
+    margin-right: 5px;
+    vertical-align: middle;
 }
 
-/* حالت در حال بارگذاری */
+/* لودینگ */
 .smart-admin-seo-loading {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    text-align: center;
     padding: 20px;
+    color: #666;
 }
 
 .smart-admin-seo-spinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #3498db;
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
     border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    animation: spin 2s linear infinite;
-    margin-bottom: 10px;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
 }
 
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* استایل‌های Image Optimizer */
+.image-search-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    direction: rtl;
+}
+
+.modal-content {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    background-color: #f8f9fa;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #23282d;
+    font-size: 18px;
+}
+
+.modal-header .close {
+    cursor: pointer;
+    font-size: 24px;
+    color: #666;
+    background: none;
+    border: none;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-header .close:hover {
+    color: #000;
+}
+
+.modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-body input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.modal-body .button {
+    background-color: #0073aa;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.modal-body .button:hover {
+    background-color: #005a87;
+}
+
+/* گرید تصاویر */
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.image-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.image-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.image-card.error {
+    border-color: #f44336;
+    background-color: #ffebee;
+}
+
+.image-preview {
+    position: relative;
+    height: 150px;
+    overflow: hidden;
+    background-color: #f5f5f5;
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s;
+}
+
+.image-preview img:hover {
+    transform: scale(1.05);
+}
+
+.image-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #666;
+    font-size: 12px;
+}
+
+.image-info {
+    padding: 12px;
+}
+
+.image-alt {
+    font-weight: bold;
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #23282d;
+    line-height: 1.3;
+}
+
+.image-description {
+    font-size: 12px;
+    color: #666;
+    margin: 0 0 8px 0;
+    line-height: 1.4;
+}
+
+.image-author {
+    font-size: 11px;
+    color: #999;
+    margin: 0;
+}
+
+.image-author a {
+    color: #0073aa;
+    text-decoration: none;
+}
+
+.image-author a:hover {
+    text-decoration: underline;
+}
+
+.image-actions {
+    padding: 12px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 8px;
+    background-color: #f8f9fa;
+}
+
+.image-actions .button {
+    flex: 1;
+    font-size: 11px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.image-actions .button:hover {
+    opacity: 0.9;
+}
+
+.insert-as-featured {
+    background-color: #ff9800;
+    color: white;
+    border: none;
+}
+
+.insert-as-featured:hover {
+    background-color: #f57c00;
+}
+
+.insert-into-content {
+    background-color: #4caf50;
+    color: white;
+    border: none;
+}
+
+.insert-into-content:hover {
+    background-color: #45a049;
+}
+
+/* نتایج پیشنهاد خودکار */
+.auto-suggest-results {
+    margin-bottom: 20px;
+}
+
+.auto-suggest-results h4 {
+    margin: 0 0 15px 0;
+    color: #23282d;
+    font-size: 16px;
+    border-bottom: 2px solid #0073aa;
+    padding-bottom: 8px;
+}
+
+/* لودینگ */
+.loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+    font-size: 14px;
+}
+
+.loading::before {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+/* پیام‌های خطا و هشدار */
+.error {
+    background-color: #ffebee;
+    border: 1px solid #f44336;
+    color: #c62828;
+    padding: 12px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.no-results {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+    font-style: italic;
+}
+
+/* متاباکس جستجوی تصویر */
+#smart-admin-image-search-container {
+    margin: 15px 0;
+}
+
+#smart-admin-image-search-container .inside {
+    padding: 15px;
+}
+
+#smart-admin-image-search-container input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+#smart-admin-image-search-container .button {
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+#image-search-loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    display: none;
+}
+
+#image-search-loading .spinner {
+    float: none;
+    margin: 0 10px 0 0;
+}
+
+/* پاسخگویی */
+@media (max-width: 768px) {
+    .image-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 10px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .image-actions {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .image-actions .button {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
 } 
