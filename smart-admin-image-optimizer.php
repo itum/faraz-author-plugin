@@ -47,7 +47,10 @@ class Smart_Admin_Image_Optimizer {
             return;
         }
         
-        // ثبت استایل‌ها
+        // Debug: لاگ کردن برای بررسی
+        error_log('Smart Admin Image Optimizer: Loading scripts for hook: ' . $hook);
+        
+        // ثبت استایل‌ها - استفاده از فایل موجود
         wp_enqueue_style(
             'smart-admin-image-optimizer-css',
             plugin_dir_url(__FILE__) . 'css/smart-admin-seo-optimizer.css',
@@ -75,6 +78,9 @@ class Smart_Admin_Image_Optimizer {
             'search_text' => 'جستجوی تصویر',
             'auto_suggest_text' => 'پیشنهاد خودکار تصاویر'
         ));
+        
+        // Debug: لاگ کردن متغیرها
+        error_log('Smart Admin Image Optimizer: Scripts enqueued successfully');
     }
     
     /**

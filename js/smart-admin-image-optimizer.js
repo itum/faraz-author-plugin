@@ -1,4 +1,8 @@
 jQuery(document).ready(function($) {
+    // Debug: بررسی وجود متغیرها
+    console.log('Smart Admin Image Optimizer loaded');
+    console.log('smartAdminImage:', typeof smartAdminImage !== 'undefined' ? smartAdminImage : 'undefined');
+    
     const container = $('#smart-admin-image-search-container');
     const searchButton = $('#smart-image-search-button');
     const autoSuggestButton = $('#auto-suggest-images-button');
@@ -6,9 +10,21 @@ jQuery(document).ready(function($) {
     const resultsContainer = $('#image-search-results');
     const loadingContainer = $('#image-search-loading');
     const toolbarButton = $('#smart-admin-image-search-button');
+    
+    // Debug: بررسی وجود المان‌ها
+    console.log('Container found:', container.length > 0);
+    console.log('Search button found:', searchButton.length > 0);
+    console.log('Toolbar button found:', toolbarButton.length > 0);
 
     // جستجوی تصاویر
     searchButton.on('click', function() {
+        console.log('Search button clicked');
+        
+        if (typeof smartAdminImage === 'undefined') {
+            alert('خطا: متغیرهای JavaScript بارگذاری نشده‌اند.');
+            return;
+        }
+        
         const keyword = searchInput.val();
         if (!keyword) {
             alert('لطفاً یک کلمه کلیدی وارد کنید.');
@@ -27,6 +43,7 @@ jQuery(document).ready(function($) {
                 keyword: keyword
             },
             success: function(response) {
+                console.log('AJAX response:', response);
                 if (response.success) {
                     displayImages(response.data, keyword);
                 } else {
@@ -34,6 +51,7 @@ jQuery(document).ready(function($) {
                 }
             },
             error: function(xhr, status, error) {
+                console.error('AJAX error:', {xhr, status, error});
                 var errorMessage = 'خطای ناشناخته در هنگام جستجو رخ داد.';
                 
                 if (xhr.responseJSON && xhr.responseJSON.data) {
@@ -100,6 +118,13 @@ jQuery(document).ready(function($) {
 
     // دکمه جستجوی تصویر در نوار ابزار
     toolbarButton.on('click', function() {
+        console.log('Toolbar button clicked');
+        openImageSearchModal();
+    });
+
+    // اضافه کردن event listener برای دکمه نوار ابزار (در صورت عدم وجود)
+    $(document).on('click', '#smart-admin-image-search-button', function() {
+        console.log('Toolbar button clicked via document listener');
         openImageSearchModal();
     });
 
@@ -340,10 +365,14 @@ jQuery(document).ready(function($) {
 
     // باز کردن مودال جستجوی تصویر
     function openImageSearchModal() {
+        console.log('Opening image search modal');
+        
         // اگر متاباکس وجود دارد، روی آن کلیک کنید
         if (container.length > 0) {
+            console.log('Metabox found, clicking on it');
             container.closest('.postbox').find('.hndle').click();
         } else {
+            console.log('Creating modal dialog');
             // ایجاد مودال ساده
             const modal = $('<div id="image-search-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999999;">' +
                 '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 5px; max-width: 600px; width: 90%; max-height: 80%; overflow-y: auto;">' +
@@ -361,15 +390,78 @@ jQuery(document).ready(function($) {
             $('#modal-search-button').on('click', function() {
                 const keyword = $('#modal-search-keyword').val();
                 if (keyword) {
-                    searchInput.val(keyword);
-                    searchButton.click();
+                    console.log('Modal search for keyword:', keyword);
+                    // جستجوی مستقیم از مودال
+                    searchImagesFromModal(keyword);
                 }
             });
             
             $('#modal-close').on('click', function() {
                 modal.remove();
             });
+            
+            // بستن مودال با کلیک روی پس‌زمینه
+            modal.on('click', function(e) {
+                if (e.target === this) {
+                    modal.remove();
+                }
+            });
         }
+    }
+    
+    // جستجوی تصاویر از مودال
+    function searchImagesFromModal(keyword) {
+        if (typeof smartAdminImage === 'undefined') {
+            alert('خطا: متغیرهای JavaScript بارگذاری نشده‌اند.');
+            return;
+        }
+        
+        const modalResults = $('#modal-results');
+        modalResults.html('<div style="text-align: center; padding: 20px;"><span class="spinner is-active"></span> در حال جستجو...</div>');
+        
+        $.ajax({
+            url: smartAdminImage.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'smart_admin_search_images',
+                nonce: smartAdminImage.nonce,
+                keyword: keyword
+            },
+            success: function(response) {
+                console.log('Modal AJAX response:', response);
+                if (response.success) {
+                    displayImagesInModal(response.data, keyword);
+                } else {
+                    modalResults.html('<div class="notice notice-error"><p>❌ ' + response.data + '</p></div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Modal AJAX error:', {xhr, status, error});
+                modalResults.html('<div class="notice notice-error"><p>❌ خطا در جستجوی تصاویر</p></div>');
+            }
+        });
+    }
+    
+    // نمایش تصاویر در مودال
+    function displayImagesInModal(images, keyword) {
+        const modalResults = $('#modal-results');
+        
+        if (images.length === 0) {
+            modalResults.html('<div class="notice notice-warning"><p>🔍 هیچ تصویری برای "' + keyword + '" یافت نشد.</p></div>');
+            return;
+        }
+        
+        let html = '<div class="image-search-header">';
+        html += '<h4>نتایج جستجو برای "' + keyword + '" (' + images.length + ' تصویر)</h4>';
+        html += '</div>';
+        html += '<div class="image-grid">';
+        
+        images.forEach(function(image) {
+            html += createImageCard(image);
+        });
+        
+        html += '</div>';
+        modalResults.html(html);
     }
 
     // اضافه کردن استایل‌های CSS
