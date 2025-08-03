@@ -255,12 +255,11 @@ class Smart_Admin_Image_Optimizer {
      */
     private function search_unsplash_images($keyword, $count = 6) {
         $api_key = get_option('faraz_unsplash_api_key');
-        
         if (empty($api_key)) {
             return new WP_Error('no_api_key', 'کلید API Unsplash تنظیم نشده است.');
         }
         
-        error_log('[Smart Image Generation] API key found, searching for keyword: ' . $keyword);
+        $resolution = get_option('faraz_unsplash_image_resolution', 'regular');
         
         $url = add_query_arg([
             'query' => urlencode($keyword),
@@ -268,9 +267,6 @@ class Smart_Admin_Image_Optimizer {
             'per_page' => $count,
             'orientation' => 'landscape',
         ], 'https://api.unsplash.com/search/photos');
-        
-        error_log('[Smart Image Generation] Searching Unsplash for keyword: ' . $keyword);
-        error_log('[Smart Image Generation] Unsplash URL: ' . $url);
         
         $args = [
             'timeout' => 30,
@@ -282,85 +278,38 @@ class Smart_Admin_Image_Optimizer {
             ]
         ];
         
-        error_log('[Smart Image Generation] Making request to Unsplash...');
         $response = wp_remote_get($url, $args);
         
         if (is_wp_error($response)) {
-            error_log('[Smart Image Generation] HTTP Error: ' . $response->get_error_message());
-            return $response;
-        }
-        
-        $status_code = wp_remote_retrieve_response_code($response);
-        error_log('[Smart Image Generation] HTTP Status Code: ' . $status_code);
-        
-        if ($status_code !== 200) {
-            error_log('[Smart Image Generation] HTTP Error: Status code ' . $status_code);
-            return new WP_Error('http_error', 'خطا در اتصال به Unsplash: کد پاسخ ' . $status_code);
+            $error_message = 'خطا در اتصال به Unsplash: ' . $response->get_error_message();
+            error_log('[Smart Admin Image Search] ' . $error_message . ' - URL: ' . $url);
+            return new WP_Error('connection_error', $error_message);
         }
         
         $body = wp_remote_retrieve_body($response);
-        error_log('[Smart Image Generation] Response body length: ' . strlen($body));
-        
-        if (empty($body)) {
-            error_log('[Smart Image Generation] Empty response body');
-            return new WP_Error('empty_response', 'پاسخ خالی از Unsplash');
-        }
-        
         $data = json_decode($body, true);
         
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log('[Smart Image Generation] JSON decode error: ' . json_last_error_msg());
-            return new WP_Error('json_error', 'خطا در پردازش پاسخ JSON');
-        }
-        
         if (empty($data['results'])) {
-            error_log('[Smart Image Generation] No results found in response');
-            return new WP_Error('no_results', 'هیچ تصویری برای کلیدواژه "' . $keyword . '" یافت نشد');
+            return new WP_Error('no_images', 'هیچ تصویری برای این کلمه کلیدی یافت نشد.');
         }
         
-        $images = [];
-        $resolution = get_option('faraz_unsplash_image_resolution', 'regular');
-        
-        foreach ($data['results'] as $image) {
-            $image_url = $image['urls'][$resolution] ?? $image['urls']['regular'];
-            
-            // پاکسازی URL
-            $image_url = $this->clean_unsplash_url($image_url);
-            
-            if (!empty($image_url)) {
-                $images[] = [
-                    'id' => $image['id'],
-                    'url' => $image_url,
-                    'alt' => $image['alt_description'] ?: $keyword,
-                    'user' => $image['user']['name']
-                ];
-            }
-        }
-        
-        if (empty($images)) {
-            return new WP_Error('no_valid_images', 'هیچ تصویر معتبری یافت نشد');
-        }
+        // تبدیل نتایج به فرمت مورد نیاز
+        $images = array_map(function($image) use ($resolution) {
+            return [
+                'id' => $image['id'],
+                'url' => $image['urls'][$resolution] ?? $image['urls']['regular'],
+                'thumb_url' => $image['urls']['small'],
+                'alt' => $image['alt_description'] ?: 'تصویر مرتبط',
+                'user' => [
+                    'name' => $image['user']['name'],
+                    'link' => $image['user']['links']['html'],
+                ],
+                'description' => $image['description'] ?: '',
+                'color' => $image['color'] ?: '#000000'
+            ];
+        }, $data['results']);
         
         return $images;
-    }
-    
-    /**
-     * پاکسازی URL تصویر Unsplash
-     */
-    private function clean_unsplash_url($url) {
-        // حذف پارامترهای اضافی از URL
-        $url = preg_replace('/&ixlib=[^&]*/', '', $url);
-        $url = preg_replace('/&ixid=[^&]*/', '', $url);
-        
-        // اطمینان از وجود پارامترهای ضروری
-        if (strpos($url, '?') === false) {
-            $url .= '?';
-        }
-        
-        // اضافه کردن پارامترهای ضروری
-        $url .= '&fm=jpg&q=80&w=1080';
-        
-        return $url;
     }
     
     /**
@@ -535,40 +484,7 @@ class Smart_Admin_Image_Optimizer {
         
         // دانلود و درج تصویر
         error_log('[Smart Admin Image Optimizer] Starting media_sideload_image...');
-        // تلاش اول با media_sideload_image
         $attachment_id = media_sideload_image($image_url, $post_id, $alt_text, 'id');
-        
-        // اگر خطای نشانی نامعتبر بود، تلاش دوم با دانلود دستی
-        if (is_wp_error($attachment_id) && strpos($attachment_id->get_error_message(), 'نشانی تصویر نامعتبر') !== false) {
-            error_log('[Smart Admin Image Optimizer] media_sideload_image failed, trying manual download...');
-            
-            // دانلود مستقیم فایل
-            $tmp = download_url($image_url, 30);
-            if (is_wp_error($tmp)) {
-                error_log('[Smart Admin Image Optimizer] Manual download failed: ' . $tmp->get_error_message());
-                $attachment_id = $tmp;
-            } else {
-                // ایجاد نام فایل
-                $filename = 'unsplash-' . time() . '.jpg';
-                $file_array = array(
-                    'name'     => $filename,
-                    'tmp_name' => $tmp,
-                );
-                
-                // درج فایل به کتابخانه رسانه
-                $attachment_id = media_handle_sideload($file_array, $post_id, $alt_text);
-                
-                // در صورت خطا فایل موقت را حذف کن
-                if (is_wp_error($attachment_id)) {
-                    @unlink($tmp);
-                    error_log('[Smart Admin Image Optimizer] Manual sideload failed: ' . $attachment_id->get_error_message());
-                } else {
-                    error_log('[Smart Admin Image Optimizer] Manual download successful, attachment_id: ' . $attachment_id);
-                }
-            }
-        } elseif (is_wp_error($attachment_id)) {
-            error_log('[Smart Admin Image Optimizer] media_sideload_image error: ' . $attachment_id->get_error_message());
-        }
         
         if (is_wp_error($attachment_id)) {
             $error_message = $attachment_id->get_error_message();
