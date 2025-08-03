@@ -248,6 +248,14 @@ function faraz_auto_report_page() {
                 
                 faraz_auto_report_log("پست با موفقیت ایجاد شد. شناسه پست: {$post_id}");
                 
+                // بررسی کلید API Unsplash
+                $unsplash_api_key = get_option('faraz_unsplash_api_key');
+                if (empty($unsplash_api_key)) {
+                    faraz_auto_report_log("هشدار: کلید API Unsplash تنظیم نشده است. تصویر شاخص خودکار تولید نمی‌شود.");
+                } else {
+                    faraz_auto_report_log("کلید API Unsplash یافت شد. شروع تولید تصویر شاخص خودکار...");
+                }
+                
                 // تولید خودکار تصویر شاخص بر اساس محتوا
                 if (function_exists('smart_generate_featured_image')) {
                     $image_generated = smart_generate_featured_image($post_id, $subject, $report_content);
@@ -256,6 +264,8 @@ function faraz_auto_report_page() {
                     } else {
                         faraz_auto_report_log("خطا در تولید تصویر شاخص خودکار");
                     }
+                } else {
+                    faraz_auto_report_log("تابع smart_generate_featured_image یافت نشد");
                 }
                 
                 // ذخیره متادیتای گزارش
