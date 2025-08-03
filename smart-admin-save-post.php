@@ -52,6 +52,8 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
     
     // افزودن تصویر شاخص به‌صورت خودکار از Unsplash (در صورت فعال بودن)
     if ( ! is_wp_error( $post_id ) && function_exists( 'smart_admin_fetch_unsplash_image_for_post' ) ) {
+        error_log( 'Smart Admin: تابع Unsplash موجود است. شروع فرآیند دریافت تصویر' );
+        
         // تعیین کلیدواژه مناسب برای جستجو
         $primary_keyword = '';
         if ( ! empty( $keywords ) ) {
@@ -60,7 +62,15 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
         if ( empty( $primary_keyword ) ) {
             $primary_keyword = $title;
         }
+        
+        error_log( 'Smart Admin: کلیدواژه انتخاب شده برای جستجوی تصویر: ' . $primary_keyword );
         smart_admin_fetch_unsplash_image_for_post( $post_id, $primary_keyword );
+    } else {
+        if ( is_wp_error( $post_id ) ) {
+            error_log( 'Smart Admin: خطا در ایجاد پست - تابع Unsplash فراخوانی نمی‌شود' );
+        } else {
+            error_log( 'Smart Admin: تابع smart_admin_fetch_unsplash_image_for_post موجود نیست' );
+        }
     }
     
     // فقط ارسال کلمات کلیدی به Rank Math بدون اضافه کردن به برچسب‌های وردپرس
