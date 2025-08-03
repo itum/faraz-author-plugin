@@ -227,10 +227,16 @@ function send_to_private_channel($post_id) {
 }
 
 function write_whatsapp_log($message) {
-    $log_file = plugin_dir_path(__FILE__) . 'whatsapp_logs.txt';
-    $timestamp = current_time('mysql');
-    $log_message = sprintf("[%s] %s\n", $timestamp, $message);
-    error_log($log_message, 3, $log_file);
+    if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
+        if (function_exists('smart_admin_debug_log')) {
+            smart_admin_debug_log($message, "WHATSAPP");
+        } else {
+            $log_file = plugin_dir_path(__FILE__) . 'whatsapp_logs.txt';
+            $timestamp = current_time('mysql');
+            $log_message = sprintf("[%s] %s\n", $timestamp, $message);
+            error_log($log_message, 3, $log_file);
+        }
+    }
 }
 
 function send_to_whatsapp_group($post_id) {

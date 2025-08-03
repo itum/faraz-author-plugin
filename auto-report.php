@@ -14,17 +14,26 @@ require_once plugin_dir_path(__FILE__) . 'add-content.php';
 
 // تابع لاگ کردن برای دیباگ
 function faraz_auto_report_log($message, $type = 'info') {
-    $log_file = plugin_dir_path(__FILE__) . 'auto-report-debug.log';
-    $timestamp = date('Y-m-d H:i:s');
-    $log_message = "[{$timestamp}] [{$type}] {$message}" . PHP_EOL;
-    
-    // برای اطمینان از عدم رشد بیش از حد فایل لاگ
-    if (file_exists($log_file) && filesize($log_file) > 5 * 1024 * 1024) { // 5MB
-        unlink($log_file); // حذف فایل لاگ قبلی اگر خیلی بزرگ شده باشد
+    // بررسی حالت دیباگ
+    if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
+        // استفاده از تابع لاگ مرکزی
+        if (function_exists('smart_admin_debug_log')) {
+            smart_admin_debug_log($message, strtoupper($type));
+        } else {
+            // روش قدیمی در صورت عدم وجود تابع مرکزی
+            $log_file = plugin_dir_path(__FILE__) . 'auto-report-debug.log';
+            $timestamp = date('Y-m-d H:i:s');
+            $log_message = "[{$timestamp}] [{$type}] {$message}" . PHP_EOL;
+            
+            // برای اطمینان از عدم رشد بیش از حد فایل لاگ
+            if (file_exists($log_file) && filesize($log_file) > 5 * 1024 * 1024) { // 5MB
+                unlink($log_file); // حذف فایل لاگ قبلی اگر خیلی بزرگ شده باشد
+            }
+            
+            // نوشتن پیام لاگ در فایل
+            file_put_contents($log_file, $log_message, FILE_APPEND);
+        }
     }
-    
-    // نوشتن پیام لاگ در فایل
-    file_put_contents($log_file, $log_message, FILE_APPEND);
 }
 
 // ریدایرکت آدرس‌های مستقیم به آدرس صحیح

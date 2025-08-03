@@ -1263,3 +1263,54 @@ function smart_admin_metabox_callback($post) {
         echo '<p>این محتوا توسط دستیار هوشمند تولید نشده است.</p>';
     }
 } 
+
+// تابع دریافت تنظیمات متاباکس
+function smart_admin_get_setting($key) {
+    $settings = get_option('smart_admin_settings', array());
+    return isset($settings[$key]) ? $settings[$key] : false;
+}
+
+// تابع ذخیره تنظیمات متاباکس
+function smart_admin_save_metabox_settings() {
+    if (isset($_POST['smart_admin_metabox_nonce']) && wp_verify_nonce($_POST['smart_admin_metabox_nonce'], 'smart_admin_metabox_settings')) {
+        $settings = array();
+        
+        // ذخیره تنظیمات متاباکس
+        $settings['rankmath_metabox'] = isset($_POST['smart_admin_settings']['rankmath_metabox']) ? 1 : 0;
+        $settings['openai_metabox'] = isset($_POST['smart_admin_settings']['openai_metabox']) ? 1 : 0;
+        $settings['send_method_metabox'] = isset($_POST['smart_admin_settings']['send_method_metabox']) ? 1 : 0;
+        $settings['auto_publish'] = isset($_POST['smart_admin_settings']['auto_publish']) ? 1 : 0;
+        $settings['debug_mode'] = isset($_POST['smart_admin_settings']['debug_mode']) ? 1 : 0;
+        
+        update_option('smart_admin_settings', $settings);
+        
+        // ریدایرکت با پیام موفقیت
+        wp_redirect(add_query_arg('updated', 'true', admin_url('admin.php?page=smart-admin-metabox-settings')));
+        exit;
+    }
+}
+add_action('admin_init', 'smart_admin_save_metabox_settings');
+
+// تابع فعال‌سازی حالت دیباگ
+function smart_admin_enable_debug_mode() {
+    if (smart_admin_get_setting('debug_mode')) {
+        // فعال‌سازی لاگ‌گیری
+        if (!file_exists(WP_CONTENT_DIR . '/debug.log')) {
+            touch(WP_CONTENT_DIR . '/debug.log');
+        }
+        
+        // تنظیم error_log برای debug.log
+        @ini_set('error_log', WP_CONTENT_DIR . '/debug.log');
+        @ini_set('log_errors', 'On');
+    }
+}
+add_action('init', 'smart_admin_enable_debug_mode');
+
+// تابع لاگ‌گیری برای حالت دیباگ
+function smart_admin_debug_log($message, $type = 'INFO') {
+    if (smart_admin_get_setting('debug_mode')) {
+        $timestamp = date('Y-m-d H:i:s');
+        $log_message = "[{$timestamp}] [{$type}] {$message}" . PHP_EOL;
+        error_log($log_message);
+    }
+} 

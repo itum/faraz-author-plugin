@@ -61,6 +61,20 @@ function smart_admin_metabox_settings() {
                         <p class="description">اگر این گزینه فعال باشد، پست‌هایی که توسط هوش مصنوعی ایجاد می‌شوند بصورت خودکار منتشر می‌شوند.</p>
                     </td>
                 </tr>
+                
+                <tr>
+                    <th scope="row">حالت عیب‌یابی</th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="smart_admin_settings[debug_mode]" value="1" <?php checked(smart_admin_get_setting('debug_mode'), 1); ?>>
+                            فعال‌سازی حالت عیب‌یابی برای لاگ‌گیری
+                        </label>
+                        <p class="description">اگر این گزینه فعال باشد، تمام عملیات افزونه در فایل debug.log ثبت می‌شود و سایر لاگ‌ها نیز فعال می‌شوند.</p>
+                        <?php if (smart_admin_get_setting('debug_mode')) : ?>
+                            <p><a href="<?php echo content_url('debug.log'); ?>" target="_blank" class="button button-secondary">مشاهده فایل لاگ</a></p>
+                        <?php endif; ?>
+                    </td>
+                </tr>
             </table>
             
             <p class="submit">

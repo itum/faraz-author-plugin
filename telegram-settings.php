@@ -588,10 +588,17 @@ add_action('rest_api_init', function() {
 });
 
 function test_webhook_endpoint() {
-    $log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
-    file_put_contents($log_file, "=== WEBHOOK TEST ===\n", FILE_APPEND);
-    file_put_contents($log_file, "Time: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
-    file_put_contents($log_file, "Webhook endpoint is working!\n", FILE_APPEND);
+    if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
+        if (function_exists('smart_admin_debug_log')) {
+            smart_admin_debug_log("=== WEBHOOK TEST ===", "INFO");
+            smart_admin_debug_log("Webhook endpoint is working!", "INFO");
+        } else {
+            $log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
+            file_put_contents($log_file, "=== WEBHOOK TEST ===\n", FILE_APPEND);
+            file_put_contents($log_file, "Time: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
+            file_put_contents($log_file, "Webhook endpoint is working!\n", FILE_APPEND);
+        }
+    }
     
     return array(
         'status' => 'success',
@@ -602,21 +609,40 @@ function test_webhook_endpoint() {
 function handle_request()
 {
     // Log all incoming requests
-    $log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
     $update_raw = file_get_contents('php://input');
-    file_put_contents($log_file, "=== NEW REQUEST ===\n", FILE_APPEND);
-    file_put_contents($log_file, "Time: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
-    file_put_contents($log_file, "Raw update: " . $update_raw . "\n", FILE_APPEND);
-    file_put_contents($log_file, "Request method: " . $_SERVER['REQUEST_METHOD'] . "\n", FILE_APPEND);
-    file_put_contents($log_file, "Content type: " . ($_SERVER['CONTENT_TYPE'] ?? 'not set') . "\n", FILE_APPEND);
-    file_put_contents($log_file, "User agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'not set') . "\n", FILE_APPEND);
-    file_put_contents($log_file, "Remote IP: " . ($_SERVER['REMOTE_ADDR'] ?? 'not set') . "\n", FILE_APPEND);
+    
+    if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
+        if (function_exists('smart_admin_debug_log')) {
+            smart_admin_debug_log("=== NEW REQUEST ===", "INFO");
+            smart_admin_debug_log("Time: " . date('Y-m-d H:i:s'), "INFO");
+            smart_admin_debug_log("Raw update: " . $update_raw, "INFO");
+            smart_admin_debug_log("Request method: " . $_SERVER['REQUEST_METHOD'], "INFO");
+            smart_admin_debug_log("Content type: " . ($_SERVER['CONTENT_TYPE'] ?? 'not set'), "INFO");
+            smart_admin_debug_log("User agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'not set'), "INFO");
+            smart_admin_debug_log("Remote IP: " . ($_SERVER['REMOTE_ADDR'] ?? 'not set'), "INFO");
+        } else {
+            $log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
+            file_put_contents($log_file, "=== NEW REQUEST ===\n", FILE_APPEND);
+            file_put_contents($log_file, "Time: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
+            file_put_contents($log_file, "Raw update: " . $update_raw . "\n", FILE_APPEND);
+            file_put_contents($log_file, "Request method: " . $_SERVER['REQUEST_METHOD'] . "\n", FILE_APPEND);
+            file_put_contents($log_file, "Content type: " . ($_SERVER['CONTENT_TYPE'] ?? 'not set') . "\n", FILE_APPEND);
+            file_put_contents($log_file, "User agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'not set') . "\n", FILE_APPEND);
+            file_put_contents($log_file, "Remote IP: " . ($_SERVER['REMOTE_ADDR'] ?? 'not set') . "\n", FILE_APPEND);
+        }
+    }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $update = json_decode($update_raw, true);
 
         // Log decoded update
-        file_put_contents($log_file, "Decoded update: " . print_r($update, true) . "\n", FILE_APPEND);
+        if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
+            if (function_exists('smart_admin_debug_log')) {
+                smart_admin_debug_log("Decoded update: " . print_r($update, true), "INFO");
+            } else {
+                file_put_contents($log_file, "Decoded update: " . print_r($update, true) . "\n", FILE_APPEND);
+            }
+        }
 
         if (isset($update['message'])) {
             $message_text = $update['message']['text'];
@@ -625,7 +651,13 @@ function handle_request()
             $admin_login = get_option('admin_login_p');
             $chat_id = get_option('telegram_bot_Chat_id'); // اصلاح شده
             
-            file_put_contents($log_file, "Processing message: $message_text\n", FILE_APPEND);
+            if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
+                if (function_exists('smart_admin_debug_log')) {
+                    smart_admin_debug_log("Processing message: $message_text", "INFO");
+                } else {
+                    file_put_contents($log_file, "Processing message: $message_text\n", FILE_APPEND);
+                }
+            }
             
             if (strpos($message_text, '/start') === 0) { 
                 $botinfo = get_option('telegram_bot_info');
@@ -669,11 +701,21 @@ function handle_request()
             $message_id = $callback_query['message']['message_id'];
 
             // Log callback query data
-            file_put_contents($log_file, "=== CALLBACK QUERY DETECTED ===\n", FILE_APPEND);
-            file_put_contents($log_file, "Callback data: " . $callback_data . "\n", FILE_APPEND);
-            file_put_contents($log_file, "Chat ID: " . $chat_id . "\n", FILE_APPEND);
-            file_put_contents($log_file, "Message ID: " . $message_id . "\n", FILE_APPEND);
-            file_put_contents($log_file, "Full callback query: " . print_r($callback_query, true) . "\n", FILE_APPEND);
+            if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
+                if (function_exists('smart_admin_debug_log')) {
+                    smart_admin_debug_log("=== CALLBACK QUERY DETECTED ===", "INFO");
+                    smart_admin_debug_log("Callback data: " . $callback_data, "INFO");
+                    smart_admin_debug_log("Chat ID: " . $chat_id, "INFO");
+                    smart_admin_debug_log("Message ID: " . $message_id, "INFO");
+                    smart_admin_debug_log("Full callback query: " . print_r($callback_query, true), "INFO");
+                } else {
+                    file_put_contents($log_file, "=== CALLBACK QUERY DETECTED ===\n", FILE_APPEND);
+                    file_put_contents($log_file, "Callback data: " . $callback_data . "\n", FILE_APPEND);
+                    file_put_contents($log_file, "Chat ID: " . $chat_id . "\n", FILE_APPEND);
+                    file_put_contents($log_file, "Message ID: " . $message_id . "\n", FILE_APPEND);
+                    file_put_contents($log_file, "Full callback query: " . print_r($callback_query, true) . "\n", FILE_APPEND);
+                }
+            }
 
             // پاسخ به callback_query برای حذف loading
             answer_callback_query($callback_query['id']);
