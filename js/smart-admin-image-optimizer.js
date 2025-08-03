@@ -45,8 +45,11 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 console.log('AJAX response:', response);
                 if (response.success) {
+                    console.log('Displaying images:', response.data);
+                    console.log('Results container found:', resultsContainer.length > 0);
                     displayImages(response.data, keyword);
                 } else {
+                    console.log('Error in response:', response.data);
                     resultsContainer.html('<div class="notice notice-error"><p>❌ ' + response.data + '</p></div>');
                 }
             },
@@ -130,22 +133,35 @@ jQuery(document).ready(function($) {
 
     // نمایش تصاویر
     function displayImages(images, keyword) {
+        console.log('displayImages called with:', {images, keyword});
+        console.log('resultsContainer:', resultsContainer);
+        
         if (images.length === 0) {
+            console.log('No images found');
             resultsContainer.html('<div class="notice notice-warning"><p>🔍 هیچ تصویری برای "' + keyword + '" یافت نشد.</p></div>');
             return;
         }
 
+        console.log('Creating HTML for', images.length, 'images');
+        
         let html = '<div class="image-search-header">';
         html += '<h4>نتایج جستجو برای "' + keyword + '" (' + images.length + ' تصویر)</h4>';
         html += '</div>';
         html += '<div class="image-grid">';
 
-        images.forEach(function(image) {
+        images.forEach(function(image, index) {
+            console.log('Creating card for image', index, ':', image);
             html += createImageCard(image);
         });
 
         html += '</div>';
+        
+        console.log('Final HTML length:', html.length);
+        console.log('Setting HTML to resultsContainer');
+        
         resultsContainer.html(html);
+        
+        console.log('HTML set successfully');
     }
 
     // نمایش تصاویر پیشنهادی خودکار
@@ -186,7 +202,25 @@ jQuery(document).ready(function($) {
 
     // ایجاد کارت تصویر
     function createImageCard(image) {
-        let html = '<div class="image-card" data-image-id="' + image.id + '">';
+        console.log('Creating image card for:', image);
+        
+        // بررسی وجود فیلدهای مورد نیاز
+        if (!image.thumb_url) {
+            console.error('Missing thumb_url for image:', image);
+            image.thumb_url = image.url || '';
+        }
+        
+        if (!image.alt) {
+            console.error('Missing alt for image:', image);
+            image.alt = 'تصویر مرتبط';
+        }
+        
+        if (!image.user) {
+            console.error('Missing user info for image:', image);
+            image.user = { name: 'نامشخص', link: '#' };
+        }
+        
+        let html = '<div class="image-card" data-image-id="' + (image.id || 'unknown') + '">';
         html += '<div class="image-preview">';
         html += '<img src="' + image.thumb_url + '" alt="' + image.alt + '" loading="lazy">';
         html += '</div>';
@@ -207,6 +241,7 @@ jQuery(document).ready(function($) {
         html += '</div>';
         html += '</div>';
 
+        console.log('Created image card HTML length:', html.length);
         return html;
     }
 
