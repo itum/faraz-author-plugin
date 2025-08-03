@@ -10,6 +10,8 @@
  * اپلیکیشن Unsplash خود را در تنظیمات «نویسندهٔ خودکار هوشمند» وارد کنید.
  */
 
+error_log( 'Smart Admin Unsplash: فایل smart-admin-unsplash.php بارگذاری شد' );
+
 if ( ! function_exists( 'smart_admin_fetch_unsplash_image_for_post' ) ) {
     /**
      * واکشی تصویر از Unsplash و تنظیم آن به عنوان تصویر شاخص یک پست
