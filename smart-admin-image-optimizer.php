@@ -484,7 +484,28 @@ class Smart_Admin_Image_Optimizer {
         
         // دانلود و درج تصویر
         error_log('[Smart Admin Image Optimizer] Starting media_sideload_image...');
+        // تلاش اول با media_sideload_image
         $attachment_id = media_sideload_image($image_url, $post_id, $alt_text, 'id');
+        
+        // اگر خطای نشانی نامعتبر بود، تلاش دوم با دانلود دستی
+        if (is_wp_error($attachment_id) && $attachment_id->get_error_message() === 'نشانی تصویر نامعتبر.') {
+            error_log('[Smart Admin Image Optimizer] Fallback sideload: downloading manually...');
+            $tmp = download_url($image_url, 30);
+            if (is_wp_error($tmp)) {
+                $attachment_id = $tmp;
+            } else {
+                $filename = 'unsplash-' . time() . '.jpg';
+                $file_array = array(
+                    'name'     => $filename,
+                    'tmp_name' => $tmp,
+                );
+                $attachment_id = media_handle_sideload($file_array, $post_id, $alt_text);
+                // در صورت خطا فایل موقت را حذف کن
+                if (is_wp_error($attachment_id)) {
+                    @unlink($tmp);
+                }
+            }
+        }
         
         if (is_wp_error($attachment_id)) {
             $error_message = $attachment_id->get_error_message();
