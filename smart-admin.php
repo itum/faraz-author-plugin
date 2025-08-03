@@ -14,6 +14,12 @@ require_once plugin_dir_path(__FILE__) . 'smart-admin-rank-math-seo.php';
 // وارد کردن فایل زمان‌بندی محتوا
 require_once plugin_dir_path(__FILE__) . 'smart-admin-scheduler.php';
 
+// وارد کردن فایل بهینه‌ساز هوشمند SEO
+require_once plugin_dir_path(__FILE__) . 'smart-admin-seo-auto-optimizer.php';
+
+// وارد کردن فایل بهینه‌ساز هوشمند تصاویر
+require_once plugin_dir_path(__FILE__) . 'smart-admin-image-optimizer.php';
+
 // ریدایرکت مسیر smart-admin در wp-admin به آدرس صحیح
 add_action('admin_init', 'smart_admin_redirect');
 

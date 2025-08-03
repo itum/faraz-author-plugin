@@ -248,6 +248,16 @@ function faraz_auto_report_page() {
                 
                 faraz_auto_report_log("پست با موفقیت ایجاد شد. شناسه پست: {$post_id}");
                 
+                // تولید خودکار تصویر شاخص بر اساس محتوا
+                if (function_exists('smart_generate_featured_image')) {
+                    $image_generated = smart_generate_featured_image($post_id, $subject, $report_content);
+                    if ($image_generated) {
+                        faraz_auto_report_log("تصویر شاخص خودکار با موفقیت تولید شد");
+                    } else {
+                        faraz_auto_report_log("خطا در تولید تصویر شاخص خودکار");
+                    }
+                }
+                
                 // ذخیره متادیتای گزارش
                 update_post_meta($post_id, 'faraz_auto_report', 'yes');
                 update_post_meta($post_id, 'faraz_auto_report_date', current_time('mysql'));

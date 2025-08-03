@@ -62,7 +62,10 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
     }
 
     if (!is_wp_error($post_id)) {
-        // The featured image will be set manually via the metabox.
+        // تولید خودکار تصویر شاخص بر اساس محتوا
+        if (function_exists('smart_generate_featured_image')) {
+            smart_generate_featured_image($post_id, $title, $content);
+        }
     }
     
     return $post_id;

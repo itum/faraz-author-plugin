@@ -295,6 +295,16 @@ function smart_admin_generate_and_send_articles() {
             ]);
 
             if (!is_wp_error($post_id)) {
+                // تولید خودکار تصویر شاخص بر اساس محتوا
+                if (function_exists('smart_generate_featured_image')) {
+                    $image_generated = smart_generate_featured_image($post_id, $title, $content);
+                    if ($image_generated) {
+                        error_log("Smart Admin Scheduler: Featured image generated successfully for post ID: {$post_id}");
+                    } else {
+                        error_log("Smart Admin Scheduler: Failed to generate featured image for post ID: {$post_id}");
+                    }
+                }
+                
                 // افزودن متا برای شناسایی این پست
                 update_post_meta($post_id, '_smart_admin_generated', true);
                 update_post_meta($post_id, '_smart_admin_keyword', $random_keyword);

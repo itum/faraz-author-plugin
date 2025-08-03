@@ -401,3 +401,112 @@ function attach_thumbnail($post_id, $thumbnail_url) {
         error_log('Failed to sideload image: ' . $image_id->get_error_message());
     }
 }
+
+/**
+ * تولید هوشمند تصویر شاخص بر اساس محتوا
+ */
+function smart_generate_featured_image($post_id, $post_title, $post_content) {
+    // بررسی وجود تصویر شاخص
+    if (has_post_thumbnail($post_id)) {
+        return true;
+    }
+    
+    // استخراج کلمات کلیدی از عنوان و محتوا
+    $keywords = extract_content_keywords($post_title . ' ' . $post_content);
+    
+    if (empty($keywords)) {
+        return false;
+    }
+    
+    // جستجوی تصویر در Unsplash
+    $api_key = get_option('faraz_unsplash_api_key');
+    if (empty($api_key)) {
+        return false;
+    }
+    
+    $primary_keyword = $keywords[0];
+    $image = search_unsplash_image($primary_keyword, $api_key);
+    
+    if ($image) {
+        return attach_thumbnail($post_id, $image['url']);
+    }
+    
+    return false;
+}
+
+/**
+ * استخراج کلمات کلیدی از محتوا
+ */
+function extract_content_keywords($content) {
+    // حذف تگ‌های HTML
+    $content = wp_strip_all_tags($content);
+    
+    // حذف کاراکترهای خاص
+    $content = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $content);
+    
+    // تقسیم به کلمات
+    $words = preg_split('/\s+/', $content);
+    
+    // فیلتر کردن کلمات کوتاه و غیر مرتبط
+    $keywords = array_filter($words, function($word) {
+        $word = trim($word);
+        return strlen($word) > 2 && !in_array($word, [
+            'این', 'آن', 'که', 'را', 'به', 'از', 'در', 'با', 'برای', 'تا', 'یا', 'ولی', 'اما', 'اگر', 'چون', 'زیرا',
+            'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were'
+        ]);
+    });
+    
+    // شمارش تکرار کلمات
+    $word_count = array_count_values($keywords);
+    
+    // مرتب‌سازی بر اساس تکرار
+    arsort($word_count);
+    
+    // برگرداندن 5 کلمه پرتکرار
+    return array_slice(array_keys($word_count), 0, 5);
+}
+
+/**
+ * جستجوی تصویر در Unsplash
+ */
+function search_unsplash_image($keyword, $api_key) {
+    $url = add_query_arg([
+        'query' => urlencode($keyword),
+        'client_id' => $api_key,
+        'per_page' => 1,
+        'orientation' => 'landscape',
+    ], 'https://api.unsplash.com/search/photos');
+    
+    $args = [
+        'timeout' => 30,
+        'sslverify' => false,
+        'user-agent' => 'WordPress/' . get_bloginfo('version') . '; ' . get_bloginfo('url'),
+        'headers' => [
+            'Accept' => 'application/json',
+            'Accept-Language' => 'fa-IR,fa;q=0.9,en;q=0.8',
+        ]
+    ];
+    
+    $response = wp_remote_get($url, $args);
+    
+    if (is_wp_error($response)) {
+        error_log('[Smart Image Generation] Error: ' . $response->get_error_message());
+        return false;
+    }
+    
+    $body = wp_remote_retrieve_body($response);
+    $data = json_decode($body, true);
+    
+    if (empty($data['results'])) {
+        return false;
+    }
+    
+    $image = $data['results'][0];
+    $resolution = get_option('faraz_unsplash_image_resolution', 'regular');
+    
+    return [
+        'url' => $image['urls'][$resolution] ?? $image['urls']['regular'],
+        'alt' => $image['alt_description'] ?: $keyword,
+        'user' => $image['user']['name']
+    ];
+}
