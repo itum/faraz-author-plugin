@@ -76,16 +76,32 @@ function faraz_unsplash_search_images_callback() {
         'orientation' => 'landscape',
     ], 'https://api.unsplash.com/search/photos');
 
-    $response = wp_remote_get($url);
+    // تنظیمات بهتر برای cURL
+    $args = [
+        'timeout' => 30, // افزایش timeout به 30 ثانیه
+        'sslverify' => false, // غیرفعال کردن بررسی SSL در صورت مشکل
+        'user-agent' => 'WordPress/' . get_bloginfo('version') . '; ' . get_bloginfo('url'),
+        'headers' => [
+            'Accept' => 'application/json',
+            'Accept-Language' => 'fa-IR,fa;q=0.9,en;q=0.8',
+        ]
+    ];
+
+    $response = wp_remote_get($url, $args);
 
     if (is_wp_error($response)) {
-        wp_send_json_error(['message' => 'خطا در اتصال به Unsplash: ' . $response->get_error_message()]);
+        // لاگ کردن خطا برای تشخیص بهتر
+        $error_message = 'خطا در اتصال به Unsplash: ' . $response->get_error_message();
+        error_log('[Unsplash Error] ' . $error_message . ' - URL: ' . $url);
+        wp_send_json_error(['message' => $error_message]);
     }
 
     $body = wp_remote_retrieve_body($response);
     $data = json_decode($body, true);
 
+    // لاگ کردن پاسخ برای تشخیص بهتر
     if (empty($data['results'])) {
+        error_log('[Unsplash Warning] No results found for keyword: ' . $keyword . ' - Response: ' . substr($body, 0, 500));
         wp_send_json_error(['message' => 'هیچ تصویری برای این کلمه کلیدی یافت نشد.']);
     }
 
@@ -124,4 +140,54 @@ function faraz_unsplash_set_image_callback() {
         'message' => 'تصویر شاخص با موفقیت تنظیم شد.',
         'thumbnail_url' => $thumbnail_url
     ]);
+}
+
+// AJAX handler for testing connection
+add_action('wp_ajax_test_unsplash_connection', 'faraz_unsplash_test_connection_callback');
+function faraz_unsplash_test_connection_callback() {
+    check_ajax_referer('test_unsplash_connection', 'nonce');
+
+    $api_key = get_option('faraz_unsplash_api_key');
+    if (empty($api_key)) {
+        wp_send_json_error(['message' => 'کلید API Unsplash تنظیم نشده است.']);
+    }
+
+    // تست اتصال با یک جستجوی ساده
+    $url = add_query_arg([
+        'query' => 'test',
+        'client_id' => $api_key,
+        'per_page' => 1,
+    ], 'https://api.unsplash.com/search/photos');
+
+    $args = [
+        'timeout' => 30,
+        'sslverify' => false,
+        'user-agent' => 'WordPress/' . get_bloginfo('version') . '; ' . get_bloginfo('url'),
+        'headers' => [
+            'Accept' => 'application/json',
+            'Accept-Language' => 'fa-IR,fa;q=0.9,en;q=0.8',
+        ]
+    ];
+
+    $response = wp_remote_get($url, $args);
+
+    if (is_wp_error($response)) {
+        $error_message = 'خطا در اتصال به Unsplash: ' . $response->get_error_message();
+        error_log('[Unsplash Test Error] ' . $error_message . ' - URL: ' . $url);
+        wp_send_json_error(['message' => $error_message]);
+    }
+
+    $status_code = wp_remote_retrieve_response_code($response);
+    if ($status_code !== 200) {
+        wp_send_json_error(['message' => 'خطای HTTP: ' . $status_code]);
+    }
+
+    $body = wp_remote_retrieve_body($response);
+    $data = json_decode($body, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        wp_send_json_error(['message' => 'خطا در پردازش پاسخ JSON']);
+    }
+
+    wp_send_json_success(['message' => 'اتصال به Unsplash موفق است. API در دسترس می‌باشد.']);
 }

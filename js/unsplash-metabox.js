@@ -30,8 +30,25 @@ jQuery(document).ready(function($) {
                     resultsContainer.html('<p>' + response.data.message + '</p>');
                 }
             },
-            error: function() {
-                resultsContainer.html('<p>خطای ناشناخته در هنگام جستجو رخ داد.</p>');
+            error: function(xhr, status, error) {
+                var errorMessage = 'خطای ناشناخته در هنگام جستجو رخ داد.';
+                
+                // تلاش برای دریافت اطلاعات بیشتر از خطا
+                if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+                    errorMessage = xhr.responseJSON.data.message;
+                } else if (xhr.statusText) {
+                    errorMessage = 'خطای HTTP: ' + xhr.status + ' - ' + xhr.statusText;
+                }
+                
+                resultsContainer.html('<div class="notice notice-error"><p>❌ ' + errorMessage + '</p></div>');
+                
+                // لاگ کردن خطا در کنسول برای توسعه‌دهندگان
+                console.error('Unsplash Search Error:', {
+                    status: xhr.status,
+                    statusText: xhr.statusText,
+                    responseText: xhr.responseText,
+                    error: error
+                });
             },
             complete: function() {
                 container.removeClass('loading');

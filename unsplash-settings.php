@@ -110,6 +110,46 @@ function faraz_unsplash_settings_page_callback() {
                 
                 <?php submit_button('ذخیره تنظیمات'); ?>
             </form>
+
+            <hr>
+            <h3>تست اتصال</h3>
+            <p>برای بررسی وضعیت اتصال به Unsplash، روی دکمه زیر کلیک کنید:</p>
+            <button type="button" id="test-unsplash-connection" class="button button-secondary">تست اتصال به Unsplash</button>
+            <div id="connection-test-result"></div>
+
+            <script>
+            jQuery(document).ready(function($) {
+                $('#test-unsplash-connection').on('click', function() {
+                    var button = $(this);
+                    var resultDiv = $('#connection-test-result');
+                    
+                    button.prop('disabled', true).text('در حال تست...');
+                    resultDiv.html('<p>در حال بررسی اتصال...</p>');
+                    
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'test_unsplash_connection',
+                            nonce: '<?php echo wp_create_nonce("test_unsplash_connection"); ?>'
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                resultDiv.html('<div class="notice notice-success"><p>✅ اتصال موفق: ' + response.data.message + '</p></div>');
+                            } else {
+                                resultDiv.html('<div class="notice notice-error"><p>❌ خطا در اتصال: ' + response.data.message + '</p></div>');
+                            }
+                        },
+                        error: function() {
+                            resultDiv.html('<div class="notice notice-error"><p>❌ خطای ناشناخته در هنگام تست اتصال</p></div>');
+                        },
+                        complete: function() {
+                            button.prop('disabled', false).text('تست اتصال به Unsplash');
+                        }
+                    });
+                });
+            });
+            </script>
         <?php elseif ($active_tab == 'logs') : 
             $log_file = plugin_dir_path(__FILE__) . 'unsplash_logs.txt';
 
