@@ -435,26 +435,81 @@ function fetch_content($url)
 function attach_thumbnail($post_id, $thumbnail_url) { 
     error_log('[Smart Image Generation] Attaching thumbnail to post ID: ' . $post_id . ' from URL: ' . $thumbnail_url);
     
+    // بررسی URL تصویر
+    if (empty($thumbnail_url) || !filter_var($thumbnail_url, FILTER_VALIDATE_URL)) {
+        error_log('[Smart Image Generation] Invalid thumbnail URL: ' . $thumbnail_url);
+        return false;
+    }
+    
+    // بررسی دسترسی به فایل
+    $headers = wp_remote_head($thumbnail_url, array(
+        'timeout' => 15,
+        'sslverify' => false,
+        'user-agent' => 'WordPress/' . get_bloginfo('version') . '; ' . get_bloginfo('url')
+    ));
+    
+    if (is_wp_error($headers)) {
+        error_log('[Smart Image Generation] Head request error: ' . $headers->get_error_message());
+        return false;
+    }
+    
+    $response_code = wp_remote_retrieve_response_code($headers);
+    error_log('[Smart Image Generation] Response code: ' . $response_code);
+    
+    if ($response_code !== 200) {
+        error_log('[Smart Image Generation] HTTP error: ' . $response_code);
+        return false;
+    }
+    
+    // بررسی نوع فایل
+    $content_type = wp_remote_retrieve_header($headers, 'content-type');
+    error_log('[Smart Image Generation] Content type: ' . $content_type);
+    
+    if (!preg_match('/^image\/(jpeg|jpg|png|gif|webp)$/i', $content_type)) {
+        error_log('[Smart Image Generation] Invalid content type: ' . $content_type);
+        return false;
+    }
+    
     if (!function_exists('media_sideload_image')) {
         require_once(ABSPATH . 'wp-admin/includes/media.php');
         require_once(ABSPATH . 'wp-admin/includes/file.php');
         require_once(ABSPATH . 'wp-admin/includes/image.php');
     }
- 
+    
+    error_log('[Smart Image Generation] Starting media_sideload_image...');
     $image_id = media_sideload_image($thumbnail_url, $post_id, null, 'id');
  
-    if (!is_wp_error($image_id)) {
-        error_log('[Smart Image Generation] Image sideloaded successfully with ID: ' . $image_id);
-        $result = set_post_thumbnail($post_id, $image_id);
-        if ($result) {
-            error_log('[Smart Image Generation] Featured image set successfully');
-            return true;
-        } else {
-            error_log('[Smart Image Generation] Failed to set featured image');
-            return false;
-        }
-    } else { 
+    if (is_wp_error($image_id)) {
         error_log('[Smart Image Generation] Failed to sideload image: ' . $image_id->get_error_message());
+        return false;
+    }
+    
+    if (!$image_id || !is_numeric($image_id)) {
+        error_log('[Smart Image Generation] Invalid image_id returned: ' . $image_id);
+        return false;
+    }
+    
+    error_log('[Smart Image Generation] Image sideloaded successfully with ID: ' . $image_id);
+    
+    // تنظیم متن جایگزین
+    update_post_meta($image_id, '_wp_attachment_image_alt', 'تصویر شاخص');
+    
+    // به‌روزرسانی اطلاعات فایل
+    $file_path = get_attached_file($image_id);
+    if ($file_path && file_exists($file_path)) {
+        error_log('[Smart Image Generation] Updating attachment metadata...');
+        wp_update_attachment_metadata($image_id, wp_generate_attachment_metadata($image_id, $file_path));
+    }
+    
+    // تنظیم به عنوان تصویر شاخص
+    error_log('[Smart Image Generation] Setting as featured image...');
+    $result = set_post_thumbnail($post_id, $image_id);
+    
+    if ($result) {
+        error_log('[Smart Image Generation] Featured image set successfully');
+        return true;
+    } else {
+        error_log('[Smart Image Generation] Failed to set featured image');
         return false;
     }
 }
@@ -514,23 +569,34 @@ function smart_generate_featured_image($post_id, $post_title, $post_content) {
  * استخراج کلمات کلیدی از محتوا
  */
 function extract_content_keywords($content) {
+    error_log('[Smart Image Generation] Extracting keywords from content...');
+    
     // حذف تگ‌های HTML
     $content = wp_strip_all_tags($content);
+    error_log('[Smart Image Generation] Content after stripping tags: ' . substr($content, 0, 100) . '...');
     
     // حذف کاراکترهای خاص
     $content = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $content);
     
     // تقسیم به کلمات
     $words = preg_split('/\s+/', $content);
+    error_log('[Smart Image Generation] Total words found: ' . count($words));
     
     // فیلتر کردن کلمات کوتاه و غیر مرتبط
-    $keywords = array_filter($words, function($word) {
+    $stop_words = [
+        'این', 'آن', 'که', 'را', 'به', 'از', 'در', 'با', 'برای', 'تا', 'یا', 'ولی', 'اما', 'اگر', 'چون', 'زیرا',
+        'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were',
+        'a', 'an', 'as', 'be', 'been', 'being', 'do', 'does', 'did', 'have', 'has', 'had', 'will', 'would', 'could',
+        'should', 'may', 'might', 'must', 'can', 'cannot', 'can\'t', 'don\'t', 'doesn\'t', 'didn\'t', 'won\'t',
+        'wouldn\'t', 'couldn\'t', 'shouldn\'t', 'mayn\'t', 'mightn\'t', 'mustn\'t'
+    ];
+    
+    $keywords = array_filter($words, function($word) use ($stop_words) {
         $word = trim($word);
-        return strlen($word) > 2 && !in_array($word, [
-            'این', 'آن', 'که', 'را', 'به', 'از', 'در', 'با', 'برای', 'تا', 'یا', 'ولی', 'اما', 'اگر', 'چون', 'زیرا',
-            'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were'
-        ]);
+        return strlen($word) > 2 && !in_array(strtolower($word), array_map('strtolower', $stop_words));
     });
+    
+    error_log('[Smart Image Generation] Keywords after filtering: ' . count($keywords));
     
     // شمارش تکرار کلمات
     $word_count = array_count_values($keywords);
@@ -539,7 +605,10 @@ function extract_content_keywords($content) {
     arsort($word_count);
     
     // برگرداندن 5 کلمه پرتکرار
-    return array_slice(array_keys($word_count), 0, 5);
+    $top_keywords = array_slice(array_keys($word_count), 0, 5);
+    error_log('[Smart Image Generation] Top keywords: ' . implode(', ', $top_keywords));
+    
+    return $top_keywords;
 }
 
 /**
@@ -547,6 +616,11 @@ function extract_content_keywords($content) {
  */
 function search_unsplash_image($keyword, $api_key) {
     error_log('[Smart Image Generation] Searching Unsplash for keyword: ' . $keyword);
+    
+    if (empty($api_key)) {
+        error_log('[Smart Image Generation] No API key provided');
+        return false;
+    }
     
     $url = add_query_arg([
         'query' => urlencode($keyword),
@@ -567,6 +641,7 @@ function search_unsplash_image($keyword, $api_key) {
         ]
     ];
     
+    error_log('[Smart Image Generation] Making request to Unsplash...');
     $response = wp_remote_get($url, $args);
     
     if (is_wp_error($response)) {
@@ -584,6 +659,11 @@ function search_unsplash_image($keyword, $api_key) {
     
     $body = wp_remote_retrieve_body($response);
     error_log('[Smart Image Generation] Response body length: ' . strlen($body));
+    
+    if (empty($body)) {
+        error_log('[Smart Image Generation] Empty response body');
+        return false;
+    }
     
     $data = json_decode($body, true);
     
@@ -606,6 +686,11 @@ function search_unsplash_image($keyword, $api_key) {
     
     $image_url = $image['urls'][$resolution] ?? $image['urls']['regular'];
     error_log('[Smart Image Generation] Selected image URL: ' . $image_url);
+    
+    if (empty($image_url)) {
+        error_log('[Smart Image Generation] No valid image URL found');
+        return false;
+    }
     
     return [
         'url' => $image_url,
