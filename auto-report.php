@@ -9,6 +9,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// شامل کردن فایل add-content.php برای دسترسی به توابع تولید تصویر شاخص
+require_once plugin_dir_path(__FILE__) . 'add-content.php';
+
 // تابع لاگ کردن برای دیباگ
 function faraz_auto_report_log($message, $type = 'info') {
     $log_file = plugin_dir_path(__FILE__) . 'auto-report-debug.log';
@@ -258,11 +261,12 @@ function faraz_auto_report_page() {
                 
                 // تولید خودکار تصویر شاخص بر اساس محتوا
                 if (function_exists('smart_generate_featured_image')) {
+                    faraz_auto_report_log("تابع smart_generate_featured_image یافت شد. شروع فرآیند...");
                     $image_generated = smart_generate_featured_image($post_id, $subject, $report_content);
                     if ($image_generated) {
                         faraz_auto_report_log("تصویر شاخص خودکار با موفقیت تولید شد");
                     } else {
-                        faraz_auto_report_log("خطا در تولید تصویر شاخص خودکار");
+                        faraz_auto_report_log("خطا در تولید تصویر شاخص خودکار - تابع false برگرداند");
                     }
                 } else {
                     faraz_auto_report_log("تابع smart_generate_featured_image یافت نشد");

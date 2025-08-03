@@ -4,13 +4,11 @@ include_once 'jdf.php';
 add_filter('wp_feed_cache_transient_lifetime', function() {
     return 600;  
 });
+
+/**
+ * حذف تصاویر استفاده نشده از پست‌ها
+ */
 function deleted_post1() { 
-    if ((microtime(true) - $start_time) > 25) {
-        if (strpos($_SERVER['REQUEST_URI'], 'wp-json')) {
-            return new WP_REST_Response(array('processed_items' => $processed_items), 200);
-        } 
-    }
-    
     $processed_items = [];
     $start_time = microtime(true);  
 
@@ -38,30 +36,35 @@ function deleted_post1() {
             } 
         }
 
-        $post_id = $wpdb->get_var("
+        $post_id = $wpdb->get_var($wpdb->prepare("
             SELECT post_id 
             FROM $wpdb->postmeta 
-            WHERE meta_value = $image->ID 
+            WHERE meta_value = %d 
             AND meta_key = '_thumbnail_id'
-        ");
+        ", $image->ID));
      
         if (empty($post_id)) {
             wp_delete_attachment($image->ID, true);  
-    
             $processed_items[] = $image->ID;
         }
-     
-
     }
+    
+    return $processed_items;
 }
+
+/**
+ * حذف پست‌های قدیمی و تصاویر استفاده نشده
+ */
 function deleted_post()
 {
     $processed_items = [];
     $start_time = microtime(true);  
-    return new WP_REST_Response(array('processed_items' => $processed_items), 200);
+    
+    if (strpos($_SERVER['REQUEST_URI'], 'wp-json')) {
+        return new WP_REST_Response(array('processed_items' => $processed_items), 200);
+    }
+    
     global $wpdb;
- 
-
  
     $unused_images = $wpdb->get_results("
         SELECT ID 
@@ -84,51 +87,59 @@ function deleted_post()
             } 
         }
 
-        $post_id = $wpdb->get_var("
+        $post_id = $wpdb->get_var($wpdb->prepare("
             SELECT post_id 
             FROM $wpdb->postmeta 
-            WHERE meta_value = $image->ID 
+            WHERE meta_value = %d 
             AND meta_key = '_thumbnail_id'
-        ");
+        ", $image->ID));
      
         if (empty($post_id)) {
             wp_delete_attachment($image->ID, true);  
-    
             $processed_items[] = $image->ID;
         }
-     
-
     }
+    
+    return $processed_items;
 }
-function check_post_title_exists($title , $excerpt , $post_content) {
+
+/**
+ * بررسی وجود پست با عنوان، خلاصه یا محتوای مشابه
+ */
+function check_post_title_exists($title, $excerpt, $post_content) {
     global $wpdb;
   
     $query = $wpdb->prepare("
         SELECT COUNT(*) 
         FROM $wpdb->posts 
         WHERE post_title = %s OR post_excerpt = %s OR post_content = %s
-    ", $title , $excerpt , $post_content);
+    ", $title, $excerpt, $post_content);
 
     $count = intval($wpdb->get_var($query)); 
-    return $count ;  
+    return $count;  
 }
  
+/**
+ * بررسی و دریافت آیتم‌های جدید از RSS feeds
+ */
 function stp_check_for_new_rss_items() { 
     $log_file = plugin_dir_path(__FILE__) . 'rss_logs.txt';
+    $processed_items = [];
+    
     file_put_contents($log_file, "Starting RSS check at " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
 
     $start_time = microtime(true);  
     global $wpdb;
 
-    
+    // حذف پست‌های قدیمی
     $date_threshold = date('Y-m-d H:i:s', current_time('timestamp') - (12 * 3600));
  
-    $posts = $wpdb->get_results("
+    $posts = $wpdb->get_results($wpdb->prepare("
         SELECT ID 
         FROM $wpdb->posts 
         WHERE (post_status = 'draft' OR post_status = 'faraz') 
-        AND post_date < '$date_threshold'
-    ");
+        AND post_date < %s
+    ", $date_threshold));
         
     foreach ($posts as $post) { 
         $thumbnail_id = get_post_thumbnail_id($post->ID);
@@ -144,17 +155,9 @@ function stp_check_for_new_rss_items() {
         }
     }
 
-
-
-
-
-
-
-
     $entries = get_option('stp_entries', array());
     include_once(ABSPATH . WPINC . '/feed.php');
   
- 
     try {
         foreach ($entries as $entry) {
             file_put_contents($log_file, "Processing RSS feed: " . $entry['url'] . "\n", FILE_APPEND);
@@ -166,12 +169,13 @@ function stp_check_for_new_rss_items() {
                 $max_items = $rss->get_item_quantity(4);
                 $rss_items = $rss->get_items(0, $max_items);
                 file_put_contents($log_file, "Found " . count($rss_items) . " RSS items\n", FILE_APPEND);
-                $a = 0;
+                
                 foreach ($rss_items as $item) { 
                     $date = strtotime($item->get_date('Y-m-d H:i:s'));
                     if (empty($date)) {
                         file_put_contents($log_file, "Empty date for item: " . $item->get_title() . "\n", FILE_APPEND);
-                        sendErrorToTelegram('$item');
+                        sendErrorToTelegram('Empty date for RSS item: ' . $item->get_title());
+                        continue;
                     }
                 
                     if ($date !== false AND ((3600 * 2) < (time() - $date))) {
@@ -184,24 +188,23 @@ function stp_check_for_new_rss_items() {
                             return new WP_REST_Response(array('processed_items' => $processed_items), 200);
                         } else break 2;
                     }
-                
-
 
                     $datej = jdate('Y-m-d H:i:s', $date);
-                
                     $link = $item->get_permalink();
-                    $thumbnail_url = fetch_thumbnail($link);
-                    $thumbnail_url = $thumbnail_url['image'];
+                    $title = $item->get_title();
+                    
+                    // دریافت تصویر شاخص
+                    $thumbnail_data = fetch_thumbnail($link);
+                    $thumbnail_url = $thumbnail_data['image'];
+                    
                     if (empty($thumbnail_url)){
                         file_put_contents($log_file, "No thumbnail found for: " . $title . "\n", FILE_APPEND);
-                        $processed_items[] = ['error_thumbnail' => [$title, $datej , $link , $thumbnail_url  ]];
+                        $processed_items[] = ['error_thumbnail' => [$title, $datej, $link, $thumbnail_url]];
                         continue; 
                     }
                     
                     $source = parse_url($link, PHP_URL_HOST);
-                    $title = $item->get_title();
- 
-                    $processed_items[] = [$title, $datej , $link , $source];
+                    $processed_items[] = [$title, $datej, $link, $source];
                 
                     $full_text = fetch_full_text($link, $type, $class);
                     $excerpt = $item->get_content();
@@ -238,6 +241,7 @@ function stp_check_for_new_rss_items() {
                         file_put_contents($log_file, "Duplicate post detected, deleting: " . $post_id . "\n", FILE_APPEND);
                         continue;
                     }
+                    
                     if ($post_id && $thumbnail_url) {
                         file_put_contents($log_file, "Attaching thumbnail to post: " . $post_id . "\n", FILE_APPEND);
                         attach_thumbnail($post_id, $thumbnail_url);
@@ -257,6 +261,7 @@ function stp_check_for_new_rss_items() {
                 
             } else {
                 file_put_contents($log_file, "RSS feed error: " . $rss->get_error_message() . "\n", FILE_APPEND);
+                sendErrorToTelegram('RSS feed error: ' . $rss->get_error_message());
             }
         }
  
@@ -264,6 +269,7 @@ function stp_check_for_new_rss_items() {
         
     } catch (Exception $e) {
         sendErrorToTelegram('An error occurred: ' . $e->getMessage());
+        file_put_contents($log_file, "Exception: " . $e->getMessage() . "\n", FILE_APPEND);
         if (strpos($_SERVER['REQUEST_URI'], 'wp-json')) {
             return new WP_REST_Response(array('error' => $e->getMessage()), 500);
         }
@@ -283,9 +289,13 @@ function stp_check_for_new_rss_items() {
     
 
 
+/**
+ * دریافت متن کامل از URL با استفاده از کلاس و نوع مشخص شده
+ */
 function fetch_full_text($url, $type, $class) {
     $content = fetch_content($url);
     if ($content === false) {
+        error_log('[Content Fetch] Failed to fetch content from: ' . $url);
         return '';  
     }
  
@@ -301,7 +311,7 @@ function fetch_full_text($url, $type, $class) {
     $query = "//{$type}[contains(@class, '{$class}')]";
     $nodes = $xpath->query($query);
 
-    // Check if nodes are found
+    // بررسی وجود نودها
     if ($nodes->length > 0) {
         $full_text = '';
         foreach ($nodes as $node) {
@@ -309,15 +319,21 @@ function fetch_full_text($url, $type, $class) {
         }
         return $full_text;
     } else {
+        error_log('[Content Fetch] No matching nodes found for type: ' . $type . ', class: ' . $class);
         return '';  
     }
 }
 
-
+/**
+ * دریافت تصویر شاخص و تاریخ انتشار از URL
+ */
 function fetch_thumbnail($url)
 {
     $content = fetch_content($url);
-    if ($content === false) return ['image' => '', 'date_published' => ''];
+    if ($content === false) {
+        error_log('[Thumbnail Fetch] Failed to fetch content from: ' . $url);
+        return ['image' => '', 'date_published' => ''];
+    }
 
     libxml_use_internal_errors(true);
     $dom = new DOMDocument();
@@ -326,10 +342,13 @@ function fetch_thumbnail($url)
     $xpath = new DOMXPath($dom);
  
     $image = '';
+    
+    // جستجوی تصویر در Open Graph
     $nodes = $xpath->query('//meta[@property="og:image"]');
     if ($nodes->length > 0) {
         $image = $nodes->item(0)->getAttribute('content');
     } else { 
+        // جستجو در JSON-LD
         $scriptNodes = $xpath->query('//script[@type="application/ld+json"]');
         foreach ($scriptNodes as $node) {
             $jsonContent = $node->textContent;
@@ -344,10 +363,20 @@ function fetch_thumbnail($url)
             }
         }
     } 
+    
+    // جستجو در Twitter Card
     if (empty($image)) {
         $twitterNodes = $xpath->query('//meta[@name="twitter:image"]');
         if ($twitterNodes->length > 0) {
             $image = $twitterNodes->item(0)->getAttribute('content');
+        }
+    }
+    
+    // جستجو در اولین تصویر موجود
+    if (empty($image)) {
+        $imgNodes = $xpath->query('//img[@src]');
+        if ($imgNodes->length > 0) {
+            $image = $imgNodes->item(0)->getAttribute('src');
         }
     }
  
@@ -365,6 +394,9 @@ function fetch_thumbnail($url)
     return ['image' => $image, 'date_published' => $date_published];
 }
 
+/**
+ * دریافت محتوای صفحه از URL
+ */
 function fetch_content($url)
 {
     $ch = curl_init();
@@ -374,18 +406,32 @@ function fetch_content($url)
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    
     $output = curl_exec($ch);
-    if(curl_error($ch))
-    {
-        // sendErrorToTelegram(json_encode($output));
+    
+    if(curl_error($ch)) {
+        error_log('[Content Fetch] cURL Error: ' . curl_error($ch) . ' for URL: ' . $url);
+        curl_close($ch);
+        return false;
+    }
+    
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if ($http_code !== 200) {
+        error_log('[Content Fetch] HTTP Error: ' . $http_code . ' for URL: ' . $url);
+        curl_close($ch);
+        return false;
     }
     
     curl_close($ch);
-
     return $output ? $output : false;
 }
 
- 
+/**
+ * اتصال تصویر شاخص به پست
+ */
 function attach_thumbnail($post_id, $thumbnail_url) { 
     error_log('[Smart Image Generation] Attaching thumbnail to post ID: ' . $post_id . ' from URL: ' . $thumbnail_url);
     
@@ -565,5 +611,88 @@ function search_unsplash_image($keyword, $api_key) {
         'url' => $image_url,
         'alt' => $image['alt_description'] ?: $keyword,
         'user' => $image['user']['name']
+    ];
+}
+
+/**
+ * تابع کمکی برای بررسی وضعیت پلاگین
+ */
+function check_plugin_status() {
+    $status = [
+        'rss_feeds' => get_option('stp_entries', []),
+        'telegram_token' => !empty(get_option('telegram_bot_token')),
+        'unsplash_api' => !empty(get_option('faraz_unsplash_api_key')),
+        'last_rss_check' => get_option('last_rss_check_time', 'Never'),
+        'total_posts_created' => get_option('total_posts_created', 0),
+        'total_telegram_sent' => get_option('total_telegram_sent', 0)
+    ];
+    
+    return $status;
+}
+
+/**
+ * تابع کمکی برای پاکسازی لاگ‌های قدیمی
+ */
+function cleanup_old_logs() {
+    $log_files = [
+        plugin_dir_path(__FILE__) . 'rss_logs.txt',
+        plugin_dir_path(__FILE__) . 'telegram_logs.txt',
+        plugin_dir_path(__FILE__) . 'whatsapp_logs.txt'
+    ];
+    
+    foreach ($log_files as $log_file) {
+        if (file_exists($log_file)) {
+            $file_size = filesize($log_file);
+            if ($file_size > 5 * 1024 * 1024) { // بیش از 5 مگابایت
+                $content = file_get_contents($log_file);
+                $lines = explode("\n", $content);
+                $recent_lines = array_slice($lines, -1000); // نگه داشتن 1000 خط آخر
+                file_put_contents($log_file, implode("\n", $recent_lines));
+            }
+        }
+    }
+}
+
+/**
+ * تابع کمکی برای بهینه‌سازی پایگاه داده
+ */
+function optimize_database() {
+    global $wpdb;
+    
+    // حذف پست‌های قدیمی با وضعیت draft یا faraz
+    $old_posts = $wpdb->get_results($wpdb->prepare("
+        SELECT ID 
+        FROM $wpdb->posts 
+        WHERE (post_status = 'draft' OR post_status = 'faraz') 
+        AND post_date < DATE_SUB(NOW(), INTERVAL 7 DAY)
+        LIMIT 100
+    "));
+    
+    foreach ($old_posts as $post) {
+        wp_delete_post($post->ID, true);
+    }
+    
+    // حذف تصاویر استفاده نشده
+    $unused_attachments = $wpdb->get_results("
+        SELECT ID 
+        FROM $wpdb->posts 
+        WHERE post_type = 'attachment' 
+        AND post_mime_type LIKE 'image/%' 
+        AND post_date < DATE_SUB(NOW(), INTERVAL 30 DAY) 
+        AND ID NOT IN (
+            SELECT meta_value 
+            FROM $wpdb->postmeta 
+            WHERE meta_key = '_thumbnail_id'
+        )
+        LIMIT 50
+    ");
+    
+    foreach ($unused_attachments as $attachment) {
+        wp_delete_attachment($attachment->ID, true);
+    }
+    
+    return [
+        'deleted_posts' => count($old_posts),
+        'deleted_attachments' => count($unused_attachments)
     ];
 }
