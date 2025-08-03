@@ -50,6 +50,9 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
     // درج پست جدید
     $post_id = wp_insert_post($post_data);
     
+    // تست ساده برای بررسی وجود تابع Unsplash
+    error_log( 'Smart Admin: بررسی وجود تابع Unsplash - function_exists: ' . ( function_exists( 'smart_admin_fetch_unsplash_image_for_post' ) ? 'true' : 'false' ) );
+    
     // افزودن تصویر شاخص به‌صورت خودکار از Unsplash (در صورت فعال بودن)
     if ( ! is_wp_error( $post_id ) && function_exists( 'smart_admin_fetch_unsplash_image_for_post' ) ) {
         error_log( 'Smart Admin: تابع Unsplash موجود است. شروع فرآیند دریافت تصویر' );
