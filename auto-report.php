@@ -920,6 +920,15 @@ function faraz_auto_report_page() {
     <?php
 }
 
+// اضافه کردن هوک برای اضافه کردن تصویر خودکار به گزارش‌ها
+function faraz_auto_report_add_image_hook($post_id, $post) {
+    // فراخوانی هوک برای اضافه کردن تصویر Unsplash
+    do_action('faraz_auto_report_after_save', $post_id, $post);
+}
+
+// اضافه کردن هوک به save_post برای گزارش‌ها
+add_action('save_post', 'faraz_auto_report_add_image_hook', 20, 2);
+
 // تابع ارسال درخواست به API Gemini
 function send_to_gemini_api($prompt, $model, $api_key) {
     // اگر پرامپت خالی باشد، یک پیام خطا برگردان

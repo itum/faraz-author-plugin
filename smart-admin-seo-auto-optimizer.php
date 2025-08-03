@@ -32,6 +32,21 @@ class Smart_Admin_SEO_Auto_Optimizer {
         
         // ثبت تابع در زمان بارگذاری پلاگین
         add_action('init', array($this, 'register_gutenberg_button'));
+        
+        // اضافه کردن تنظیمات Unsplash
+        add_action('admin_init', array($this, 'register_unsplash_settings'));
+        
+        // اضافه کردن هوک برای اضافه کردن تصویر خودکار
+        add_action('save_post', array($this, 'auto_add_unsplash_image'), 10, 2);
+        
+        // اضافه کردن هوک برای گزارش نویسی خودکار
+        add_action('faraz_auto_report_after_save', array($this, 'auto_add_unsplash_image_to_report'), 10, 2);
+        
+        // اضافه کردن AJAX برای پیدا کردن تصویر دستی
+        add_action('wp_ajax_smart_admin_find_unsplash_image', array($this, 'ajax_find_unsplash_image'));
+        
+        // اضافه کردن AJAX برای تست API
+        add_action('wp_ajax_smart_admin_test_unsplash_api', array($this, 'ajax_test_unsplash_api'));
     }
     
     /**
@@ -93,6 +108,7 @@ class Smart_Admin_SEO_Auto_Optimizer {
         wp_localize_script('smart-admin-seo-optimizer-js', 'smartAdminSEO', array(
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('smart_admin_seo_optimizer'),
+            'unsplash_nonce' => wp_create_nonce('smart_admin_unsplash_nonce'),
             'optimizing_text' => 'در حال بهینه‌سازی SEO...',
             'success_text' => 'بهینه‌سازی SEO با موفقیت انجام شد',
             'error_text' => 'خطا در بهینه‌سازی SEO',
@@ -857,6 +873,413 @@ class Smart_Admin_SEO_Auto_Optimizer {
         }
         
         return intval($score);
+    }
+
+    /**
+     * ثبت تنظیمات Unsplash
+     */
+    public function register_unsplash_settings() {
+        register_setting('smart_admin_options', 'unsplash_access_key');
+        register_setting('smart_admin_options', 'auto_add_unsplash_image');
+        register_setting('smart_admin_options', 'unsplash_image_quality');
+        register_setting('smart_admin_options', 'unsplash_image_orientation');
+        register_setting('smart_admin_options', 'unsplash_max_images_per_post');
+    }
+    
+    /**
+     * پیدا کردن تصویر از Unsplash با رعایت اصول SEO
+     */
+    public function get_unsplash_image($query, $post_id = null, $context = 'post') {
+        // دریافت API Key از تنظیمات
+        $access_key = get_option('unsplash_access_key', '');
+        
+        if (empty($access_key)) {
+            $this->log_optimization("Unsplash API Key تنظیم نشده است");
+            return false;
+        }
+        
+        // بهینه‌سازی کلمات کلیدی برای جستجو
+        $optimized_query = $this->optimize_search_query($query, $context);
+        
+        // دریافت تنظیمات کیفیت و جهت تصویر
+        $quality = get_option('unsplash_image_quality', 'regular');
+        $orientation = get_option('unsplash_image_orientation', 'landscape');
+        
+        $url = "https://api.unsplash.com/search/photos?query=" . urlencode($optimized_query) . 
+               "&per_page=5&orientation=" . $orientation . "&order_by=relevant";
+        
+        $headers = array(
+            'Authorization: Client-ID ' . $access_key
+        );
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($http_code !== 200) {
+            $this->log_optimization("خطا در دریافت تصویر از Unsplash. کد HTTP: " . $http_code);
+            return false;
+        }
+        
+        $data = json_decode($response, true);
+        
+        if (isset($data['results']) && !empty($data['results'])) {
+            // انتخاب بهترین تصویر بر اساس کیفیت و ارتباط
+            $best_image = $this->select_best_image($data['results'], $optimized_query);
+            
+            if ($best_image) {
+                $image_url = $best_image['urls'][$quality];
+                $photographer = $best_image['user']['name'] ?? 'Unknown';
+                $unsplash_url = $best_image['links']['html'] ?? '';
+                $alt_text = $best_image['alt_description'] ?? $optimized_query;
+                
+                $this->log_optimization("تصویر مناسب از Unsplash پیدا شد: " . $image_url);
+                
+                return array(
+                    'url' => $image_url,
+                    'photographer' => $photographer,
+                    'unsplash_url' => $unsplash_url,
+                    'alt_text' => $alt_text,
+                    'width' => $best_image['width'],
+                    'height' => $best_image['height']
+                );
+            }
+        }
+        
+        $this->log_optimization("تصویر مناسب در Unsplash پیدا نشد برای: " . $optimized_query);
+        return false;
+    }
+    
+    /**
+     * بهینه‌سازی کلمات کلیدی برای جستجو
+     */
+    private function optimize_search_query($query, $context = 'post') {
+        // حذف کلمات اضافی و بهینه‌سازی
+        $stop_words = array('و', 'در', 'به', 'از', 'که', 'این', 'آن', 'با', 'برای', 'تا', 'را', 'هم', 'نیز');
+        
+        // تجزیه کلمات
+        $words = explode(' ', $query);
+        $optimized_words = array();
+        
+        foreach ($words as $word) {
+            $word = trim($word);
+            if (strlen($word) > 2 && !in_array($word, $stop_words)) {
+                $optimized_words[] = $word;
+            }
+        }
+        
+        // انتخاب بهترین کلمات کلیدی (حداکثر 3 کلمه)
+        $optimized_words = array_slice($optimized_words, 0, 3);
+        
+        // اضافه کردن کلمات کلیدی مرتبط با زمینه
+        if ($context === 'report') {
+            $optimized_words[] = 'business';
+            $optimized_words[] = 'professional';
+        } elseif ($context === 'article') {
+            $optimized_words[] = 'modern';
+        }
+        
+        return implode(' ', $optimized_words);
+    }
+    
+    /**
+     * انتخاب بهترین تصویر از نتایج
+     */
+    private function select_best_image($results, $query) {
+        $best_score = 0;
+        $best_image = null;
+        
+        foreach ($results as $image) {
+            $score = 0;
+            
+            // امتیاز بر اساس کیفیت تصویر
+            if ($image['width'] >= 1920 && $image['height'] >= 1080) {
+                $score += 10;
+            } elseif ($image['width'] >= 1280 && $image['height'] >= 720) {
+                $score += 5;
+            }
+            
+            // امتیاز بر اساس محبوبیت
+            if (isset($image['likes'])) {
+                $score += min($image['likes'] / 100, 10);
+            }
+            
+            // امتیاز بر اساس تطابق با کلمات کلیدی
+            $alt_description = strtolower($image['alt_description'] ?? '');
+            $query_words = explode(' ', strtolower($query));
+            
+            foreach ($query_words as $word) {
+                if (strpos($alt_description, $word) !== false) {
+                    $score += 5;
+                }
+            }
+            
+            // امتیاز بر اساس رنگ‌ها (تصاویر رنگی بهتر هستند)
+            if (isset($image['color']) && $image['color'] !== '#000000') {
+                $score += 3;
+            }
+            
+            if ($score > $best_score) {
+                $best_score = $score;
+                $best_image = $image;
+            }
+        }
+        
+        return $best_image;
+    }
+    
+    /**
+     * دانلود و آپلود تصویر Unsplash با رعایت اصول SEO
+     */
+    public function download_and_upload_unsplash_image($image_data, $post_id, $context = 'post') {
+        if (!$image_data || !isset($image_data['url'])) {
+            return false;
+        }
+        
+        // دانلود تصویر
+        $image_content = file_get_contents($image_data['url']);
+        if (!$image_content) {
+            $this->log_optimization("خطا در دانلود تصویر از Unsplash");
+            return false;
+        }
+        
+        // ایجاد نام فایل SEO-friendly
+        $post_title = get_the_title($post_id);
+        $filename = $this->create_seo_friendly_filename($post_title, $post_id);
+        
+        // آپلود به مدیا لایبرری
+        $upload_dir = wp_upload_dir();
+        $file_path = $upload_dir['path'] . '/' . $filename;
+        
+        file_put_contents($file_path, $image_content);
+        
+        // بررسی نوع فایل
+        $wp_filetype = wp_check_filetype($filename, null);
+        
+        // ایجاد attachment با اطلاعات SEO
+        $attachment = array(
+            'post_mime_type' => $wp_filetype['type'],
+            'post_title' => $this->create_seo_title($post_title),
+            'post_content' => $this->create_seo_description($image_data, $context),
+            'post_excerpt' => $image_data['alt_text'],
+            'post_status' => 'inherit'
+        );
+        
+        $attach_id = wp_insert_attachment($attachment, $file_path, $post_id);
+        
+        if (is_wp_error($attach_id)) {
+            $this->log_optimization("خطا در آپلود تصویر: " . $attach_id->get_error_message());
+            return false;
+        }
+        
+        // تولید metadata
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        $attach_data = wp_generate_attachment_metadata($attach_id, $file_path);
+        wp_update_attachment_metadata($attach_id, $attach_data);
+        
+        // تنظیم Alt Text برای SEO
+        update_post_meta($attach_id, '_wp_attachment_image_alt', $image_data['alt_text']);
+        
+        return $attach_id;
+    }
+    
+    /**
+     * ایجاد نام فایل SEO-friendly
+     */
+    private function create_seo_friendly_filename($title, $post_id) {
+        // حذف کاراکترهای غیرمجاز
+        $filename = sanitize_file_name($title);
+        $filename = preg_replace('/[^a-zA-Z0-9\-_]/', '-', $filename);
+        $filename = preg_replace('/-+/', '-', $filename);
+        $filename = trim($filename, '-');
+        
+        // اضافه کردن شناسه پست و timestamp
+        $filename = $filename . '-' . $post_id . '-' . time() . '.jpg';
+        
+        return $filename;
+    }
+    
+    /**
+     * ایجاد عنوان SEO برای تصویر
+     */
+    private function create_seo_title($post_title) {
+        return 'تصویر مرتبط با: ' . $post_title;
+    }
+    
+    /**
+     * ایجاد توضیحات SEO برای تصویر
+     */
+    private function create_seo_description($image_data, $context) {
+        $description = 'تصویر مرتبط با محتوای مقاله';
+        
+        if ($context === 'report') {
+            $description = 'تصویر مرتبط با گزارش خبری';
+        }
+        
+        $description .= ' - عکاس: ' . $image_data['photographer'];
+        $description .= ' - منبع: Unsplash';
+        
+        if (!empty($image_data['unsplash_url'])) {
+            $description .= ' - لینک اصلی: ' . $image_data['unsplash_url'];
+        }
+        
+        return $description;
+    }
+    
+    /**
+     * اضافه کردن تصویر خودکار به نوشته
+     */
+    public function auto_add_unsplash_image($post_id, $post) {
+        // فقط برای نوشته‌های جدید
+        if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+            return;
+        }
+        
+        // بررسی اینکه آیا تصویر قبلاً اضافه شده یا نه
+        if (has_post_thumbnail($post_id)) {
+            return;
+        }
+        
+        // بررسی تنظیمات
+        $auto_add_image = get_option('auto_add_unsplash_image', false);
+        if (!$auto_add_image) {
+            return;
+        }
+        
+        // استخراج کلمات کلیدی از عنوان و محتوا
+        $keywords = $this->extract_title_keywords($post->post_title);
+        $content_keywords = $this->extract_content_keywords($post->post_content);
+        $keywords = array_merge($keywords, $content_keywords);
+        
+        // انتخاب بهترین کلمه کلیدی
+        $best_keyword = !empty($keywords) ? $keywords[0] : $post->post_title;
+        
+        // پیدا کردن تصویر
+        $image_data = $this->get_unsplash_image($best_keyword, $post_id, 'post');
+        
+        if ($image_data) {
+            // دانلود و آپلود تصویر
+            $attach_id = $this->download_and_upload_unsplash_image($image_data, $post_id, 'post');
+            
+            if ($attach_id) {
+                // تنظیم به عنوان تصویر شاخص
+                set_post_thumbnail($post_id, $attach_id);
+                
+                $this->log_optimization("تصویر Unsplash با موفقیت به نوشته اضافه شد. شناسه تصویر: " . $attach_id);
+            }
+        }
+    }
+    
+    /**
+     * اضافه کردن تصویر خودکار به گزارش
+     */
+    public function auto_add_unsplash_image_to_report($post_id, $post) {
+        // بررسی تنظیمات
+        $auto_add_image = get_option('auto_add_unsplash_image', false);
+        if (!$auto_add_image) {
+            return;
+        }
+        
+        // استخراج کلمات کلیدی از عنوان گزارش
+        $keywords = $this->extract_title_keywords($post->post_title);
+        $best_keyword = !empty($keywords) ? $keywords[0] : $post->post_title;
+        
+        // پیدا کردن تصویر مناسب برای گزارش
+        $image_data = $this->get_unsplash_image($best_keyword, $post_id, 'report');
+        
+        if ($image_data) {
+            // دانلود و آپلود تصویر
+            $attach_id = $this->download_and_upload_unsplash_image($image_data, $post_id, 'report');
+            
+            if ($attach_id) {
+                // تنظیم به عنوان تصویر شاخص
+                set_post_thumbnail($post_id, $attach_id);
+                
+                $this->log_optimization("تصویر Unsplash با موفقیت به گزارش اضافه شد. شناسه تصویر: " . $attach_id);
+            }
+        }
+    }
+    
+    /**
+     * AJAX برای تست API Unsplash
+     */
+    public function ajax_test_unsplash_api() {
+        // بررسی nonce
+        if (!wp_verify_nonce($_POST['nonce'], 'smart_admin_unsplash_nonce')) {
+            wp_die('خطای امنیتی');
+        }
+        
+        $access_key = get_option('unsplash_access_key', '');
+        
+        if (empty($access_key)) {
+            wp_send_json_error('API Key تنظیم نشده است');
+        }
+        
+        $url = "https://api.unsplash.com/photos/random?query=test&count=1";
+        
+        $headers = array(
+            'Authorization: Client-ID ' . $access_key
+        );
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($http_code === 200) {
+            $data = json_decode($response, true);
+            if (!empty($data)) {
+                wp_send_json_success('اتصال به Unsplash API موفقیت‌آمیز بود');
+            } else {
+                wp_send_json_error('پاسخ نامعتبر از Unsplash API');
+            }
+        } else {
+            wp_send_json_error('خطا در اتصال به Unsplash API. کد HTTP: ' . $http_code);
+        }
+    }
+    
+    /**
+     * AJAX برای پیدا کردن تصویر دستی
+     */
+    public function ajax_find_unsplash_image() {
+        // بررسی nonce
+        if (!wp_verify_nonce($_POST['nonce'], 'smart_admin_unsplash_nonce')) {
+            wp_die('خطای امنیتی');
+        }
+        
+        $query = sanitize_text_field($_POST['query']);
+        $post_id = intval($_POST['post_id']);
+        
+        $image_data = $this->get_unsplash_image($query, $post_id);
+        
+        if ($image_data) {
+            $attach_id = $this->download_and_upload_unsplash_image($image_data, $post_id);
+            
+            if ($attach_id) {
+                wp_send_json_success(array(
+                    'message' => 'تصویر با موفقیت اضافه شد',
+                    'attachment_id' => $attach_id,
+                    'image_url' => wp_get_attachment_url($attach_id)
+                ));
+            } else {
+                wp_send_json_error('خطا در آپلود تصویر');
+            }
+        } else {
+            wp_send_json_error('تصویر مناسب پیدا نشد');
+        }
     }
 }
 

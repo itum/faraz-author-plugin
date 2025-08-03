@@ -180,3 +180,86 @@
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 } 
+
+/* استایل برای دکمه‌های ادمین هوشمند */
+#smart-admin-seo-optimize,
+#smart-admin-unsplash-image {
+    margin: 10px 5px;
+    padding: 8px 15px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    background: #f9f9f9;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#smart-admin-seo-optimize:hover,
+#smart-admin-unsplash-image:hover {
+    background: #e7e7e7;
+    border-color: #999;
+}
+
+#smart-admin-seo-optimize:disabled,
+#smart-admin-unsplash-image:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* استایل برای آیکون‌ها */
+#smart-admin-seo-optimize .dashicons,
+#smart-admin-unsplash-image .dashicons {
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
+/* استایل برای پیام‌های موفقیت */
+.notice-success {
+    border-left-color: #46b450;
+}
+
+/* استایل برای پیام‌های خطا */
+.notice-error {
+    border-left-color: #dc3232;
+}
+
+/* استایل برای تنظیمات Unsplash */
+.unsplash-settings {
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin: 20px 0;
+}
+
+.unsplash-settings h3 {
+    margin-top: 0;
+    color: #23282d;
+}
+
+.unsplash-settings .description {
+    color: #666;
+    font-style: italic;
+}
+
+/* استایل برای پیش‌نمایش تصویر */
+.unsplash-preview {
+    max-width: 300px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* استایل برای دکمه تست API */
+.test-unsplash-api {
+    background: #0073aa;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.test-unsplash-api:hover {
+    background: #005a87;
+} 
