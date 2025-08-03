@@ -50,39 +50,19 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
     // درج پست جدید
     $post_id = wp_insert_post($post_data);
     
-    // تست ساده برای بررسی وجود تابع Unsplash
-    error_log( 'Smart Admin: بررسی وجود تابع Unsplash - function_exists: ' . ( function_exists( 'smart_admin_fetch_unsplash_image_for_post' ) ? 'true' : 'false' ) );
-    
-    // افزودن تصویر شاخص به‌صورت خودکار از Unsplash (در صورت فعال بودن)
-    if ( ! is_wp_error( $post_id ) && function_exists( 'smart_admin_fetch_unsplash_image_for_post' ) ) {
-        error_log( 'Smart Admin: تابع Unsplash موجود است. شروع فرآیند دریافت تصویر' );
-        
-        // تعیین کلیدواژه مناسب برای جستجو
-        $primary_keyword = '';
-        if ( ! empty( $keywords ) ) {
-            $primary_keyword = is_array( $keywords ) ? $keywords[0] : $keywords;
-        }
-        if ( empty( $primary_keyword ) ) {
-            $primary_keyword = $title;
-        }
-        
-        error_log( 'Smart Admin: کلیدواژه انتخاب شده برای جستجوی تصویر: ' . $primary_keyword );
-        smart_admin_fetch_unsplash_image_for_post( $post_id, $primary_keyword );
-    } else {
-        if ( is_wp_error( $post_id ) ) {
-            error_log( 'Smart Admin: خطا در ایجاد پست - تابع Unsplash فراخوانی نمی‌شود' );
-        } else {
-            error_log( 'Smart Admin: تابع smart_admin_fetch_unsplash_image_for_post موجود نیست' );
-        }
-    }
-    
     // فقط ارسال کلمات کلیدی به Rank Math بدون اضافه کردن به برچسب‌های وردپرس
     if (!empty($keywords) && !is_wp_error($post_id)) {
         // استفاده از تایمر تاخیری برای اطمینان از ذخیره‌سازی کامل پست
         wp_schedule_single_event(time() + 2, 'smart_admin_delayed_post_saved', array($post_id, $keywords));
         
         // لاگ برای تشخیص روند اجرا
-        error_log('Smart Admin: پست جدید با شناسه ' . $post_id . ' ایجاد شد و کلمات کلیدی برای Rank Math برنامه‌ریزی شدند: ' . implode(', ', $keywords));
+        if (function_exists('faraz_unsplash_log')) {
+            faraz_unsplash_log('Smart Admin: Post created with ID ' . $post_id . ' and keywords scheduled for Rank Math: ' . implode(', ', $keywords));
+        }
+    }
+
+    if (!is_wp_error($post_id)) {
+        // The featured image will be set manually via the metabox.
     }
     
     return $post_id;
@@ -90,19 +70,25 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
 
 // اکشن تاخیری برای تنظیم کلمات کلیدی
 add_action('smart_admin_delayed_post_saved', function($post_id, $keywords) {
-    error_log('Smart Admin: اجرای اکشن تاخیری برای تنظیم کلمات کلیدی - پست ID: ' . $post_id);
+    if (function_exists('faraz_unsplash_log')) {
+        faraz_unsplash_log('Smart Admin: Delayed action for setting keywords - Post ID: ' . $post_id);
+    }
     
     // اطمینان از تکمیل ذخیره‌سازی پست
     $post = get_post($post_id);
     if (!$post) {
-        error_log('Smart Admin: پست با شناسه ' . $post_id . ' پیدا نشد.');
+        if (function_exists('faraz_unsplash_log')) {
+            faraz_unsplash_log('Smart Admin: Post with ID ' . $post_id . ' not found.');
+        }
         return;
     }
     
     if (function_exists('smart_admin_set_rank_math_focus_keyword')) {
         smart_admin_set_rank_math_focus_keyword($post_id, $keywords);
     } else {
-        error_log('Smart Admin: تابع smart_admin_set_rank_math_focus_keyword تعریف نشده است.');
+        if (function_exists('faraz_unsplash_log')) {
+            faraz_unsplash_log('Smart Admin: Function smart_admin_set_rank_math_focus_keyword is not defined.');
+        }
     }
 }, 10, 2);
 
@@ -168,4 +154,4 @@ function smart_admin_custom_column($column, $post_id) {
         }
     }
 }
-add_action('manage_posts_custom_column', 'smart_admin_custom_column', 10, 2); 
+add_action('manage_posts_custom_column', 'smart_admin_custom_column', 10, 2);

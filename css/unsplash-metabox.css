@@ -1,0 +1,35 @@
+#unsplash-metabox-container .spinner {
+    float: none;
+    vertical-align: middle;
+    margin-right: 5px;
+    visibility: hidden;
+}
+
+#unsplash-metabox-container.loading .spinner {
+    visibility: visible;
+}
+
+#unsplash-results {
+    margin-top: 15px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+}
+
+#unsplash-results .unsplash-image-wrapper {
+    position: relative;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+
+#unsplash-results .unsplash-image-wrapper:hover {
+    border-color: #007cba;
+}
+
+#unsplash-results img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 3px;
+}

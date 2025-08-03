@@ -336,11 +336,7 @@ function faraz_auto_report_page() {
                         }
                     }
                 } else {
-                    faraz_auto_report_log("هیچ تصویری برای گزارش انتخاب یا آپلود نشده است - تلاش برای دریافت تصویر از Unsplash");
-                    if ( function_exists( 'smart_admin_fetch_unsplash_image_for_post' ) ) {
-                        $keyword_for_image = !empty( $subject ) ? $subject : wp_strip_all_tags( wp_trim_words( $report_content, 5, '' ) );
-                        smart_admin_fetch_unsplash_image_for_post( $post_id, $keyword_for_image );
-                    }
+                    faraz_auto_report_log("هیچ تصویری برای گزارش انتخاب یا آپلود نشده است");
                 }
                 
                 // پیام موفقیت
@@ -436,73 +432,121 @@ function faraz_auto_report_page() {
                     ?>
                     <script type="text/javascript">
                     jQuery(document).ready(function($) {
-                        // آرایه برای نگهداری شناسه تصاویر انتخاب شده
                         var selectedImages = [];
                         
-                                                    // بررسی آیا تصاویری از قبل انتخاب شده‌اند
                         if ($('#selected_images').val()) {
                             selectedImages = $('#selected_images').val().split(',').map(Number);
                         }
+
+                        function updateSelectedImagesInput() {
+                            $('#selected_images').val(selectedImages.join(','));
+                        }
+
+                        function addImageToPreview(attachment) {
+                            if (!selectedImages.includes(attachment.id)) {
+                                selectedImages.push(attachment.id);
+                                
+                                $('#selected_images_preview').append(
+                                    '<div class="selected-image-item" data-id="' + attachment.id + '">' +
+                                    '<img src="' + (attachment.sizes.thumbnail ? attachment.sizes.thumbnail.url : attachment.url) + '" alt="">' +
+                                    '<span class="remove-image" title="حذف">×</span>' +
+                                    '</div>'
+                                );
+                                updateSelectedImagesInput();
+                            }
+                        }
                         
-                        // نمایش انتخابگر رسانه وردپرس
                         $('#select_media_button').click(function(e) {
                             e.preventDefault();
                             
-                            // ایجاد انتخابگر رسانه با امکان انتخاب چندتایی
                             var mediaUploader = wp.media({
                                 title: 'انتخاب تصاویر گزارش',
-                                button: {
-                                    text: 'انتخاب تصاویر'
-                                },
+                                button: { text: 'انتخاب تصاویر' },
                                 multiple: true,
-                                library: {
-                                    type: 'image'
-                                }
+                                library: { type: 'image' }
                             });
                             
-                            // وقتی کاربر تصاویر را انتخاب کرد
                             mediaUploader.on('select', function() {
                                 var attachments = mediaUploader.state().get('selection').toJSON();
-                                
-                                // اضافه کردن تصاویر جدید به آرایه انتخاب‌ها
-                                attachments.forEach(function(attachment) {
-                                    // بررسی تکراری نبودن
-                                    if (!selectedImages.includes(attachment.id)) {
-                                        selectedImages.push(attachment.id);
-                                        
-                                        // نمایش پیش‌نمایش تصویر
-                                        $('#selected_images_preview').append(
-                                            '<div class="selected-image-item" data-id="' + attachment.id + '">' +
-                                            '<img src="' + (attachment.sizes.thumbnail ? attachment.sizes.thumbnail.url : attachment.url) + '" alt="">' +
-                                            '<span class="remove-image" title="حذف">×</span>' +
-                                            '</div>'
-                                        );
-                                    }
-                                });
-                                
-                                // به‌روزرسانی فیلد مخفی با شناسه‌های تصاویر
-                                $('#selected_images').val(selectedImages.join(','));
+                                attachments.forEach(addImageToPreview);
                             });
                             
-                            // باز کردن انتخابگر رسانه
                             mediaUploader.open();
                         });
                         
-                        // حذف تصویر انتخاب شده
                         $(document).on('click', '.remove-image', function() {
                             var imageItem = $(this).parent('.selected-image-item');
                             var imageId = imageItem.data('id');
                             
-                            // حذف از آرایه
-                            selectedImages = selectedImages.filter(function(id) {
-                                return id != imageId;
-                            });
-                            
-                            // حذف از نمایش
+                            selectedImages = selectedImages.filter(id => id != imageId);
                             imageItem.remove();
-                            
-                            // به‌روزرسانی فیلد مخفی
-                            $('#selected_images').val(selectedImages.join(','));
+                            updateSelectedImagesInput();
+                        });
+
+                        // Unsplash Modal Logic
+                        $('#unsplash-search-modal-button').click(function() {
+                            $('#unsplash-modal').show();
+                            $('#unsplash-modal-search-keyword').val($('#report_subject').val());
+                        });
+
+                        $('.close-unsplash-modal').click(function() {
+                            $('#unsplash-modal').hide();
+                        });
+
+                        $('#unsplash-modal-search-button').click(function() {
+                            const keyword = $('#unsplash-modal-search-keyword').val();
+                            const resultsContainer = $('#unsplash-modal-results');
+                            const spinner = $('#unsplash-modal .spinner');
+
+                            spinner.css('visibility', 'visible');
+                            resultsContainer.html('');
+
+                            $.ajax({
+                                url: "<?php echo admin_url('admin-ajax.php'); ?>",
+                                type: 'POST',
+                                data: {
+                                    action: 'faraz_unsplash_search_images',
+                                    nonce: "<?php echo wp_create_nonce('faraz_unsplash_search'); ?>",
+                                    keyword: keyword
+                                },
+                                success: function(response) {
+                                    if (response.success) {
+                                        response.data.forEach(function(image) {
+                                            const img = $('<img>').attr('src', image.urls.thumb).data('full_url', image.urls.regular).data('alt', image.alt_description || keyword);
+                                            img.click(function() {
+                                                spinner.css('visibility', 'visible');
+                                                $.ajax({
+                                                    url: "<?php echo admin_url('admin-ajax.php'); ?>",
+                                                    type: 'POST',
+                                                    data: {
+                                                        action: 'faraz_unsplash_sideload_image',
+                                                        nonce: "<?php echo wp_create_nonce('faraz_unsplash_sideload'); ?>",
+                                                        image_url: $(this).data('full_url'),
+                                                        alt_text: $(this).data('alt')
+                                                    },
+                                                    success: function(sideloadResponse) {
+                                                        if (sideloadResponse.success) {
+                                                            addImageToPreview(sideloadResponse.data);
+                                                            $('#unsplash-modal').hide();
+                                                        } else {
+                                                            alert('خطا در افزودن تصویر: ' + sideloadResponse.data.message);
+                                                        }
+                                                    },
+                                                    complete: function() {
+                                                        spinner.css('visibility', 'hidden');
+                                                    }
+                                                });
+                                            });
+                                            resultsContainer.append(img);
+                                        });
+                                    } else {
+                                        resultsContainer.html('<p>' + response.data.message + '</p>');
+                                    }
+                                },
+                                complete: function() {
+                                    spinner.css('visibility', 'hidden');
+                                }
+                            });
                         });
                     });
                     </script>
@@ -544,20 +588,15 @@ function faraz_auto_report_page() {
                             <th scope="row"><label for="report_images">تصاویر گزارش</label></th>
                             <td>
                                 <div class="media-selection-container">
-                                    <!-- فیلد مخفی برای ذخیره شناسه تصاویر انتخاب شده -->
                                     <input type="hidden" name="selected_images" id="selected_images" value="">
-                                    
-                                    <!-- دکمه انتخاب از رسانه -->
                                     <button type="button" id="select_media_button" class="button">انتخاب از کتابخانه رسانه</button>
-                                    
-                                    <!-- دکمه آپلود مستقیم -->
                                     <span class="or-separator">یا</span>
-                                <input type="file" name="report_images[]" id="report_images" multiple accept="image/*">
+                                    <button type="button" id="unsplash-search-modal-button" class="button">جستجو در Unsplash</button>
+                                    <span class="or-separator">یا</span>
+                                    <input type="file" name="report_images[]" id="report_images" multiple accept="image/*">
                                     
-                                    <!-- نمایش تصاویر انتخاب شده -->
                                     <div id="selected_images_preview" class="selected-images-preview"></div>
-                                    
-                                    <p class="description">می‌توانید تصاویر را از کتابخانه رسانه انتخاب کنید یا مستقیماً آپلود نمایید. اولین تصویر به عنوان تصویر شاخص استفاده خواهد شد.</p>
+                                    <p class="description">می‌توانید تصاویر را از کتابخانه رسانه، Unsplash، یا مستقیماً آپلود نمایید. اولین تصویر به عنوان تصویر شاخص استفاده خواهد شد.</p>
                                 </div>
                             </td>
                         </tr>
@@ -567,6 +606,21 @@ function faraz_auto_report_page() {
                         <input type="submit" name="submit_report" class="button button-primary" value="ایجاد گزارش">
                     </p>
                 </form>
+
+                <!-- Unsplash Modal -->
+                <div id="unsplash-modal" class="unsplash-modal-container" style="display:none;">
+                    <div class="unsplash-modal-content">
+                        <span class="close-unsplash-modal">&times;</span>
+                        <h2>جستجو در Unsplash</h2>
+                        <div class="unsplash-modal-search-bar">
+                            <input type="text" id="unsplash-modal-search-keyword" class="regular-text">
+                            <button type="button" id="unsplash-modal-search-button" class="button button-primary">جستجو</button>
+                            <span class="spinner"></span>
+                        </div>
+                        <div id="unsplash-modal-results" class="unsplash-modal-results-grid"></div>
+                    </div>
+                </div>
+
             </div>
             
         <?php elseif (isset($_GET['tab']) && $_GET['tab'] === 'reports'): ?>
@@ -875,7 +929,6 @@ function faraz_auto_report_page() {
             font-weight: bold;
         }
         
-        /* استایل‌های مربوط به انتخاب تصویر */
         .media-selection-container {
             margin-bottom: 15px;
         }
@@ -920,24 +973,71 @@ function faraz_auto_report_page() {
             cursor: pointer;
             font-size: 12px;
         }
+
+        /* Unsplash Modal Styles */
+        .unsplash-modal-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .unsplash-modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            width: 80%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .close-unsplash-modal {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+        }
+        .unsplash-modal-results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .unsplash-modal-results-grid img {
+            width: 100%;
+            height: auto;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .unsplash-modal-results-grid img:hover {
+            border-color: #007cba;
+        }
+        .unsplash-modal-search-bar .spinner {
+             visibility: hidden;
+        }
+
     </style>
     <?php
 }
 
 // تابع ارسال درخواست به API Gemini
 function send_to_gemini_api($prompt, $model, $api_key) {
-    // اگر پرامپت خالی باشد، یک پیام خطا برگردان
     if (empty($prompt)) {
         faraz_auto_report_log("خطا: پرامپت خالی ارسال شده است", 'error');
         return array('error' => 'پرامپت خالی ارسال شده است');
     }
     
-    // تنظیمات درخواست - اصلاح URL به مسیر استاندارد
     $url = 'https://api.gapgpt.app/v1/chat/completions';
     
     faraz_auto_report_log("استفاده از URL استاندارد برای تمام مدل‌ها: " . $url);
     
-    // استفاده از فرمت استاندارد OpenAI برای تمام مدل‌ها
     $body = array(
         'model' => $model,
         'messages' => array(
@@ -958,19 +1058,16 @@ function send_to_gemini_api($prompt, $model, $api_key) {
         'method' => 'POST'
     );
     
-    // ارسال درخواست
     faraz_auto_report_log("ارسال درخواست به API با URL: " . $url);
     faraz_auto_report_log("ساختار درخواست: " . json_encode($body));
     
     $response = wp_remote_post($url, $args);
     
-    // بررسی خطا
     if (is_wp_error($response)) {
         faraz_auto_report_log("خطای WP در درخواست: " . $response->get_error_message(), 'error');
         return array('error' => $response->get_error_message());
     }
     
-    // دریافت پاسخ
     $response_code = wp_remote_retrieve_response_code($response);
     $response_body = json_decode(wp_remote_retrieve_body($response), true);
     
@@ -983,7 +1080,6 @@ function send_to_gemini_api($prompt, $model, $api_key) {
         return array('error' => $error_message);
     }
     
-    // استخراج محتوای پاسخ - فرمت استاندارد OpenAI
     if (isset($response_body['choices'][0]['message']['content'])) {
         $content = $response_body['choices'][0]['message']['content'];
         
@@ -997,4 +1093,40 @@ function send_to_gemini_api($prompt, $model, $api_key) {
         faraz_auto_report_log("خطا در استخراج محتوا از پاسخ API", 'error');
         return array('error' => 'خطا در دریافت پاسخ از API');
     }
-} 
+}
+// AJAX handler for sideloading Unsplash image
+add_action('wp_ajax_faraz_unsplash_sideload_image', 'faraz_unsplash_sideload_image_callback');
+function faraz_unsplash_sideload_image_callback() {
+    check_ajax_referer('faraz_unsplash_sideload', 'nonce');
+
+    $image_url = isset($_POST['image_url']) ? esc_url_raw($_POST['image_url']) : '';
+    $alt_text = isset($_POST['alt_text']) ? sanitize_text_field($_POST['alt_text']) : '';
+
+    if (empty($image_url)) {
+        wp_send_json_error(['message' => 'URL تصویر نامعتبر است.']);
+    }
+
+    require_once(ABSPATH . 'wp-admin/includes/media.php');
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
+
+    // '0' for post_id means the attachment is not attached to any post yet.
+    $attachment_id = media_sideload_image($image_url, 0, $alt_text, 'id');
+
+    if (is_wp_error($attachment_id)) {
+        wp_send_json_error(['message' => 'خطا در دانلود تصویر: ' . $attachment_id->get_error_message()]);
+    }
+
+    // Prepare data to send back to the client, simulating a media library attachment object
+    $attachment = [
+        'id' => $attachment_id,
+        'url' => wp_get_attachment_url($attachment_id),
+        'sizes' => [
+            'thumbnail' => [
+                'url' => wp_get_attachment_image_url($attachment_id, 'thumbnail')
+            ]
+        ]
+    ];
+
+    wp_send_json_success($attachment);
+}

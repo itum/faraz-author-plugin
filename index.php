@@ -16,9 +16,9 @@ require_once plugin_dir_path(__FILE__) . 'smart-admin-templates.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin-save-post.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin-human-tone.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin-rank-math-seo.php';
-require_once plugin_dir_path(__FILE__) . 'smart-admin-unsplash.php';
 require_once plugin_dir_path(__FILE__) . 'smart-admin-seo-auto-optimizer.php';
 require_once plugin_dir_path(__FILE__) . 'auto-report.php';
+require_once plugin_dir_path(__FILE__) . 'unsplash-settings.php';
   
 // اضافه کردن منوی اصلی با اولویت پایین‌تر (برای اجرای زودتر)
 add_action('admin_menu', 'stp_add_menu', 10); 
@@ -393,3 +393,5 @@ include_once plugin_dir_path(__FILE__) . 'telegram-settings.php';
 include_once plugin_dir_path(__FILE__) . 'add-status.php';
 include_once plugin_dir_path(__FILE__) . 'index-ui.php';
 include_once plugin_dir_path(__FILE__) . 'add-content.php';
+include_once plugin_dir_path(__FILE__) . 'unsplash-metabox.php';
+include_once plugin_dir_path(__FILE__) . 'unsplash-api.php';
