@@ -399,9 +399,14 @@ function attach_thumbnail($post_id, $thumbnail_url) {
  
     if (!is_wp_error($image_id)) {
         error_log('[Smart Image Generation] Image sideloaded successfully with ID: ' . $image_id);
-        set_post_thumbnail($post_id, $image_id);
-        error_log('[Smart Image Generation] Featured image set successfully');
-        return true;
+        $result = set_post_thumbnail($post_id, $image_id);
+        if ($result) {
+            error_log('[Smart Image Generation] Featured image set successfully');
+            return true;
+        } else {
+            error_log('[Smart Image Generation] Failed to set featured image');
+            return false;
+        }
     } else { 
         error_log('[Smart Image Generation] Failed to sideload image: ' . $image_id->get_error_message());
         return false;
@@ -413,6 +418,8 @@ function attach_thumbnail($post_id, $thumbnail_url) {
  */
 function smart_generate_featured_image($post_id, $post_title, $post_content) {
     error_log('[Smart Image Generation] Starting for post ID: ' . $post_id);
+    error_log('[Smart Image Generation] Post title: ' . $post_title);
+    error_log('[Smart Image Generation] Post content length: ' . strlen($post_content));
     
     // بررسی وجود تصویر شاخص
     if (has_post_thumbnail($post_id)) {
@@ -441,7 +448,8 @@ function smart_generate_featured_image($post_id, $post_title, $post_content) {
     $image = search_unsplash_image($primary_keyword, $api_key);
     
     if ($image) {
-        error_log('[Smart Image Generation] Image found, attaching to post');
+        error_log('[Smart Image Generation] Image found, URL: ' . $image['url']);
+        error_log('[Smart Image Generation] Image alt: ' . $image['alt']);
         $result = attach_thumbnail($post_id, $image['url']);
         if ($result) {
             error_log('[Smart Image Generation] Image attached successfully');
@@ -540,6 +548,7 @@ function search_unsplash_image($keyword, $api_key) {
     
     if (empty($data['results'])) {
         error_log('[Smart Image Generation] No results found in response');
+        error_log('[Smart Image Generation] Response data: ' . print_r($data, true));
         return false;
     }
     
@@ -547,9 +556,13 @@ function search_unsplash_image($keyword, $api_key) {
     $resolution = get_option('faraz_unsplash_image_resolution', 'regular');
     
     error_log('[Smart Image Generation] Image found: ' . $image['id']);
+    error_log('[Smart Image Generation] Image URLs: ' . print_r($image['urls'], true));
+    
+    $image_url = $image['urls'][$resolution] ?? $image['urls']['regular'];
+    error_log('[Smart Image Generation] Selected image URL: ' . $image_url);
     
     return [
-        'url' => $image['urls'][$resolution] ?? $image['urls']['regular'],
+        'url' => $image_url,
         'alt' => $image['alt_description'] ?: $keyword,
         'user' => $image['user']['name']
     ];
