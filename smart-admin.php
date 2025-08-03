@@ -14,6 +14,9 @@ require_once plugin_dir_path(__FILE__) . 'smart-admin-rank-math-seo.php';
 // وارد کردن فایل زمان‌بندی محتوا
 require_once plugin_dir_path(__FILE__) . 'smart-admin-scheduler.php';
 
+// وارد کردن فایل تنظیمات
+require_once plugin_dir_path(__FILE__) . 'smart-admin-settings.php';
+
 // ریدایرکت مسیر smart-admin در wp-admin به آدرس صحیح
 add_action('admin_init', 'smart_admin_redirect');
 
@@ -51,6 +54,16 @@ function smart_admin_add_menu()
         'smart_admin_page', // تابع نمایش صفحه
         'dashicons-superhero', // آیکون
         65 // موقعیت منو
+    );
+    
+    // اضافه کردن زیرمنوی تنظیمات
+    add_submenu_page(
+        'smart-admin', // منوی والد
+        'تنظیمات ادمین هوشمند', // عنوان صفحه
+        'تنظیمات', // عنوان منو
+        'manage_options', // مجوز دسترسی
+        'smart-admin-settings', // slug صفحه
+        'smart_admin_metabox_settings' // تابع نمایش صفحه
     );
     
     // همچنین اضافه کردن به زیرمنو
