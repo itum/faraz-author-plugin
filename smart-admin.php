@@ -2002,6 +2002,9 @@ function send_to_gapgpt_api($prompt, $model, $api_key) {
     if (isset($response_body['choices'][0]['message']['content'])) {
         $content = $response_body['choices'][0]['message']['content'];
         
+        // تبدیل Markdown به HTML برای نمایش بهتر
+        $content = smart_admin_convert_markdown_to_html($content);
+        
         // استخراج کلمات کلیدی از محتوا
         $keywords = array();
         if (function_exists('smart_admin_extract_keywords_from_ai_response')) {
@@ -2015,6 +2018,161 @@ function send_to_gapgpt_api($prompt, $model, $api_key) {
     } else {
         return array('error' => 'خطا در دریافت پاسخ از API');
     }
+}
+
+// تابع تبدیل Markdown به HTML
+function smart_admin_convert_markdown_to_html($content) {
+    // تبدیل تیترها
+    $content = preg_replace('/^### (.*$)/m', '<h3>$1</h3>', $content);
+    $content = preg_replace('/^## (.*$)/m', '<h2>$1</h2>', $content);
+    $content = preg_replace('/^# (.*$)/m', '<h1>$1</h1>', $content);
+    
+    // تبدیل لیست‌ها
+    $lines = explode("\n", $content);
+    $in_list = false;
+    $list_content = '';
+    $new_content = '';
+    
+    foreach ($lines as $line) {
+        if (preg_match('/^[\*\-] (.+)$/', $line) || preg_match('/^\d+\. (.+)$/', $line)) {
+            // این خط لیست است
+            if (!$in_list) {
+                $in_list = true;
+                if (preg_match('/^\d+\./', $line)) {
+                    $list_content = '<ol>';
+                } else {
+                    $list_content = '<ul>';
+                }
+            }
+            
+            $item = preg_replace('/^[\*\-] (.+)$/', '$1', $line);
+            $item = preg_replace('/^\d+\. (.+)$/', '$1', $item);
+            $list_content .= '<li>' . $item . '</li>';
+        } else {
+            // این خط لیست نیست
+            if ($in_list) {
+                if (strpos($list_content, '<ol>') !== false) {
+                    $list_content .= '</ol>';
+                } else {
+                    $list_content .= '</ul>';
+                }
+                $new_content .= $list_content;
+                $in_list = false;
+                $list_content = '';
+            }
+            $new_content .= $line . "\n";
+        }
+    }
+    
+    if ($in_list) {
+        if (strpos($list_content, '<ol>') !== false) {
+            $list_content .= '</ol>';
+        } else {
+            $list_content .= '</ul>';
+        }
+        $new_content .= $list_content;
+    }
+    
+    $content = $new_content;
+    
+    // تبدیل بولد
+    $content = preg_replace('/\*\*(.*?)\*\*/s', '<strong>$1</strong>', $content);
+    
+    // تبدیل ایتالیک
+    $content = preg_replace('/\*(.*?)\*/s', '<em>$1</em>', $content);
+    
+    // تبدیل لینک‌ها
+    $content = preg_replace('/\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2" target="_blank">$1</a>', $content);
+    
+    // تبدیل جداول
+    $lines = explode("\n", $content);
+    $in_table = false;
+    $table_content = '';
+    $new_content = '';
+    
+    foreach ($lines as $line) {
+        if (strpos($line, '|') !== false && strpos($line, '|') !== strrpos($line, '|')) {
+            // این خط جدول است
+            if (!$in_table) {
+                $in_table = true;
+                $table_content = '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px;">';
+            }
+            
+            $cells = explode('|', trim($line, '|'));
+            $table_content .= '<tr>';
+            foreach ($cells as $cell) {
+                $cell = trim($cell);
+                if (strpos($cell, '---') !== false) {
+                    // خط جداکننده - نادیده بگیر
+                    continue;
+                }
+                $table_content .= '<td style="border: 1px solid #ddd; padding: 8px; text-align: center;">' . $cell . '</td>';
+            }
+            $table_content .= '</tr>';
+        } else {
+            // این خط جدول نیست
+            if ($in_table) {
+                $table_content .= '</table>';
+                $new_content .= $table_content;
+                $in_table = false;
+                $table_content = '';
+            }
+            $new_content .= $line . "\n";
+        }
+    }
+    
+    if ($in_table) {
+        $table_content .= '</table>';
+        $new_content .= $table_content;
+    }
+    
+    $content = $new_content;
+    
+    // تبدیل پاراگراف‌ها
+    $lines = explode("\n", $content);
+    $paragraphs = array();
+    $current_paragraph = '';
+    
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if (empty($line)) {
+            if (!empty($current_paragraph)) {
+                $paragraphs[] = $current_paragraph;
+                $current_paragraph = '';
+            }
+        } elseif (strpos($line, '<') === 0) {
+            // این خط HTML است (تیتر، لیست، جدول)
+            if (!empty($current_paragraph)) {
+                $paragraphs[] = $current_paragraph;
+                $current_paragraph = '';
+            }
+            $paragraphs[] = $line;
+        } else {
+            // این خط متن عادی است
+            if (!empty($current_paragraph)) {
+                $current_paragraph .= ' ' . $line;
+            } else {
+                $current_paragraph = $line;
+            }
+        }
+    }
+    
+    if (!empty($current_paragraph)) {
+        $paragraphs[] = $current_paragraph;
+    }
+    
+    $content = '';
+    foreach ($paragraphs as $paragraph) {
+        if (strpos($paragraph, '<') === 0) {
+            // این HTML است
+            $content .= $paragraph . "\n";
+        } else {
+            // این متن عادی است - تبدیل به پاراگراف
+            $content .= '<p>' . $paragraph . '</p>' . "\n";
+        }
+    }
+    
+    return $content;
 }
 
 function smart_admin_notice() {
