@@ -166,6 +166,13 @@ function smart_admin_log($message) {
  * @param array $keywords آرایه کلمات کلیدی
  * @return bool نتیجه عملیات
  */
+/**
+ * تنظیم کلمات کلیدی اصلی Rank Math بعد از ذخیره پست توسط ادمین هوشمند
+ * 
+ * @param int $post_id شناسه پست ایجاد شده
+ * @param array $keywords آرایه کلمات کلیدی
+ * @return bool نتیجه عملیات
+ */
 function smart_admin_set_rank_math_focus_keyword($post_id, $keywords = array()) {
     // بررسی وجود افزونه Rank Math
     if (!function_exists('rank_math')) {
@@ -190,15 +197,20 @@ function smart_admin_set_rank_math_focus_keyword($post_id, $keywords = array()) 
         if (function_exists('smart_admin_extract_keywords_from_ai_response')) {
             $clean_keywords = smart_admin_extract_keywords_from_ai_response($post->post_content);
             smart_admin_log('تلاش برای استخراج کلمات کلیدی از محتوای پست');
+            
+            // اگر کلمات کلیدی استخراج شدند، آنها را نمایش دهیم
+            if (!empty($clean_keywords)) {
+                smart_admin_log('کلمات کلیدی استخراج شده: ' . implode(', ', $clean_keywords));
+            }
         }
     }
     
-        // اگر کلمات کلیدی استخراج نشد، از عنوان پست استفاده کن
+    // اگر کلمات کلیدی استخراج نشد، از عنوان پست استفاده کن
     if (empty($clean_keywords) && !empty($post->post_title)) {
         $clean_keywords = array($post->post_title);
         smart_admin_log('استفاده از عنوان پست به عنوان کلمه کلیدی به دلیل عدم استخراج کلمات کلیدی از محتوا');
     }
-
+    
     // تبدیل آرایه کلمات کلیدی به رشته با جداکننده کاما
     $keywords_string = implode(',', $clean_keywords);
     
@@ -207,6 +219,13 @@ function smart_admin_set_rank_math_focus_keyword($post_id, $keywords = array()) 
     // ذخیره با متد استاندارد وردپرس
     delete_post_meta($post_id, 'rank_math_focus_keyword');
     $result = update_post_meta($post_id, 'rank_math_focus_keyword', $keywords_string);
+    
+    // تنظیم کلمه کلیدی اصلی به طور جداگانه برای اطمینان از استفاده در URL و توضیحات متا
+    if (!empty($clean_keywords[0])) {
+        $primary_keyword = $clean_keywords[0];
+        update_post_meta($post_id, 'rank_math_primary_keyword', $primary_keyword);
+        smart_admin_log('کلمه کلیدی اصلی تنظیم شد: ' . $primary_keyword);
+    }
     
     if ($result) {
         smart_admin_log('کلمات کلیدی با موفقیت ذخیره شدند.');
@@ -220,7 +239,6 @@ function smart_admin_set_rank_math_focus_keyword($post_id, $keywords = array()) 
         return false;
     }
 }
-
 /**
  * استخراج هوشمند کلمات کلیدی با استفاده از هوش مصنوعی
  *
@@ -399,17 +417,54 @@ function smart_admin_check_and_set_keywords($post_id, $post, $update) {
  * @param string $content پاسخ دریافتی از هوش مصنوعی یا محتوای پست
  * @return array آرایه کلمات کلیدی
  */
+/**
+ * استخراج کلمات کلیدی از پاسخ هوش مصنوعی
+ * 
+ * @param string $content محتوای پاسخ هوش مصنوعی
+ * @return array آرایه کلمات کلیدی (کلید اول = کلمه کلیدی اصلی، بقیه = کلمات کلیدی فرعی)
+ */
 function smart_admin_extract_keywords_from_ai_response($content) {
+    smart_admin_log('شروع استخراج کلمات کلیدی از محتوا');
+    
+    // بررسی کلمه کلیدی اصلی صریح
+    $primary_keyword_patterns = array(
+        '/کلمه\s*کلیدی\s*اصلی\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
+        '/کلیدواژه\s*اصلی\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
+        '/primary\s*keyword\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
+        '/focus\s*keyword\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
+        '/main\s*keyword\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
+        '/موضوع\s*اصلی\s*[:]\s*(.*?)(?:[\.\n]|$)/i'
+    );
+    
+    $primary_keyword = '';
+    foreach ($primary_keyword_patterns as $pattern) {
+        if (preg_match($pattern, $content, $matches)) {
+            if (!empty($matches[1])) {
+                $primary_keyword = trim($matches[1]);
+                // حذف علامت‌های اضافی
+                $primary_keyword = trim($primary_keyword, '،,.؛:;!؟?()[]{}""\'');
+                if (!empty($primary_keyword)) {
+                    smart_admin_log('کلمه کلیدی اصلی یافت شد: ' . $primary_keyword);
+                    break;
+                }
+            }
+        }
+    }
+    
     // الگوهای مختلف برای یافتن کلمات کلیدی در پاسخ هوش مصنوعی
     $patterns = array(
         '/کلمات\s*کلیدی\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/کلیدواژه\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
+        '/کلیدواژه\s*ها\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
         '/keywords\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
         '/tags\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
         '/برچسب\s*ها\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
         '/تگ\s*ها\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/کلمات\s*کلیدی\s*[=]\s*(.*?)(?:[\.\n]|$)/i'
+        '/کلمات\s*کلیدی\s*[=]\s*(.*?)(?:[\.\n]|$)/i',
+        '/کلمات\s*کلیدی\s*فرعی\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
+        '/secondary\s*keywords\s*[:]\s*(.*?)(?:[\.\n]|$)/i'
     );
+    
+    $all_keywords = array();
     
     // تلاش برای یافتن کلمات کلیدی با الگوهای مشخص
     foreach ($patterns as $pattern) {
@@ -420,79 +475,152 @@ function smart_admin_extract_keywords_from_ai_response($content) {
                 $keywords = preg_split('/[,،]\s*/', trim($matches[1]));
                 
                 // پاکسازی و حذف کاماهای اضافی
-                $clean_keywords = array();
                 foreach ($keywords as $keyword) {
                     $keyword = trim($keyword);
                     // حذف کاما، نقطه و علامت‌های دیگر از انتها و ابتدای کلمه کلیدی
-                    $keyword = trim($keyword, '،,.؛:;!؟?');
-                    if (!empty($keyword)) {
-                        $clean_keywords[] = $keyword;
+                    $keyword = trim($keyword, '،,.؛:;!؟?()[]{}""\'');
+                    if (!empty($keyword) && !in_array($keyword, $all_keywords)) {
+                        $all_keywords[] = $keyword;
                     }
                 }
                 
-                if (!empty($clean_keywords)) {
-                    return $clean_keywords;
+                smart_admin_log('کلمات کلیدی یافت شده از الگو: ' . implode(', ', $all_keywords));
+            }
+        }
+    }
+    
+    // اگر کلمات کلیدی با الگوهای بالا پیدا نشد یا کافی نیست، تلاش کنیم از عنوان‌ها استخراج کنیم
+    if (count($all_keywords) < 3) {
+        $heading_patterns = array(
+            '/<h1[^>]*>(.*?)<\/h1>/i',
+            '/<h2[^>]*>(.*?)<\/h2>/i',
+            '/^#\s+(.*?)$/m',
+            '/^##\s+(.*?)$/m'
+        );
+        
+        $headings = array();
+        foreach ($heading_patterns as $pattern) {
+            preg_match_all($pattern, $content, $matches);
+            if (!empty($matches[1])) {
+                foreach ($matches[1] as $match) {
+                    $heading = trim(strip_tags($match));
+                    if (!empty($heading) && !in_array($heading, $all_keywords) && !in_array($heading, $headings)) {
+                        $headings[] = $heading;
+                    }
+                }
+            }
+        }
+        
+        // اگر عنوان‌ها پیدا شدند، از آنها به عنوان کلمات کلیدی استفاده کنیم
+        if (!empty($headings)) {
+            smart_admin_log('کلمات کلیدی از عناوین استخراج شدند: ' . implode(', ', $headings));
+            $all_keywords = array_merge($all_keywords, $headings);
+        }
+    }
+    
+    // استخراج کلمات کلیدی از عبارات مهم در متن
+    if (count($all_keywords) < 5) {
+        // جستجوی عبارات مهم با استفاده از الگوهای مختلف
+        $important_phrase_patterns = array(
+            '/(?:مهمترین|اصلی‌ترین|کلیدی‌ترین)\s+(.*?)(?:[\.،,\n]|$)/i',
+            '/(?:تفاوت|مقایسه)\s+(.*?)(?:[\.،,\n]|$)/i',
+            '/(?:چگونه|چطور)\s+(.*?)(?:[\.،,\n]|$)/i',
+            '/(?:بهترین|برترین)\s+(.*?)(?:[\.،,\n]|$)/i',
+            '/(?:آموزش|راهنمای)\s+(.*?)(?:[\.،,\n]|$)/i'
+        );
+        
+        foreach ($important_phrase_patterns as $pattern) {
+            preg_match_all($pattern, $content, $matches);
+            if (!empty($matches[1])) {
+                foreach ($matches[1] as $match) {
+                    $phrase = trim($match);
+                    if (!empty($phrase) && mb_strlen($phrase, 'UTF-8') > 3 && !in_array($phrase, $all_keywords)) {
+                        $all_keywords[] = $phrase;
+                    }
+                    
+                    // حداکثر 8 کلمه کلیدی
+                    if (count($all_keywords) >= 8) {
+                        break 2;
+                    }
                 }
             }
         }
     }
     
-    // اگر کلمات کلیدی با الگوهای بالا پیدا نشد، تلاش کنیم از عنوان‌ها استخراج کنیم
-    $heading_patterns = array(
-        '/<h1[^>]*>(.*?)<\/h1>/i',
-        '/<h2[^>]*>(.*?)<\/h2>/i',
-        '/^#\s+(.*?)$/m',
-        '/^##\s+(.*?)$/m'
-    );
-    
-    $headings = array();
-    foreach ($heading_patterns as $pattern) {
-        preg_match_all($pattern, $content, $matches);
-        if (!empty($matches[1])) {
-            foreach ($matches[1] as $match) {
-                $headings[] = trim(strip_tags($match));
-            }
-        }
-    }
-    
-    // اگر عنوان‌ها پیدا شدند، از آنها به عنوان کلمات کلیدی استفاده کنیم
-    if (!empty($headings)) {
-        // حداکثر 5 عنوان اول را به عنوان کلمات کلیدی استفاده کنیم
-        return array_slice($headings, 0, 5);
-    }
-    
-    // اگر هیچ کلمه کلیدی پیدا نشد، تلاش کنیم از پاراگراف اول استخراج کنیم
-    $paragraphs = preg_split('/\n\s*\n/', $content);
-    if (!empty($paragraphs[0])) {
-        $first_paragraph = $paragraphs[0];
-        // حذف علامت‌های HTML
-        $first_paragraph = strip_tags($first_paragraph);
-        
-        // استخراج کلمات مهم از پاراگراف اول (کلمات با طول بیشتر از 4 حرف)
-        $words = preg_split('/\s+/', $first_paragraph);
-        $important_words = array();
-        foreach ($words as $word) {
-            $word = trim($word);
-            // حذف علامت‌های نقطه‌گذاری
-            $word = trim($word, '،,.؛:;!؟?()[]{}""\'');
-            if (mb_strlen($word, 'UTF-8') > 4 && !in_array($word, $important_words)) {
-                $important_words[] = $word;
+    // اگر هنوز کلمات کلیدی کافی نداریم، از پاراگراف اول استخراج کنیم
+    if (count($all_keywords) < 3) {
+        $paragraphs = preg_split('/\n\s*\n/', $content);
+        if (!empty($paragraphs[0])) {
+            $first_paragraph = $paragraphs[0];
+            // حذف علامت‌های HTML
+            $first_paragraph = strip_tags($first_paragraph);
+            
+            // استخراج کلمات مهم از پاراگراف اول (کلمات با طول بیشتر از 4 حرف)
+            $words = preg_split('/\s+/', $first_paragraph);
+            $important_words = array();
+            
+            // کلمات بی‌اهمیت فارسی
+            $stop_words = array('و', 'در', 'به', 'از', 'که', 'این', 'را', 'با', 'است', 'برای', 'آن', 'یک', 'شما', 'خود', 'تا', 'های', 'می', 'شود', 'کند', 'هم', 'ما', 'اما', 'یا', 'اگر', 'نیز', 'ها', 'ای');
+            
+            foreach ($words as $word) {
+                $word = trim($word);
+                // حذف علامت‌های نقطه‌گذاری
+                $word = trim($word, '،,.؛:;!؟?()[]{}""\'');
+                if (mb_strlen($word, 'UTF-8') > 4 && !in_array($word, $important_words) && !in_array($word, $stop_words)) {
+                    $important_words[] = $word;
+                }
+                
+                // حداکثر 5 کلمه کلیدی از پاراگراف اول
+                if (count($important_words) >= 5) {
+                    break;
+                }
             }
             
-            // حداکثر 5 کلمه کلیدی
-            if (count($important_words) >= 5) {
-                break;
+            if (!empty($important_words)) {
+                smart_admin_log('کلمات کلیدی از پاراگراف اول استخراج شدند: ' . implode(', ', $important_words));
+                $all_keywords = array_merge($all_keywords, $important_words);
             }
-        }
-        
-        if (!empty($important_words)) {
-            return $important_words;
         }
     }
     
-    return array();
+    // حذف کلمات تکراری و محدود کردن تعداد
+    $all_keywords = array_unique($all_keywords);
+    $all_keywords = array_slice($all_keywords, 0, 8);
+    
+    // اگر کلمه کلیدی اصلی پیدا نشده، از اولین کلمه کلیدی استفاده کنیم
+    if (empty($primary_keyword) && !empty($all_keywords[0])) {
+        $primary_keyword = $all_keywords[0];
+        smart_admin_log('کلمه کلیدی اصلی از لیست کلمات کلیدی انتخاب شد: ' . $primary_keyword);
+    }
+    
+    // اگر کلمه کلیدی اصلی پیدا شده، آن را به ابتدای آرایه منتقل کنیم
+    if (!empty($primary_keyword)) {
+        // حذف کلمه کلیدی اصلی از آرایه اگر قبلاً وجود داشته
+        $key = array_search($primary_keyword, $all_keywords);
+        if ($key !== false) {
+            unset($all_keywords[$key]);
+        }
+        
+        // اضافه کردن کلمه کلیدی اصلی به ابتدای آرایه
+        array_unshift($all_keywords, $primary_keyword);
+    }
+    
+    // اطمینان از اینکه حداقل یک کلمه کلیدی داریم
+    if (empty($all_keywords)) {
+        // استخراج از عنوان صفحه یا URL
+        $url_parts = isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI']) : array('path' => '');
+        if (isset($url_parts['path'])) {
+            $path_parts = explode('/', trim($url_parts['path'], '/'));
+            $last_part = end($path_parts);
+            $all_keywords[] = str_replace('-', ' ', $last_part);
+        } else {
+            $all_keywords[] = 'محتوا';
+        }
+    }
+    
+    smart_admin_log('کلمات کلیدی نهایی: ' . implode(', ', $all_keywords));
+    return $all_keywords;
 }
-
 /**
  * بررسی اعتبار نانس و ثبت خطا
  * 
@@ -1019,275 +1147,4 @@ function smart_admin_rankmath_metabox_callback($post) {
     <?php
     
     echo '</div>';
-} /**
- * استخراج کلمات کلیدی از پاسخ هوش مصنوعی
- * 
- * @param string $content محتوای پاسخ هوش مصنوعی
- * @return array آرایه کلمات کلیدی (کلید اول = کلمه کلیدی اصلی، بقیه = کلمات کلیدی فرعی)
- */
-function smart_admin_extract_keywords_from_ai_response($content) {
-    smart_admin_log('شروع استخراج کلمات کلیدی از محتوا');
-    
-    // بررسی کلمه کلیدی اصلی صریح
-    $primary_keyword_patterns = array(
-        '/کلمه\s*کلیدی\s*اصلی\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/کلیدواژه\s*اصلی\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/primary\s*keyword\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/focus\s*keyword\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/main\s*keyword\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/موضوع\s*اصلی\s*[:]\s*(.*?)(?:[\.\n]|$)/i'
-    );
-    
-    $primary_keyword = '';
-    foreach ($primary_keyword_patterns as $pattern) {
-        if (preg_match($pattern, $content, $matches)) {
-            if (!empty($matches[1])) {
-                $primary_keyword = trim($matches[1]);
-                // حذف علامت‌های اضافی
-                $primary_keyword = trim($primary_keyword, '،,.؛:;!؟?()[]{}""\'');
-                if (!empty($primary_keyword)) {
-                    smart_admin_log('کلمه کلیدی اصلی یافت شد: ' . $primary_keyword);
-                    break;
-                }
-            }
-        }
-    }
-    
-    // الگوهای مختلف برای یافتن کلمات کلیدی در پاسخ هوش مصنوعی
-    $patterns = array(
-        '/کلمات\s*کلیدی\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/کلیدواژه\s*ها\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/keywords\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/tags\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/برچسب\s*ها\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/تگ\s*ها\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/کلمات\s*کلیدی\s*[=]\s*(.*?)(?:[\.\n]|$)/i',
-        '/کلمات\s*کلیدی\s*فرعی\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
-        '/secondary\s*keywords\s*[:]\s*(.*?)(?:[\.\n]|$)/i'
-    );
-    
-    $all_keywords = array();
-    
-    // تلاش برای یافتن کلمات کلیدی با الگوهای مشخص
-    foreach ($patterns as $pattern) {
-        if (preg_match($pattern, $content, $matches)) {
-            if (!empty($matches[1])) {
-                // تقسیم رشته کلمات کلیدی به آرایه
-                // پشتیبانی از کاما یا ویرگول فارسی
-                $keywords = preg_split('/[,،]\s*/', trim($matches[1]));
-                
-                // پاکسازی و حذف کاماهای اضافی
-                foreach ($keywords as $keyword) {
-                    $keyword = trim($keyword);
-                    // حذف کاما، نقطه و علامت‌های دیگر از انتها و ابتدای کلمه کلیدی
-                    $keyword = trim($keyword, '،,.؛:;!؟?()[]{}""\'');
-                    if (!empty($keyword) && !in_array($keyword, $all_keywords)) {
-                        $all_keywords[] = $keyword;
-                    }
-                }
-                
-                smart_admin_log('کلمات کلیدی یافت شده از الگو: ' . implode(', ', $all_keywords));
-            }
-        }
-    }
-    
-    // اگر کلمات کلیدی با الگوهای بالا پیدا نشد یا کافی نیست، تلاش کنیم از عنوان‌ها استخراج کنیم
-    if (count($all_keywords) < 3) {
-        $heading_patterns = array(
-            '/<h1[^>]*>(.*?)<\/h1>/i',
-            '/<h2[^>]*>(.*?)<\/h2>/i',
-            '/^#\s+(.*?)$/m',
-            '/^##\s+(.*?)$/m'
-        );
-        
-        $headings = array();
-        foreach ($heading_patterns as $pattern) {
-            preg_match_all($pattern, $content, $matches);
-            if (!empty($matches[1])) {
-                foreach ($matches[1] as $match) {
-                    $heading = trim(strip_tags($match));
-                    if (!empty($heading) && !in_array($heading, $all_keywords) && !in_array($heading, $headings)) {
-                        $headings[] = $heading;
-                    }
-                }
-            }
-        }
-        
-        // اگر عنوان‌ها پیدا شدند، از آنها به عنوان کلمات کلیدی استفاده کنیم
-        if (!empty($headings)) {
-            smart_admin_log('کلمات کلیدی از عناوین استخراج شدند: ' . implode(', ', $headings));
-            $all_keywords = array_merge($all_keywords, $headings);
-        }
-    }
-    
-    // استخراج کلمات کلیدی از عبارات مهم در متن
-    if (count($all_keywords) < 5) {
-        // جستجوی عبارات مهم با استفاده از الگوهای مختلف
-        $important_phrase_patterns = array(
-            '/(?:مهمترین|اصلی‌ترین|کلیدی‌ترین)\s+(.*?)(?:[\.،,\n]|$)/i',
-            '/(?:تفاوت|مقایسه)\s+(.*?)(?:[\.،,\n]|$)/i',
-            '/(?:چگونه|چطور)\s+(.*?)(?:[\.،,\n]|$)/i',
-            '/(?:بهترین|برترین)\s+(.*?)(?:[\.،,\n]|$)/i',
-            '/(?:آموزش|راهنمای)\s+(.*?)(?:[\.،,\n]|$)/i'
-        );
-        
-        foreach ($important_phrase_patterns as $pattern) {
-            preg_match_all($pattern, $content, $matches);
-            if (!empty($matches[1])) {
-                foreach ($matches[1] as $match) {
-                    $phrase = trim($match);
-                    if (!empty($phrase) && mb_strlen($phrase, 'UTF-8') > 3 && !in_array($phrase, $all_keywords)) {
-                        $all_keywords[] = $phrase;
-                    }
-                    
-                    // حداکثر 8 کلمه کلیدی
-                    if (count($all_keywords) >= 8) {
-                        break 2;
-                    }
-                }
-            }
-        }
-    }
-    
-    // اگر هنوز کلمات کلیدی کافی نداریم، از پاراگراف اول استخراج کنیم
-    if (count($all_keywords) < 3) {
-        $paragraphs = preg_split('/\n\s*\n/', $content);
-        if (!empty($paragraphs[0])) {
-            $first_paragraph = $paragraphs[0];
-            // حذف علامت‌های HTML
-            $first_paragraph = strip_tags($first_paragraph);
-            
-            // استخراج کلمات مهم از پاراگراف اول (کلمات با طول بیشتر از 4 حرف)
-            $words = preg_split('/\s+/', $first_paragraph);
-            $important_words = array();
-            
-            // کلمات بی‌اهمیت فارسی
-            $stop_words = array('و', 'در', 'به', 'از', 'که', 'این', 'را', 'با', 'است', 'برای', 'آن', 'یک', 'شما', 'خود', 'تا', 'های', 'می', 'شود', 'کند', 'هم', 'ما', 'اما', 'یا', 'اگر', 'نیز', 'ها', 'ای');
-            
-            foreach ($words as $word) {
-                $word = trim($word);
-                // حذف علامت‌های نقطه‌گذاری
-                $word = trim($word, '،,.؛:;!؟?()[]{}""\'');
-                if (mb_strlen($word, 'UTF-8') > 4 && !in_array($word, $important_words) && !in_array($word, $stop_words)) {
-                    $important_words[] = $word;
-                }
-                
-                // حداکثر 5 کلمه کلیدی از پاراگراف اول
-                if (count($important_words) >= 5) {
-                    break;
-                }
-            }
-            
-            if (!empty($important_words)) {
-                smart_admin_log('کلمات کلیدی از پاراگراف اول استخراج شدند: ' . implode(', ', $important_words));
-                $all_keywords = array_merge($all_keywords, $important_words);
-            }
-        }
-    }
-    
-    // حذف کلمات تکراری و محدود کردن تعداد
-    $all_keywords = array_unique($all_keywords);
-    $all_keywords = array_slice($all_keywords, 0, 8);
-    
-    // اگر کلمه کلیدی اصلی پیدا نشده، از اولین کلمه کلیدی استفاده کنیم
-    if (empty($primary_keyword) && !empty($all_keywords[0])) {
-        $primary_keyword = $all_keywords[0];
-        smart_admin_log('کلمه کلیدی اصلی از لیست کلمات کلیدی انتخاب شد: ' . $primary_keyword);
-    }
-    
-    // اگر کلمه کلیدی اصلی پیدا شده، آن را به ابتدای آرایه منتقل کنیم
-    if (!empty($primary_keyword)) {
-        // حذف کلمه کلیدی اصلی از آرایه اگر قبلاً وجود داشته
-        $key = array_search($primary_keyword, $all_keywords);
-        if ($key !== false) {
-            unset($all_keywords[$key]);
-        }
-        
-        // اضافه کردن کلمه کلیدی اصلی به ابتدای آرایه
-        array_unshift($all_keywords, $primary_keyword);
-    }
-    
-    // اطمینان از اینکه حداقل یک کلمه کلیدی داریم
-    if (empty($all_keywords)) {
-        // استخراج از عنوان صفحه یا URL
-        $url_parts = parse_url($_SERVER['REQUEST_URI']);
-        $path_parts = explode('/', trim($url_parts['path'], '/'));
-        $last_part = end($path_parts);
-        $all_keywords[] = str_replace('-', ' ', $last_part);
-    }
-    
-    smart_admin_log('کلمات کلیدی نهایی: ' . implode(', ', $all_keywords));
-    return $all_keywords;
-}/**
- * تنظیم کلمات کلیدی اصلی Rank Math بعد از ذخیره پست توسط ادمین هوشمند
- * 
- * @param int $post_id شناسه پست ایجاد شده
- * @param array $keywords آرایه کلمات کلیدی
- * @return bool نتیجه عملیات
- */
-function smart_admin_set_rank_math_focus_keyword($post_id, $keywords = array()) {
-    // بررسی وجود افزونه Rank Math
-    if (!function_exists('rank_math')) {
-        smart_admin_log('افزونه Rank Math فعال نیست.');
-        return false;
-    }
-    
-    // گرفتن اطلاعات پست
-    $post = get_post($post_id);
-    if (!$post) {
-        smart_admin_log('پست با شناسه ' . $post_id . ' پیدا نشد.');
-        return false;
-    }
-    
-    smart_admin_log('در حال تنظیم کلمات کلیدی برای پست ' . $post_id . ' با عنوان "' . $post->post_title . '"');
-    
-    // تلاش برای استخراج کلمات کلیدی از محتوای پست
-    $clean_keywords = array();
-    
-    if (!empty($post->post_content)) {
-        // استخراج کلمات کلیدی از محتوا با استفاده از تابع استخراج کلمات کلیدی از هوش مصنوعی
-        if (function_exists('smart_admin_extract_keywords_from_ai_response')) {
-            $clean_keywords = smart_admin_extract_keywords_from_ai_response($post->post_content);
-            smart_admin_log('تلاش برای استخراج کلمات کلیدی از محتوای پست');
-            
-            // اگر کلمات کلیدی استخراج شدند، آنها را نمایش دهیم
-            if (!empty($clean_keywords)) {
-                smart_admin_log('کلمات کلیدی استخراج شده: ' . implode(', ', $clean_keywords));
-            }
-        }
-    }
-    
-    // اگر کلمات کلیدی استخراج نشد، از عنوان پست استفاده کن
-    if (empty($clean_keywords) && !empty($post->post_title)) {
-        $clean_keywords = array($post->post_title);
-        smart_admin_log('استفاده از عنوان پست به عنوان کلمه کلیدی به دلیل عدم استخراج کلمات کلیدی از محتوا');
-    }
-    
-    // تبدیل آرایه کلمات کلیدی به رشته با جداکننده کاما
-    $keywords_string = implode(',', $clean_keywords);
-    
-    smart_admin_log('رشته کلمات کلیدی برای ذخیره: ' . str_replace(',', '|', $keywords_string));
-    
-    // ذخیره با متد استاندارد وردپرس
-    delete_post_meta($post_id, 'rank_math_focus_keyword');
-    $result = update_post_meta($post_id, 'rank_math_focus_keyword', $keywords_string);
-    
-    // تنظیم کلمه کلیدی اصلی به طور جداگانه برای اطمینان از استفاده در URL و توضیحات متا
-    if (!empty($clean_keywords[0])) {
-        $primary_keyword = $clean_keywords[0];
-        update_post_meta($post_id, 'rank_math_primary_keyword', $primary_keyword);
-        smart_admin_log('کلمه کلیدی اصلی تنظیم شد: ' . $primary_keyword);
-    }
-    
-    if ($result) {
-        smart_admin_log('کلمات کلیدی با موفقیت ذخیره شدند.');
-        
-        // تنظیم یک متا فیلد اضافی برای ردیابی
-        update_post_meta($post_id, 'smart_admin_keywords_set', 'yes');
-        update_post_meta($post_id, 'smart_admin_keywords_time', current_time('mysql'));
-        return true;
-    } else {
-        smart_admin_log('خطا: کلمات کلیدی ذخیره نشدند.');
-        return false;
-    }
 }
