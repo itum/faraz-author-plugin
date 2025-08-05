@@ -1295,15 +1295,156 @@ function smart_admin_page() {
                 <div class="form-group">
                     <label for="default_model">مدل پیش‌فرض:</label>
                     <select id="default_model" name="smart_admin_model">
-                        <option value="gpt-4o" <?php selected(get_option('smart_admin_model'), 'gpt-4o'); ?>>GPT-4o - مدل پیشرفته OpenAI با قابلیت‌های چندمنظوره</option>
-                        <option value="claude-3-7-sonnet-20250219" <?php selected(get_option('smart_admin_model'), 'claude-3-7-sonnet-20250219'); ?>>Claude 3.7 Sonnet - مدل متعادل Anthropic با کارایی بالا</option>
-                        <option value="gemini-2.0-flash" <?php selected(get_option('smart_admin_model'), 'gemini-2.0-flash'); ?>>Gemini 2.0 Flash - مدل ارزان و به‌صرفه Google با کارایی بالا</option>
-                        <option value="deepseek-chat" <?php selected(get_option('smart_admin_model'), 'deepseek-chat'); ?>>DeepSeek Chat - مدل چت هوشمند DeepSeek با تمرکز بر مکالمات طبیعی</option>
+                        <optgroup label="OpenAI">
+                            <option value="gpt-4o" <?php selected(get_option('smart_admin_model'), 'gpt-4o'); ?>>GPT-4o - مدل پیشرفته OpenAI با قابلیت‌های چندمنظوره</option>
+                        </optgroup>
+                        
+                        <optgroup label="Anthropic">
+                            <option value="claude-opus-4-20250514" <?php selected(get_option('smart_admin_model'), 'claude-opus-4-20250514'); ?>>Claude Opus 4 - مدل پیشرفته Anthropic با قابلیت‌های فوق‌العاده</option>
+                            <option value="claude-sonnet-4-20250514" <?php selected(get_option('smart_admin_model'), 'claude-sonnet-4-20250514'); ?>>Claude Sonnet 4 - مدل متعادل Anthropic با کارایی بالا</option>
+                            <option value="claude-3-7-sonnet-20250219" <?php selected(get_option('smart_admin_model'), 'claude-3-7-sonnet-20250219'); ?>>Claude 3.7 Sonnet - مدل متعادل Anthropic با کارایی بالا</option>
+                            <option value="claude-3-7-sonnet-20250219-thinking" <?php selected(get_option('smart_admin_model'), 'claude-3-7-sonnet-20250219-thinking'); ?>>Claude 3.7 Sonnet Thinking - مدل با قابلیت تفکر عمیق</option>
+                            <option value="claude-3-5-haiku-20241022" <?php selected(get_option('smart_admin_model'), 'claude-3-5-haiku-20241022'); ?>>Claude 3.5 Haiku - مدل سریع و به‌صرفه Anthropic</option>
+                        </optgroup>
+                        
+                        <optgroup label="Google">
+                            <option value="gemini-2.0-flash" <?php selected(get_option('smart_admin_model'), 'gemini-2.0-flash'); ?>>Gemini 2.0 Flash - مدل ارزان و به‌صرفه Google</option>
+                            <option value="gemini-2.0-flash-preview-image-generation" <?php selected(get_option('smart_admin_model'), 'gemini-2.0-flash-preview-image-generation'); ?>>Gemini 2.0 Flash Preview - مدل با قابلیت تولید تصویر</option>
+                            <option value="gemini-2.0-flash-lite-001" <?php selected(get_option('smart_admin_model'), 'gemini-2.0-flash-lite-001'); ?>>Gemini 2.0 Flash Lite - مدل سبک و سریع</option>
+                            <option value="gemini-2.0-flash-lite-preview" <?php selected(get_option('smart_admin_model'), 'gemini-2.0-flash-lite-preview'); ?>>Gemini 2.0 Flash Lite Preview - نسخه پیش‌نمایش</option>
+                            <option value="gemini-2.0-flash-live-001" <?php selected(get_option('smart_admin_model'), 'gemini-2.0-flash-live-001'); ?>>Gemini 2.0 Flash Live - مدل زنده و به‌روز</option>
+                            <option value="gemini-2.5-flash-preview-native-audio-dialog" <?php selected(get_option('smart_admin_model'), 'gemini-2.5-flash-preview-native-audio-dialog'); ?>>Gemini 2.5 Flash - مدل با قابلیت صوتی</option>
+                            <option value="gemini-2.5-flash" <?php selected(get_option('smart_admin_model'), 'gemini-2.5-flash'); ?>>Gemini 2.5 Flash - مدل پیشرفته</option>
+                            <option value="gemini-1.5-pro" <?php selected(get_option('smart_admin_model'), 'gemini-1.5-pro'); ?>>Gemini 1.5 Pro - مدل حرفه‌ای</option>
+                        </optgroup>
+                        
+                        <optgroup label="DeepSeek">
+                            <option value="deepseek-chat" <?php selected(get_option('smart_admin_model'), 'deepseek-chat'); ?>>DeepSeek Chat - مدل چت هوشمند</option>
+                            <option value="deepseek-reasoner" <?php selected(get_option('smart_admin_model'), 'deepseek-reasoner'); ?>>DeepSeek Reasoner - مدل با قابلیت استدلال</option>
+                        </optgroup>
+                        
+                        <optgroup label="Alibaba">
+                            <option value="qwen3-coder-480b-a35b-instruct" <?php selected(get_option('smart_admin_model'), 'qwen3-coder-480b-a35b-instruct'); ?>>Qwen3 Coder - مدل تخصصی برنامه‌نویسی</option>
+                            <option value="qwen3-235b-a22b" <?php selected(get_option('smart_admin_model'), 'qwen3-235b-a22b'); ?>>Qwen3 235B - مدل بزرگ و قدرتمند</option>
+                        </optgroup>
                     </select>
                 </div>
                 
                 <?php submit_button('ذخیره تنظیمات', 'submit-button', 'submit', false); ?>
             </form>
+            
+            <hr>
+            <h3>اطلاعات قیمت‌گذاری مدل‌ها</h3>
+            <p>جدول زیر قیمت‌های تقریبی برای ۱ میلیون توکن را نشان می‌دهد:</p>
+            
+            <div class="model-pricing-table">
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th>ارائه‌دهنده</th>
+                            <th>مدل</th>
+                            <th>قیمت ورودی (هر ۱M توکن)</th>
+                            <th>قیمت خروجی (هر ۱M توکن)</th>
+                            <th>نوع</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>OpenAI</strong></td>
+                            <td>GPT-4o</td>
+                            <td>$5.00</td>
+                            <td>$15.00</td>
+                            <td>پیشرفته</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Anthropic</strong></td>
+                            <td>Claude Opus 4</td>
+                            <td>$15.00</td>
+                            <td>$75.00</td>
+                            <td>فوق‌العاده</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Anthropic</strong></td>
+                            <td>Claude Sonnet 4</td>
+                            <td>$3.00</td>
+                            <td>$15.00</td>
+                            <td>متعادل</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Anthropic</strong></td>
+                            <td>Claude 3.7 Sonnet</td>
+                            <td>$3.00</td>
+                            <td>$15.00</td>
+                            <td>متعادل</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Anthropic</strong></td>
+                            <td>Claude 3.5 Haiku</td>
+                            <td>$1.00</td>
+                            <td>$5.00</td>
+                            <td>سریع</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Google</strong></td>
+                            <td>Gemini 2.0 Flash</td>
+                            <td>$0.07</td>
+                            <td>$0.30</td>
+                            <td>به‌صرفه</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Google</strong></td>
+                            <td>Gemini 2.5 Flash</td>
+                            <td>$0.30</td>
+                            <td>$2.50</td>
+                            <td>پیشرفته</td>
+                        </tr>
+                        <tr>
+                            <td><strong>DeepSeek</strong></td>
+                            <td>DeepSeek Chat</td>
+                            <td>$0.27</td>
+                            <td>$1.08</td>
+                            <td>متعادل</td>
+                        </tr>
+                        <tr>
+                            <td><strong>DeepSeek</strong></td>
+                            <td>DeepSeek Reasoner</td>
+                            <td>$0.55</td>
+                            <td>$2.20</td>
+                            <td>استدلالی</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Alibaba</strong></td>
+                            <td>Qwen3 Coder</td>
+                            <td>$3.00</td>
+                            <td>$12.00</td>
+                            <td>برنامه‌نویسی</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Alibaba</strong></td>
+                            <td>Qwen3 235B</td>
+                            <td>$0.16</td>
+                            <td>$0.48</td>
+                            <td>به‌صرفه</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <style>
+                .model-pricing-table {
+                    margin-top: 20px;
+                }
+                .model-pricing-table table {
+                    font-size: 13px;
+                }
+                .model-pricing-table th {
+                    background-color: #f1f1f1;
+                    font-weight: bold;
+                }
+                .model-pricing-table td {
+                    padding: 8px;
+                }
+            </style>
         </div>
         
         <?php
