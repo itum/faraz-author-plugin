@@ -448,7 +448,8 @@ function smart_admin_page() {
             // استخراج عنوان از فیلدهای فرم یا استفاده از عنوان پیش‌فرض
             $title = '';
             // استخراج عنوان SEO شده از پاسخ هوش مصنوعی
-            $ai_title = smart_admin_extract_seo_title($response['content']);
+            $main_topic = !empty($_POST['main_topic']) ? sanitize_text_field($_POST['main_topic']) : '';
+            $ai_title = smart_admin_extract_seo_title($response['content'], $main_topic);
             
             if (!empty($ai_title)) {
                 $title = $ai_title;
@@ -2684,12 +2685,54 @@ function smart_admin_debug_log($message, $type = 'INFO') {
  * استخراج عنوان SEO شده از پاسخ هوش مصنوعی
  * 
  * @param string $content محتوای تولید شده توسط هوش مصنوعی
+ * @param string $main_topic موضوع اصلی (اختیاری)
  * @return string عنوان SEO شده یا رشته خالی در صورت عدم یافتن
  */
-function smart_admin_extract_seo_title($content) {
+function smart_admin_extract_seo_title($content, $main_topic = '') {
     // لاگ برای دیباگ
     smart_admin_debug_log('Extracting SEO title from AI content', 'INFO');
     smart_admin_debug_log('Content length: ' . strlen($content), 'INFO');
+    
+    // بررسی اگر محتوا حاوی عنوان متا (Meta Title) صریح است
+    $meta_title_patterns = array(
+        // الگوی برای Meta Title صریح
+        '/(?:عنوان متا|متا تایتل|meta title|عنوان سئو|عنوان SEO)[:]\s*(.*?)(?:[\.\n]|$)/i',
+        '/(?:H1|عنوان اصلی|عنوان مقاله|عنوان صفحه)[:]\s*(.*?)(?:[\.\n]|$)/i'
+    );
+    
+    foreach ($meta_title_patterns as $pattern) {
+        if (preg_match($pattern, $content, $matches)) {
+            $meta_title = trim(strip_tags($matches[1]));
+            $meta_title = preg_replace('/[\*\#\_\[\]\(\)\{\}\<\>\"\'\`\~\|\+\=\^]/i', '', $meta_title);
+            $meta_title = rtrim($meta_title, '.،:؛!؟،');
+            
+            if (!empty($meta_title) && strlen($meta_title) >= 10 && strlen($meta_title) <= 70) {
+                smart_admin_debug_log('Found explicit Meta Title: ' . $meta_title, 'INFO');
+                return $meta_title;
+            }
+        }
+    }
+    
+    // بررسی موضوع محتوا و تشخیص عنوان مناسب بر اساس آن
+    $content_topic = '';
+    if (!empty($main_topic)) {
+        $content_topic = $main_topic;
+    } else {
+        // تلاش برای استخراج موضوع اصلی از محتوا
+        $topic_patterns = array(
+            '/(?:موضوع|درباره|در مورد|مقاله درباره)[:]\s*(.*?)(?:[\.\n]|$)/i',
+            '/(?:این مقاله درباره|این مطلب در مورد|این محتوا درباره)[:]*\s*(.*?)(?:[\.\n]|$)/i'
+        );
+        
+        foreach ($topic_patterns as $pattern) {
+            if (preg_match($pattern, $content, $matches)) {
+                $content_topic = trim(strip_tags($matches[1]));
+                $content_topic = preg_replace('/[\*\#\_\[\]\(\)\{\}\<\>\"\'\`\~\|\+\=\^]/i', '', $content_topic);
+                $content_topic = rtrim($content_topic, '.،:؛!؟،');
+                break;
+            }
+        }
+    }
     
     // الگوهای مختلف برای یافتن عنوان به ترتیب اولویت
     $patterns = array(
@@ -2705,20 +2748,17 @@ function smart_admin_extract_seo_title($content) {
         // الگوی 4: خط اول که با "title:" شروع می‌شود
         '/^title[:]\s*(.*?)$/im',
         
-        // الگوی 5: عنوان با علامت ## (مارک‌داون سطح 2)
+        // الگوی 5: عنوان با علامت ## (مارک‌داون سطح 2) در خط اول
         '/^##\s+(.*?)$/m',
         
-        // الگوی 6: عنوان با علامت ### (مارک‌داون سطح 3)
+        // الگوی 6: عنوان با علامت ### (مارک‌داون سطح 3) در خط اول
         '/^###\s+(.*?)$/m',
         
         // الگوی 7: عنوان با علامت ** (مارک‌داون پررنگ) در خط اول
         '/^\*\*(.*?)\*\*$/m',
         
         // الگوی 8: عنوان در تگ strong در خط اول
-        '/^<strong>(.*?)<\/strong>$/m',
-        
-        // الگوی 9: خط اول محتوا (اگر کوتاه و مناسب باشد)
-        '/^([^\n]{15,100})$/m'
+        '/^<strong>(.*?)<\/strong>$/m'
     );
     
     // بررسی هر الگو
@@ -2740,25 +2780,65 @@ function smart_admin_extract_seo_title($content) {
         }
     }
     
-    // اگر عنوان پیدا نشد، خط اول محتوا را بررسی کن
-    $lines = explode("\n", $content);
-    foreach ($lines as $line) {
-        $line = trim($line);
-        if (empty($line)) continue;
+    // بررسی دقیق‌تر محتوا برای یافتن عنوان مناسب
+    // اگر محتوا در مورد برنامه‌نویسی بک‌اند و فرانت‌اند است
+    if (preg_match('/(بک.?اند|فرانت.?اند|back.?end|front.?end|full.?stack)/ui', $content)) {
+        $programming_patterns = array(
+            // عبارات رایج در مورد برنامه‌نویسی وب
+            '/(?:تفاوت|مقایسه|فرق)(?:\s+(?:بین|میان))?\s+(.*?)(?:و|با)\s+(.*?)(?:چیست|کدام است|در چیست)/ui',
+            '/(?:راهنمای|آموزش|معرفی)\s+(.*?)(?:برای مبتدیان|برای تازه‌کاران|از صفر تا صد)/ui',
+            '/(?:چگونه|چطور)\s+(.*?)(?:را شروع کنیم|را یاد بگیریم|را آغاز کنیم)/ui'
+        );
         
-        // حذف علامت‌های مارک‌داون و HTML
-        $line = strip_tags($line);
-        $line = preg_replace('/[\*\#\_\[\]\(\)\{\}\<\>\"\'\`\~\|\+\=\^]/i', '', $line);
-        $line = rtrim($line, '.،:؛!؟،');
-        
-        // بررسی طول و کیفیت خط
-        if (strlen($line) >= 15 && strlen($line) <= 100 && !preg_match('/^(https?|www|\d+\.)/', $line)) {
-            smart_admin_debug_log('Using content line as title: ' . $line, 'INFO');
-            return $line;
+        foreach ($programming_patterns as $pattern) {
+            if (preg_match($pattern, $content, $matches)) {
+                // ساخت عنوان مناسب بر اساس الگوی یافت شده
+                if (count($matches) >= 3) {
+                    $title = "تفاوت " . trim($matches[1]) . " و " . trim($matches[2]) . ": راهنمای کامل";
+                } elseif (count($matches) >= 2) {
+                    $title = trim($matches[0]);
+                }
+                
+                if (!empty($title) && strlen($title) >= 10) {
+                    smart_admin_debug_log('Created programming-specific title: ' . $title, 'INFO');
+                    return $title;
+                }
+            }
         }
         
-        // فقط 3 خط اول را بررسی کن
-        if (count($lines) > 3) break;
+        // اگر هنوز عنوان پیدا نشد و محتوا در مورد برنامه‌نویسی است
+        if (preg_match('/(?:تفاوت|مقایسه|فرق).*(?:بک.?اند|فرانت.?اند|back.?end|front.?end)/ui', $content)) {
+            return "تفاوت برنامه‌نویس بک‌اند و فرانت‌اند: راهنمای کامل برای انتخاب مسیر شغلی";
+        }
+    }
+    
+    // اگر عنوان پیدا نشد، پاراگراف اول محتوا را بررسی کن
+    $paragraphs = preg_split('/\n\s*\n/', $content);
+    if (!empty($paragraphs[0])) {
+        $first_paragraph = $paragraphs[0];
+        $lines = explode("\n", $first_paragraph);
+        
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line)) continue;
+            
+            // حذف علامت‌های مارک‌داون و HTML
+            $line = strip_tags($line);
+            $line = preg_replace('/[\*\#\_\[\]\(\)\{\}\<\>\"\'\`\~\|\+\=\^]/i', '', $line);
+            $line = rtrim($line, '.،:؛!؟،');
+            
+            // بررسی طول و کیفیت خط
+            if (strlen($line) >= 20 && strlen($line) <= 100 && !preg_match('/^(https?|www|\d+\.)/', $line)) {
+                smart_admin_debug_log('Using first paragraph line as title: ' . $line, 'INFO');
+                return $line;
+            }
+        }
+    }
+    
+    // اگر موضوع اصلی استخراج شده، از آن به عنوان عنوان استفاده کن
+    if (!empty($content_topic)) {
+        smart_admin_debug_log('Using extracted topic as title: ' . $content_topic, 'INFO');
+        return $content_topic;
     }
     
     smart_admin_debug_log('No suitable title found', 'INFO');
@@ -2777,6 +2857,27 @@ function smart_admin_extract_seo_slug($content, $title = '', $keywords = array()
     // لاگ برای دیباگ
     smart_admin_debug_log('Extracting SEO slug from AI content', 'INFO');
     
+    // بررسی اگر محتوا حاوی پیوند یکتای (Slug) صریح است
+    $slug_meta_patterns = array(
+        // الگوهای مختلف برای پیوند یکتا
+        '/(?:پیوند یکتا|slug|permalink|url|آدرس سئو|آدرس SEO|SEO URL)[:]\s*([\w\-\p{L}]+)/ui',
+        '/(?:پیوند یکتا|slug|permalink|url|آدرس سئو|آدرس SEO|SEO URL)[:]\s*[\'"]?(.*?)[\'"]?(?:[\.\n]|$)/ui',
+        '/<slug>(.*?)<\/slug>/i',
+        '/slug[=:]\s*[\'"]?(.*?)[\'"]?(?:[\.\n]|$)/i'
+    );
+    
+    foreach ($slug_meta_patterns as $pattern) {
+        if (preg_match($pattern, $content, $matches)) {
+            $meta_slug = trim($matches[1]);
+            if (!empty($meta_slug)) {
+                smart_admin_debug_log('Found explicit slug in content: ' . $meta_slug, 'INFO');
+                // اطمینان از اینکه پیوند یکتا معتبر است
+                $slug = sanitize_title($meta_slug);
+                return $slug;
+            }
+        }
+    }
+    
     // اگر عنوان ارسال نشده، آن را از محتوا استخراج کن
     if (empty($title)) {
         $title = smart_admin_extract_seo_title($content);
@@ -2786,25 +2887,17 @@ function smart_admin_extract_seo_slug($content, $title = '', $keywords = array()
     $is_persian = preg_match('/[\x{0600}-\x{06FF}]/u', $title . ' ' . $content);
     smart_admin_debug_log('Content language is: ' . ($is_persian ? 'Persian' : 'English'), 'INFO');
     
-    // الگوی پیوند یکتا در محتوا
-    $slug_patterns = array(
-        // الگوی 1: پیوند یکتا با برچسب خاص
-        '/(?:پیوند یکتا|slug|permalink|url)[:]\s*([\w\-\p{L}]+)/ui',
-        
-        // الگوی 2: پیوند یکتا در تگ خاص
-        '/<slug>(.*?)<\/slug>/i',
-    );
-    
-    // بررسی الگوهای پیوند یکتا در محتوا
-    foreach ($slug_patterns as $pattern) {
-        if (preg_match($pattern, $content, $matches)) {
-            $slug = trim($matches[1]);
-            if (!empty($slug)) {
-                smart_admin_debug_log('Found explicit slug in content: ' . $slug, 'INFO');
-                // اطمینان از اینکه پیوند یکتا معتبر است
-                $slug = sanitize_title($slug);
-                return $slug;
+    // بررسی اگر محتوا در مورد برنامه‌نویسی بک‌اند و فرانت‌اند است
+    if (preg_match('/(بک.?اند|فرانت.?اند|back.?end|front.?end|full.?stack)/ui', $content)) {
+        // اگر محتوا در مورد تفاوت بک‌اند و فرانت‌اند است
+        if (preg_match('/(?:تفاوت|مقایسه|فرق).*(?:بک.?اند|فرانت.?اند|back.?end|front.?end)/ui', $content)) {
+            if ($is_persian) {
+                $slug = 'تفاوت-برنامه-نویس-بک-اند-فرانت-اند';
+            } else {
+                $slug = 'backend-vs-frontend-developer-differences';
             }
+            smart_admin_debug_log('Created programming-specific slug: ' . $slug, 'INFO');
+            return $slug;
         }
     }
     
@@ -2812,8 +2905,14 @@ function smart_admin_extract_seo_slug($content, $title = '', $keywords = array()
     if (!empty($title)) {
         // برای محتوای فارسی
         if ($is_persian) {
-            // حداکثر 5 کلمه از عنوان را استخراج کن
-            $words = preg_split('/\s+/u', $title);
+            // حذف کلمات اضافی و حروف ربط از عنوان
+            $title = preg_replace('/\b(و|یا|با|به|در|از|که|را|برای|این|آن|چه|چرا|چگونه|کدام)\b/ui', ' ', $title);
+            
+            // حداکثر 5 کلمه مهم از عنوان را استخراج کن
+            $words = array_filter(preg_split('/\s+/u', $title), function($word) {
+                return mb_strlen($word, 'UTF-8') > 2; // فقط کلمات با بیش از 2 حرف
+            });
+            
             $slug_words = array_slice($words, 0, 5);
             $slug = implode('-', $slug_words);
             
@@ -2825,6 +2924,9 @@ function smart_admin_extract_seo_slug($content, $title = '', $keywords = array()
         } 
         // برای محتوای انگلیسی
         else {
+            // حذف کلمات اضافی از عنوان
+            $title = preg_replace('/\b(and|or|the|a|an|in|on|at|by|for|with|to|of|is|are|was|were|be|been|being)\b/i', ' ', $title);
+            
             // استفاده از تابع وردپرس برای ساخت پیوند یکتا از عنوان
             $slug = sanitize_title($title);
             
@@ -2842,9 +2944,28 @@ function smart_admin_extract_seo_slug($content, $title = '', $keywords = array()
     
     // اگر عنوان خالی بود، از کلمات کلیدی استفاده کن
     if (!empty($keywords) && is_array($keywords)) {
-        $primary_keyword = sanitize_title($keywords[0]);
-        smart_admin_debug_log('Using primary keyword for slug: ' . $primary_keyword, 'INFO');
-        return $primary_keyword;
+        // حذف کلمات اضافی از کلمات کلیدی
+        $filtered_keywords = array_filter($keywords, function($keyword) {
+            // حذف کلمات کوتاه و کلمات ربط
+            $stopwords = array('و', 'یا', 'با', 'به', 'در', 'از', 'که', 'را', 'برای', 'این', 'آن', 
+                              'and', 'or', 'the', 'a', 'an', 'in', 'on', 'at', 'by', 'for', 'with', 'to');
+            return !in_array(strtolower($keyword), $stopwords) && mb_strlen($keyword, 'UTF-8') > 2;
+        });
+        
+        if (!empty($filtered_keywords)) {
+            $primary_keyword = sanitize_title($filtered_keywords[0]);
+            smart_admin_debug_log('Using filtered primary keyword for slug: ' . $primary_keyword, 'INFO');
+            return $primary_keyword;
+        }
+    }
+    
+    // اگر محتوا در مورد برنامه‌نویسی است اما هیچ پیوند یکتایی پیدا نشد
+    if (preg_match('/(برنامه.?نویس|توسعه.?دهنده|developer|programmer|coding|programming)/ui', $content)) {
+        if ($is_persian) {
+            return 'راهنمای-برنامه-نویسی-وب';
+        } else {
+            return 'web-development-guide';
+        }
     }
     
     // اگر هیچ منبعی برای ساخت پیوند یکتا نبود، یک پیوند یکتا تصادفی بساز

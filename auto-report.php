@@ -241,7 +241,7 @@ function faraz_auto_report_page() {
                 // استخراج عنوان SEO شده از محتوای گزارش
                 $ai_title = '';
                 if (function_exists('smart_admin_extract_seo_title')) {
-                    $ai_title = smart_admin_extract_seo_title($report_content);
+                    $ai_title = smart_admin_extract_seo_title($report_content, $subject);
                     faraz_auto_report_log("استخراج عنوان SEO شده: " . ($ai_title ? $ai_title : 'عنوان مناسب یافت نشد'));
                 }
                 

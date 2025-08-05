@@ -283,7 +283,7 @@ function smart_admin_generate_and_send_articles() {
             
             // استفاده از تابع استخراج عنوان SEO شده
             if (function_exists('smart_admin_extract_seo_title')) {
-                $ai_title = smart_admin_extract_seo_title($content);
+                $ai_title = smart_admin_extract_seo_title($content, $random_keyword);
                 if (!empty($ai_title)) {
                     $title = $ai_title;
                     error_log("Smart Admin Scheduler: Using SEO title extracted from AI content: {$title}");
