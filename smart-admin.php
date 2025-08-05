@@ -1107,6 +1107,51 @@ function smart_admin_page() {
                         <h3>پاسخ هوش مصنوعی:</h3>
                         <div id="ai-response-content"><?php echo nl2br(esc_html($response['content'])); ?></div>
                         
+                        <?php if (isset($response['generated_image'])): ?>
+                            <div class="generated-image-container">
+                                <h4>تصویر تولید شده:</h4>
+                                <div class="generated-image">
+                                    <img src="<?php echo esc_url($response['generated_image']['image_url']); ?>" alt="تصویر تولید شده" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                                    <div class="image-info">
+                                        <p><strong>پرامپت تصویر:</strong> <?php echo esc_html($response['generated_image']['prompt']); ?></p>
+                                        <button type="button" class="button button-secondary" onclick="downloadImage('<?php echo esc_url($response['generated_image']['image_url']); ?>', 'generated-image')">دانلود تصویر</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <style>
+                                .generated-image-container {
+                                    margin-top: 20px;
+                                    padding: 15px;
+                                    background: #f9f9f9;
+                                    border-radius: 8px;
+                                    border-left: 4px solid #0073aa;
+                                }
+                                .generated-image {
+                                    text-align: center;
+                                }
+                                .image-info {
+                                    margin-top: 10px;
+                                    text-align: center;
+                                }
+                                .image-info p {
+                                    margin-bottom: 10px;
+                                    color: #666;
+                                }
+                            </style>
+                            
+                            <script>
+                            function downloadImage(imageUrl, filename) {
+                                const link = document.createElement('a');
+                                link.href = imageUrl;
+                                link.download = filename + '.jpg';
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                            }
+                            </script>
+                        <?php endif; ?>
+                        
                         <div class="save-draft-form">
                             <h3>ذخیره به عنوان پیش‌نویس</h3>
                             <p>این محتوا را به عنوان یک پیش‌نویس در وردپرس ذخیره کنید.</p>
@@ -2098,6 +2143,105 @@ function smart_admin_page() {
     <?php
 }
 
+// تابع تشخیص مدل‌های تولید تصویر
+function smart_admin_is_image_generation_model($model) {
+    $image_generation_models = array(
+        'gemini-2.0-flash-preview-image-generation',
+        'gemini-2.5-flash-preview-native-audio-dialog',
+        'dall-e-3',
+        'dall-e-2',
+        'midjourney',
+        'stable-diffusion'
+    );
+    
+    return in_array($model, $image_generation_models);
+}
+
+// تابع استخراج کلمات کلیدی برای تولید تصویر
+function smart_admin_extract_image_keywords($content) {
+    // حذف تگ‌های HTML
+    $text = strip_tags($content);
+    
+    // استخراج کلمات کلیدی مهم
+    $keywords = array();
+    
+    // جستجوی کلمات کلیدی در عنوان
+    if (preg_match('/<h1[^>]*>(.*?)<\/h1>/i', $content, $matches)) {
+        $title = strip_tags($matches[1]);
+        $keywords[] = $title;
+    }
+    
+    // جستجوی کلمات کلیدی در تیترهای H2
+    if (preg_match_all('/<h2[^>]*>(.*?)<\/h2>/i', $content, $matches)) {
+        foreach ($matches[1] as $match) {
+            $keywords[] = strip_tags($match);
+        }
+    }
+    
+    // جستجوی کلمات کلیدی در متن
+    $words = explode(' ', $text);
+    $word_count = array_count_values($words);
+    arsort($word_count);
+    
+    // انتخاب ۵ کلمه پرتکرار
+    $count = 0;
+    foreach ($word_count as $word => $frequency) {
+        if ($count >= 5) break;
+        if (strlen($word) > 3 && !in_array($word, array('این', 'که', 'برای', 'با', 'در', 'از', 'به', 'را', 'است', 'بود', 'شده', 'کرده', 'دارد', 'می‌شود', 'خواهد', 'تواند'))) {
+            $keywords[] = $word;
+            $count++;
+        }
+    }
+    
+    return array_unique($keywords);
+}
+
+// تابع تولید تصویر با API
+function smart_admin_generate_image($prompt, $model, $api_key) {
+    $url = 'https://api.gapgpt.app/v1/images/generations';
+    
+    $body = array(
+        'model' => $model,
+        'prompt' => $prompt,
+        'n' => 1,
+        'size' => '1024x1024',
+        'quality' => 'standard',
+        'response_format' => 'url'
+    );
+    
+    $args = array(
+        'body' => json_encode($body),
+        'headers' => array(
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer ' . $api_key
+        ),
+        'timeout' => 60,
+        'method' => 'POST'
+    );
+    
+    $response = wp_remote_post($url, $args);
+    
+    if (is_wp_error($response)) {
+        return array('error' => $response->get_error_message());
+    }
+    
+    $response_code = wp_remote_retrieve_response_code($response);
+    $response_body = json_decode(wp_remote_retrieve_body($response), true);
+    
+    if ($response_code !== 200) {
+        return array('error' => isset($response_body['error']['message']) ? $response_body['error']['message'] : 'خطا در تولید تصویر');
+    }
+    
+    if (isset($response_body['data'][0]['url'])) {
+        return array(
+            'image_url' => $response_body['data'][0]['url'],
+            'prompt' => $prompt
+        );
+    } else {
+        return array('error' => 'خطا در دریافت تصویر');
+    }
+}
+
 // تابع ارسال درخواست به API گپ جی‌پی‌تی
 function send_to_gapgpt_api($prompt, $model, $api_key) {
     // تنظیمات درخواست
@@ -2152,10 +2296,26 @@ function send_to_gapgpt_api($prompt, $model, $api_key) {
             $keywords = smart_admin_extract_keywords_from_ai_response($content);
         }
         
-        return array(
+        $result = array(
             'content' => $content,
             'keywords' => $keywords
         );
+        
+        // اگر مدل تولید تصویر است، تصویر هم تولید کن
+        if (smart_admin_is_image_generation_model($model)) {
+            // استخراج کلمات کلیدی برای تولید تصویر
+            $image_keywords = smart_admin_extract_image_keywords($content);
+            $image_prompt = implode(' ', array_slice($image_keywords, 0, 5));
+            
+            // تولید تصویر
+            $image_result = smart_admin_generate_image($image_prompt, $model, $api_key);
+            
+            if (!isset($image_result['error'])) {
+                $result['generated_image'] = $image_result;
+            }
+        }
+        
+        return $result;
     } else {
         return array('error' => 'خطا در دریافت پاسخ از API');
     }
