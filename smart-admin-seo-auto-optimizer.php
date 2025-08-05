@@ -578,7 +578,29 @@ class Smart_Admin_SEO_Auto_Optimizer {
         // بررسی وجود توضیحات متا موجود
         $existing_description = get_post_meta($post->ID, 'rank_math_description', true);
         if (!empty($existing_description)) {
+            // بررسی وجود کلمه کلیدی اصلی در توضیحات متا موجود
+            $primary_keyword = isset($keywords[0]) ? $keywords[0] : '';
+            if (!empty($primary_keyword) && stripos($existing_description, $primary_keyword) === false) {
+                // اگر کلمه کلیدی اصلی در توضیحات متا موجود نیست، آن را به ابتدا اضافه می‌کنیم
+                $new_description = $primary_keyword . ': ' . $existing_description;
+                
+                // محدودیت طول (حداکثر 160 کاراکتر)
+                if (mb_strlen($new_description, 'UTF-8') > 160) {
+                    $new_description = mb_substr($new_description, 0, 157, 'UTF-8') . '...';
+                }
+                
+                $this->log_optimization('کلمه کلیدی اصلی به توضیحات متا موجود اضافه شد: ' . $new_description);
+                return $new_description;
+            }
             return $existing_description;
+        }
+        
+        // بررسی کلمه کلیدی اصلی
+        $primary_keyword = isset($keywords[0]) ? $keywords[0] : '';
+        
+        // اگر کلمه کلیدی اصلی از آرایه خالی است، سعی کنیم از متا آن را بخوانیم
+        if (empty($primary_keyword)) {
+            $primary_keyword = get_post_meta($post->ID, 'rank_math_primary_keyword', true);
         }
         
         $content = $post->post_content;
@@ -594,10 +616,17 @@ class Smart_Admin_SEO_Auto_Optimizer {
             if (preg_match($pattern, $content, $matches)) {
                 $meta_desc = trim($matches[1]);
                 if (!empty($meta_desc)) {
+                    // بررسی وجود کلمه کلیدی اصلی در توضیحات متا
+                    if (!empty($primary_keyword) && stripos($meta_desc, $primary_keyword) === false) {
+                        // اگر کلمه کلیدی اصلی در توضیحات متا نیست، آن را به ابتدا اضافه می‌کنیم
+                        $meta_desc = $primary_keyword . ': ' . $meta_desc;
+                    }
+                    
                     // محدودیت طول (حداکثر 160 کاراکتر)
                     if (mb_strlen($meta_desc, 'UTF-8') > 160) {
                         $meta_desc = mb_substr($meta_desc, 0, 157, 'UTF-8') . '...';
                     }
+                    
                     $this->log_optimization('توضیحات متا از محتوا استخراج شد: ' . $meta_desc);
                     return $meta_desc;
                 }
@@ -608,10 +637,17 @@ class Smart_Admin_SEO_Auto_Optimizer {
         if (preg_match('/<p>([^<]+)<\/p>/', $content, $p_matches)) {
             $first_p = trim(strip_tags($p_matches[1]));
             if (mb_strlen($first_p, 'UTF-8') > 50) {
+                // بررسی وجود کلمه کلیدی اصلی در اولین پاراگراف
+                if (!empty($primary_keyword) && stripos($first_p, $primary_keyword) === false) {
+                    // اگر کلمه کلیدی اصلی در اولین پاراگراف نیست، آن را به ابتدا اضافه می‌کنیم
+                    $first_p = $primary_keyword . ': ' . $first_p;
+                }
+                
                 // محدودیت طول (حداکثر 160 کاراکتر)
                 if (mb_strlen($first_p, 'UTF-8') > 160) {
                     $first_p = mb_substr($first_p, 0, 157, 'UTF-8') . '...';
                 }
+                
                 $this->log_optimization('توضیحات متا از اولین پاراگراف استخراج شد: ' . $first_p);
                 return $first_p;
             }
@@ -630,7 +666,6 @@ class Smart_Admin_SEO_Auto_Optimizer {
         }
         
         // اطمینان از وجود کلمه کلیدی اصلی در توضیحات
-        $primary_keyword = isset($keywords[0]) ? $keywords[0] : '';
         if (!empty($primary_keyword) && stripos($description, $primary_keyword) === false) {
             // اگر کلمه کلیدی در توضیحات نیست، آن را به ابتدا اضافه کنیم
             $description = $primary_keyword . ': ' . $description;
@@ -639,7 +674,12 @@ class Smart_Admin_SEO_Auto_Optimizer {
             if (mb_strlen($description, 'UTF-8') > 160) {
                 $description = mb_substr($description, 0, 157, 'UTF-8') . '...';
             }
+            
+            $this->log_optimization('کلمه کلیدی اصلی به توضیحات متا اضافه شد: ' . $description);
         }
+        
+        // ذخیره توضیحات متا به عنوان متا برای استفاده در آینده
+        update_post_meta($post->ID, 'smart_admin_meta_description', $description);
         
         return $description;
     }
@@ -654,6 +694,17 @@ class Smart_Admin_SEO_Auto_Optimizer {
     private function optimize_slug($post, $keywords) {
         // اگر نامک سفارشی تنظیم شده، آن را تغییر نمی‌دهیم
         if ($post->post_name && $post->post_name !== sanitize_title($post->post_title)) {
+            // بررسی وجود کلمه کلیدی اصلی در نامک موجود
+            $primary_keyword = isset($keywords[0]) ? $keywords[0] : '';
+            if (!empty($primary_keyword)) {
+                $primary_slug = sanitize_title($primary_keyword);
+                if (strpos($post->post_name, $primary_slug) === false) {
+                    // اگر کلمه کلیدی اصلی در نامک موجود نیست، آن را اضافه می‌کنیم
+                    $new_slug = $primary_slug . '-' . $post->post_name;
+                    $this->log_optimization('کلمه کلیدی اصلی به نامک موجود اضافه شد: ' . $new_slug);
+                    return $new_slug;
+                }
+            }
             return $post->post_name;
         }
         
@@ -665,6 +716,17 @@ class Smart_Admin_SEO_Auto_Optimizer {
             $slug = smart_admin_extract_seo_slug($content, $title, $keywords);
             
             if (!empty($slug)) {
+                // بررسی وجود کلمه کلیدی اصلی در slug استخراج شده
+                $primary_keyword = isset($keywords[0]) ? $keywords[0] : '';
+                if (!empty($primary_keyword)) {
+                    $primary_slug = sanitize_title($primary_keyword);
+                    if (strpos($slug, $primary_slug) === false) {
+                        // اگر کلمه کلیدی اصلی در slug استخراج شده نیست، آن را اضافه می‌کنیم
+                        $slug = $primary_slug . '-' . $slug;
+                        $this->log_optimization('کلمه کلیدی اصلی به slug استخراج شده اضافه شد: ' . $slug);
+                    }
+                }
+                
                 $this->log_optimization('پیوند یکتا با استفاده از هوش مصنوعی بهینه شد: ' . $slug);
                 return $slug;
             }
@@ -679,7 +741,26 @@ class Smart_Admin_SEO_Auto_Optimizer {
         } elseif (!empty($primary_keyword)) {
             $slug = sanitize_title($primary_keyword);
         } else {
+            // اگر کلمه کلیدی اصلی وجود ندارد، از عنوان پست استفاده می‌کنیم
             $slug = sanitize_title($post->post_title);
+            
+            // بررسی کلمه کلیدی اصلی از متا
+            $primary_keyword_meta = get_post_meta($post->ID, 'rank_math_primary_keyword', true);
+            if (!empty($primary_keyword_meta)) {
+                $primary_slug = sanitize_title($primary_keyword_meta);
+                if (strpos($slug, $primary_slug) === false) {
+                    // اگر کلمه کلیدی اصلی در slug نیست، آن را اضافه می‌کنیم
+                    $slug = $primary_slug . '-' . $slug;
+                    $this->log_optimization('کلمه کلیدی اصلی از متا به slug اضافه شد: ' . $slug);
+                }
+            }
+        }
+        
+        // محدود کردن طول slug به حداکثر 70 کاراکتر
+        if (mb_strlen($slug, 'UTF-8') > 70) {
+            $slug = mb_substr($slug, 0, 70, 'UTF-8');
+            // اطمینان از اینکه slug با - تمام نمی‌شود
+            $slug = rtrim($slug, '-');
         }
         
         return $slug;
