@@ -1078,6 +1078,72 @@ function faraz_auto_report_page() {
     <?php
 }
 
+// تابع ترجمه و بهبود پیام‌های خطا برای گزارش نویسی خودکار
+function faraz_auto_report_translate_error_message($error_message) {
+    $error_messages = array(
+        'insufficient_quota' => 'اعتبار حساب شما تمام شده است. لطفاً حساب خود را شارژ کنید.',
+        'quota_exceeded' => 'محدودیت استفاده از API تمام شده است. لطفاً حساب خود را شارژ کنید.',
+        'billing_not_active' => 'حساب شما فعال نیست. لطفاً حساب خود را فعال کنید.',
+        'invalid_api_key' => 'کلید API نامعتبر است. لطفاً کلید API صحیح را وارد کنید.',
+        'rate_limit_exceeded' => 'محدودیت تعداد درخواست‌ها تمام شده است. لطفاً کمی صبر کنید.',
+        'model_not_found' => 'مدل انتخاب شده موجود نیست. لطفاً مدل دیگری انتخاب کنید.',
+        'context_length_exceeded' => 'متن ورودی خیلی طولانی است. لطفاً متن کوتاه‌تری وارد کنید.',
+        'invalid_request' => 'درخواست نامعتبر است. لطفاً فیلدهای فرم را بررسی کنید.',
+        'server_error' => 'خطای سرور. لطفاً بعداً تلاش کنید.',
+        'timeout' => 'زمان انتظار تمام شد. لطفاً دوباره تلاش کنید.',
+        'network_error' => 'خطا در اتصال شبکه. لطفاً اتصال اینترنت خود را بررسی کنید.',
+        'authentication_failed' => 'خطا در احراز هویت. لطفاً کلید API را بررسی کنید.',
+        'payment_required' => 'پرداخت مورد نیاز است. لطفاً حساب خود را شارژ کنید.',
+        'account_suspended' => 'حساب شما معلق شده است. لطفاً با پشتیبانی تماس بگیرید.',
+        'service_unavailable' => 'سرویس در دسترس نیست. لطفاً بعداً تلاش کنید.',
+        'maintenance_mode' => 'سرویس در حال تعمیر است. لطفاً بعداً تلاش کنید.',
+        'invalid_model' => 'مدل انتخاب شده نامعتبر است.',
+        'model_overloaded' => 'مدل در حال حاضر بیش از حد بارگذاری شده است. لطفاً کمی صبر کنید.',
+        'content_filter' => 'محتوای ارسالی فیلتر شده است. لطفاً محتوای دیگری امتحان کنید.',
+        'token_limit_exceeded' => 'محدودیت توکن‌ها تمام شده است. لطفاً متن کوتاه‌تری وارد کنید.'
+    );
+    
+    // جستجوی کلیدهای خطا در پیام
+    foreach ($error_messages as $key => $persian_message) {
+        if (stripos($error_message, $key) !== false) {
+            return $persian_message;
+        }
+    }
+    
+    // جستجوی کلمات کلیدی در پیام
+    $keywords = array(
+        'quota' => 'اعتبار حساب شما تمام شده است. لطفاً حساب خود را شارژ کنید.',
+        'billing' => 'مشکل در صورتحساب. لطفاً حساب خود را بررسی کنید.',
+        'payment' => 'پرداخت مورد نیاز است. لطفاً حساب خود را شارژ کنید.',
+        'credit' => 'اعتبار کافی نیست. لطفاً حساب خود را شارژ کنید.',
+        'balance' => 'موجودی کافی نیست. لطفاً حساب خود را شارژ کنید.',
+        'limit' => 'محدودیت استفاده تمام شده است.',
+        'rate' => 'محدودیت تعداد درخواست‌ها تمام شده است.',
+        'timeout' => 'زمان انتظار تمام شد. لطفاً دوباره تلاش کنید.',
+        'network' => 'خطا در اتصال شبکه.',
+        'server' => 'خطای سرور. لطفاً بعداً تلاش کنید.',
+        'maintenance' => 'سرویس در حال تعمیر است.',
+        'overloaded' => 'سرور بیش از حد بارگذاری شده است.',
+        'filter' => 'محتوای ارسالی فیلتر شده است.',
+        'token' => 'محدودیت توکن‌ها تمام شده است.',
+        'context' => 'متن ورودی خیلی طولانی است.',
+        'model' => 'مشکل در مدل انتخاب شده.',
+        'api' => 'مشکل در کلید API.',
+        'auth' => 'خطا در احراز هویت.',
+        'suspend' => 'حساب شما معلق شده است.',
+        'unavailable' => 'سرویس در دسترس نیست.'
+    );
+    
+    foreach ($keywords as $keyword => $persian_message) {
+        if (stripos($error_message, $keyword) !== false) {
+            return $persian_message;
+        }
+    }
+    
+    // اگر هیچ ترجمه‌ای پیدا نشد، پیام اصلی را برگردان
+    return 'خطا: ' . $error_message;
+}
+
 // تابع ارسال درخواست به API Gemini
 function send_to_gemini_api($prompt, $model, $api_key) {
     if (empty($prompt)) {
@@ -1126,7 +1192,18 @@ function send_to_gemini_api($prompt, $model, $api_key) {
     faraz_auto_report_log("پاسخ API: " . json_encode($response_body));
     
     if ($response_code !== 200) {
-        $error_message = isset($response_body['error']['message']) ? $response_body['error']['message'] : 'خطای نامشخص';
+        $error_message = 'خطای نامشخص';
+        
+        // بررسی انواع خطاهای رایج
+        if (isset($response_body['error']['message'])) {
+            $error_message = $response_body['error']['message'];
+        } elseif (isset($response_body['error'])) {
+            $error_message = is_string($response_body['error']) ? $response_body['error'] : 'خطای نامشخص';
+        }
+        
+        // ترجمه و بهبود پیام‌های خطا
+        $error_message = faraz_auto_report_translate_error_message($error_message);
+        
         faraz_auto_report_log("خطا در پاسخ API: " . $error_message, 'error');
         return array('error' => $error_message);
     }

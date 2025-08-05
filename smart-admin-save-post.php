@@ -42,6 +42,14 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
         }
     }
     
+    // افزودن فهرست مطالب به محتوا
+    if (function_exists('smart_admin_generate_html_table_of_contents')) {
+        $content = smart_admin_generate_html_table_of_contents($content);
+        if (function_exists('smart_admin_debug_log')) {
+            smart_admin_debug_log('Added table of contents to post content', 'INFO');
+        }
+    }
+    
     // ایجاد آرایه پست
     $post_data = array(
         'post_title'    => sanitize_text_field($title),

@@ -104,16 +104,55 @@ function improve_ai_output_with_human_tone($content) {
         'عنوان مقاله:' => '',
         '**مقدمه**' => 'مقدمه',
         '** مقدمه **' => 'مقدمه',
+        '---' => '', // حذف ---
     );
-    
+
     // حذف علامت‌های ** از ابتدا و انتهای خطوط
     $content = preg_replace('/^\*\*(.*?)\*\*$/m', '$1', $content);
-    
+
     // حذف علامت‌های ** از ابتدا و انتهای عبارات داخل متن
     $content = preg_replace('/\*\*(.*?)\*\*/u', '$1', $content);
-    
+
     // جایگزینی الگوهای مشخص شده
     $content = str_replace(array_keys($replacements), array_values($replacements), $content);
+
+    // حذف کدهای HTML خام که ممکن است در متن ظاهر شوند
+    $content = preg_replace('/<div[^>]*class="toc-container"[^>]*>.*?<\/div>/s', '', $content);
+    $content = preg_replace('/<ul[^>]*style="list-style-type: none[^>]*>.*?<\/ul>/s', '', $content);
+    $content = preg_replace('/<li[^>]*>.*?<\/li>/s', '', $content);
     
+    // حذف سایر تگ‌های HTML که ممکن است در متن ظاهر شوند
+    $content = preg_replace('/<[^>]*>/', '', $content);
+    
+    // حذف فهرست مطالب نامناسب
+    $content = preg_replace('/فهرست مطالب.*?\n/', '', $content);
+    $content = preg_replace('/Table of Contents.*?\n/', '', $content);
+    
+    // حذف شماره‌های فهرست مطالب
+    $content = preg_replace('/^\d+\.\s*.*?\n/m', '', $content);
+    
+    // حذف خطوط خالی اضافی
+    $content = preg_replace('/\n\s*\n\s*\n/', "\n\n", $content);
+    
+    // حذف فاصله‌های اضافی از ابتدا و انتهای متن
+    $content = trim($content);
+
+    // تبدیل بلوک‌های کد مارک‌داون به <pre><code> با استایل چپ‌چین و فونت monospace
+    $content = preg_replace_callback('/```([a-zA-Z]*)\n([\s\S]*?)```/', function ($matches) {
+        $lang = !empty($matches[1]) ? htmlspecialchars($matches[1]) : '';
+        $code = htmlspecialchars($matches[2]);
+        return '<pre style="direction:ltr;text-align:left;background:#f5f5f5;padding:10px;border-radius:6px;font-family:monospace;overflow:auto;"><code class="language-' . $lang . '">' . $code . '</code></pre>';
+    }, $content);
+
+    // چپ‌چین کردن خطوط انگلیسی (که بلوک کد نیستند)
+    $lines = explode("\n", $content);
+    foreach ($lines as &$line) {
+        // اگر خط انگلیسی باشد و بلوک کد نباشد
+        if (preg_match('/^[A-Za-z0-9\s\.,;:!\?\(\)\[\]{}\-_=+@#$%^&*\/\\<>\'\"]{4,}$/', trim($line)) && strpos($line, '<pre') === false) {
+            $line = '<span style="direction:ltr;text-align:left;font-family:monospace;display:block">' . htmlspecialchars($line) . '</span>';
+        }
+    }
+    $content = implode("\n", $lines);
+
     return $content;
 } 
