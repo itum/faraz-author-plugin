@@ -428,6 +428,17 @@ class Smart_Admin_SEO_Auto_Optimizer {
             }
         }
         
+        // استفاده از تابع هوشمند استخراج کلمات کلیدی از هوش مصنوعی
+        if (function_exists('smart_admin_extract_keywords_from_ai_response')) {
+            $ai_keywords = smart_admin_extract_keywords_from_ai_response($content);
+            
+            if (!empty($ai_keywords)) {
+                $this->log_optimization('کلمات کلیدی با استفاده از هوش مصنوعی استخراج شدند: ' . implode(', ', $ai_keywords));
+                return array_slice($ai_keywords, 0, 5); // حداکثر 5 کلمه کلیدی
+            }
+        }
+        
+        // روش قدیمی اگر تابع هوشمند وجود نداشت یا کلمات کلیدی مناسبی پیدا نشد
         // استخراج کلمات کلیدی از عنوان
         $title_keywords = $this->extract_title_keywords($title);
         
@@ -516,6 +527,26 @@ class Smart_Admin_SEO_Auto_Optimizer {
             return $existing_title;
         }
         
+        // استفاده از تابع هوشمند استخراج عنوان SEO شده
+        if (function_exists('smart_admin_extract_seo_title')) {
+            $primary_keyword = isset($keywords[0]) ? $keywords[0] : '';
+            $ai_title = smart_admin_extract_seo_title($post->post_content, $primary_keyword);
+            
+            if (!empty($ai_title)) {
+                $site_name = get_bloginfo('name');
+                $seo_title = $ai_title . ' | ' . $site_name;
+                
+                // محدودیت طول (حداکثر 60 کاراکتر)
+                if (mb_strlen($seo_title, 'UTF-8') > 60) {
+                    $seo_title = mb_substr($seo_title, 0, 57, 'UTF-8') . '...';
+                }
+                
+                $this->log_optimization('عنوان SEO با استفاده از هوش مصنوعی بهینه شد: ' . $seo_title);
+                return $seo_title;
+            }
+        }
+        
+        // روش قدیمی اگر تابع هوشمند وجود نداشت یا عنوان مناسبی پیدا نشد
         $title = $post->post_title;
         $site_name = get_bloginfo('name');
         
@@ -550,26 +581,63 @@ class Smart_Admin_SEO_Auto_Optimizer {
             return $existing_description;
         }
         
+        $content = $post->post_content;
+        
+        // بررسی وجود توضیحات متا در محتوا
+        $meta_desc_patterns = array(
+            '/(?:توضیحات متا|متا دیسکریپشن|meta description|توضیحات|description)[\s\:]+([^\n\.]+)/i',
+            '/<meta[\s]+description[^>]*>([^<]+)/i',
+            '/(?:چکیده|خلاصه|summary)[\s\:]+([^\n\.]+)/i'
+        );
+        
+        foreach ($meta_desc_patterns as $pattern) {
+            if (preg_match($pattern, $content, $matches)) {
+                $meta_desc = trim($matches[1]);
+                if (!empty($meta_desc)) {
+                    // محدودیت طول (حداکثر 160 کاراکتر)
+                    if (mb_strlen($meta_desc, 'UTF-8') > 160) {
+                        $meta_desc = mb_substr($meta_desc, 0, 157, 'UTF-8') . '...';
+                    }
+                    $this->log_optimization('توضیحات متا از محتوا استخراج شد: ' . $meta_desc);
+                    return $meta_desc;
+                }
+            }
+        }
+        
+        // استخراج اولین پاراگراف معنادار
+        if (preg_match('/<p>([^<]+)<\/p>/', $content, $p_matches)) {
+            $first_p = trim(strip_tags($p_matches[1]));
+            if (mb_strlen($first_p, 'UTF-8') > 50) {
+                // محدودیت طول (حداکثر 160 کاراکتر)
+                if (mb_strlen($first_p, 'UTF-8') > 160) {
+                    $first_p = mb_substr($first_p, 0, 157, 'UTF-8') . '...';
+                }
+                $this->log_optimization('توضیحات متا از اولین پاراگراف استخراج شد: ' . $first_p);
+                return $first_p;
+            }
+        }
+        
         // استخراج خلاصه از محتوا
         $content = strip_tags($post->post_content);
         $content = preg_replace('/\s+/', ' ', $content);
         
-        // انتخاب ۲۰۰ کاراکتر اول
-        $description = mb_substr($content, 0, 197, 'UTF-8');
+        // انتخاب ۱۶۰ کاراکتر اول
+        $description = mb_substr($content, 0, 157, 'UTF-8');
         
         // افزودن سه نقطه
-        if (mb_strlen($content, 'UTF-8') > 197) {
+        if (mb_strlen($content, 'UTF-8') > 157) {
             $description .= '...';
         }
         
         // اطمینان از وجود کلمه کلیدی اصلی در توضیحات
         $primary_keyword = isset($keywords[0]) ? $keywords[0] : '';
         if (!empty($primary_keyword) && stripos($description, $primary_keyword) === false) {
+            // اگر کلمه کلیدی در توضیحات نیست، آن را به ابتدا اضافه کنیم
             $description = $primary_keyword . ': ' . $description;
             
             // تنظیم مجدد طول
-            if (mb_strlen($description, 'UTF-8') > 200) {
-                $description = mb_substr($description, 0, 197, 'UTF-8') . '...';
+            if (mb_strlen($description, 'UTF-8') > 160) {
+                $description = mb_substr($description, 0, 157, 'UTF-8') . '...';
             }
         }
         
@@ -589,7 +657,20 @@ class Smart_Admin_SEO_Auto_Optimizer {
             return $post->post_name;
         }
         
-        // ساخت نامک بر اساس کلمات کلیدی
+        // استفاده از تابع هوشمند استخراج پیوند یکتای SEO شده
+        if (function_exists('smart_admin_extract_seo_slug')) {
+            $title = $post->post_title;
+            $content = $post->post_content;
+            
+            $slug = smart_admin_extract_seo_slug($content, $title, $keywords);
+            
+            if (!empty($slug)) {
+                $this->log_optimization('پیوند یکتا با استفاده از هوش مصنوعی بهینه شد: ' . $slug);
+                return $slug;
+            }
+        }
+        
+        // روش قدیمی اگر تابع هوشمند وجود نداشت یا پیوند یکتای مناسبی پیدا نشد
         $primary_keyword = isset($keywords[0]) ? $keywords[0] : '';
         $secondary_keyword = isset($keywords[1]) ? $keywords[1] : '';
         
