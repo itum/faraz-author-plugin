@@ -50,6 +50,49 @@ function faraz_unsplash_register_settings() {
             'default' => 3
         ]
     );
+
+    register_setting(
+        'faraz_unsplash_settings_group',
+        'faraz_unsplash_enable_image_generation',
+        [
+            'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
+            'default' => true
+        ]
+    );
+
+    register_setting(
+        'faraz_unsplash_settings_group',
+        'faraz_unsplash_enable_auto_featured_image',
+        [
+            'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
+            'default' => true
+        ]
+    );
+
+    register_setting(
+        'faraz_unsplash_settings_group',
+        'faraz_unsplash_enable_image_suggestions',
+        [
+            'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
+            'default' => true
+        ]
+    );
+}
+
+// تابع‌های کمکی برای بررسی وضعیت فعال بودن تولید تصویر
+function faraz_unsplash_is_image_generation_enabled() {
+    return get_option('faraz_unsplash_enable_image_generation', true);
+}
+
+function faraz_unsplash_is_auto_featured_image_enabled() {
+    return faraz_unsplash_is_image_generation_enabled() && get_option('faraz_unsplash_enable_auto_featured_image', true);
+}
+
+function faraz_unsplash_is_image_suggestions_enabled() {
+    return faraz_unsplash_is_image_generation_enabled() && get_option('faraz_unsplash_enable_image_suggestions', true);
 }
 
 // Settings page content
@@ -106,6 +149,45 @@ function faraz_unsplash_settings_page_callback() {
                             <p class="description">تعداد تصاویری که برای انتخاب به شما پیشنهاد می‌شود (بین ۱ تا ۱۰).</p>
                         </td>
                     </tr>
+
+                    <tr valign="top">
+                        <th scope="row">
+                            <label for="faraz_unsplash_enable_image_generation">فعال کردن تولید تصویر</label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="faraz_unsplash_enable_image_generation" name="faraz_unsplash_enable_image_generation" value="1" <?php checked(get_option('faraz_unsplash_enable_image_generation', true)); ?> />
+                                فعال کردن تولید خودکار تصویر با Unsplash
+                            </label>
+                            <p class="description">اگر این گزینه غیرفعال باشد، تمام قابلیت‌های تولید تصویر غیرفعال می‌شود.</p>
+                        </td>
+                    </tr>
+
+                    <tr valign="top" class="unsplash-sub-option">
+                        <th scope="row">
+                            <label for="faraz_unsplash_enable_auto_featured_image">تصویر شاخص خودکار</label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="faraz_unsplash_enable_auto_featured_image" name="faraz_unsplash_enable_auto_featured_image" value="1" <?php checked(get_option('faraz_unsplash_enable_auto_featured_image', true)); ?> />
+                                تولید خودکار تصویر شاخص برای پست‌ها
+                            </label>
+                            <p class="description">تصویر شاخص به طور خودکار بر اساس محتوای پست تولید می‌شود.</p>
+                        </td>
+                    </tr>
+
+                    <tr valign="top" class="unsplash-sub-option">
+                        <th scope="row">
+                            <label for="faraz_unsplash_enable_image_suggestions">پیشنهاد تصاویر</label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="faraz_unsplash_enable_image_suggestions" name="faraz_unsplash_enable_image_suggestions" value="1" <?php checked(get_option('faraz_unsplash_enable_image_suggestions', true)); ?> />
+                                نمایش پیشنهادات تصویر در ویرایشگر
+                            </label>
+                            <p class="description">تصاویر مرتبط در ویرایشگر پست نمایش داده می‌شود.</p>
+                        </td>
+                    </tr>
                 </table>
                 
                 <?php submit_button('ذخیره تنظیمات'); ?>
@@ -119,6 +201,29 @@ function faraz_unsplash_settings_page_callback() {
 
             <script>
             jQuery(document).ready(function($) {
+                // تابع برای کنترل گزینه‌های فرعی
+                function toggleSubOptions() {
+                    var mainOption = $('#faraz_unsplash_enable_image_generation');
+                    var subOptions = $('.unsplash-sub-option');
+                    
+                    if (mainOption.is(':checked')) {
+                        subOptions.show();
+                        subOptions.find('input[type="checkbox"]').prop('disabled', false);
+                    } else {
+                        subOptions.hide();
+                        subOptions.find('input[type="checkbox"]').prop('disabled', true).prop('checked', false);
+                    }
+                }
+                
+                // اجرای اولیه
+                toggleSubOptions();
+                
+                // تغییر گزینه اصلی
+                $('#faraz_unsplash_enable_image_generation').on('change', function() {
+                    toggleSubOptions();
+                });
+                
+                // تست اتصال
                 $('#test-unsplash-connection').on('click', function() {
                     var button = $(this);
                     var resultDiv = $('#connection-test-result');
@@ -179,11 +284,28 @@ function faraz_unsplash_settings_page_callback() {
             <style>
                 #log-viewer {
                     background: #fff;
-                    border: 1px solid #e5e5e5;
+                    border: 1px solid #e5e5-5;
                     padding: 10px;
                     height: 400px;
                     overflow-y: scroll;
                     white-space: pre-wrap;
+                }
+                
+                .unsplash-sub-option {
+                    background-color: #f9f9f9;
+                    border-left: 3px solid #0073aa;
+                }
+                
+                .unsplash-sub-option th {
+                    padding-left: 20px;
+                }
+                
+                .unsplash-sub-option td {
+                    padding-left: 20px;
+                }
+                
+                .unsplash-sub-option label {
+                    color: #666;
                 }
             </style>
         <?php endif; ?>
