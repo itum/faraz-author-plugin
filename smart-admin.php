@@ -3871,6 +3871,34 @@ function smart_admin_extract_seo_title($content, $main_topic = '') {
         }
     }
     
+    // بررسی برای محتوای گردشگری و سفر
+    if (preg_match('/(?:سفر|گردشگری|توریسم|مسافرت|راهنمای سفر|travel|tourism|tourist|vacation|holiday|destination|visit)/ui', $content)) {
+        $travel_patterns = array(
+            '/(?:راهنمای|راهنما|guide)\s+(?:سفر|travel)\s+(?:به|to)\s+(.*?)(?:[\.،,\s]|$)/ui',
+            '/(?:سفر|travel)\s+(?:به|to)\s+(.*?)(?:[\.،,\s]|$)/ui',
+            '/(?:راهنمای کامل|complete guide)\s+(?:سفر|travel)\s+(?:به|to)\s+(.*?)(?:[\.،,\s]|$)/ui',
+            '/(?:تجربه|experience)\s+(?:سفر|travel)\s+(?:به|to)\s+(.*?)(?:[\.،,\s]|$)/ui'
+        );
+        
+        foreach ($travel_patterns as $pattern) {
+            if (preg_match($pattern, $content, $matches)) {
+                $destination = trim($matches[1]);
+                if (!empty($destination)) {
+                    $title = "راهنمای کامل سفر به " . $destination . ": تجربه‌ای فراموش‌نشدنی";
+                    smart_admin_debug_log('Created travel-specific title: ' . $title, 'INFO');
+                    return $title;
+                }
+            }
+        }
+        
+        // اگر مقصد خاصی پیدا نشد، عنوان عمومی برای سفر
+        if (preg_match('/(?:سفر|travel|گردشگری|tourism)/ui', $content)) {
+            $title = "راهنمای کامل سفر: تجربه‌ای فراموش‌نشدنی";
+            smart_admin_debug_log('Created general travel title: ' . $title, 'INFO');
+            return $title;
+        }
+    }
+    
     // اگر عنوان پیدا نشد، پاراگراف اول محتوا را بررسی کن
     $paragraphs = preg_split('/\n\s*\n/', $content);
     if (!empty($paragraphs[0])) {
@@ -4026,6 +4054,39 @@ function smart_admin_extract_seo_slug($content, $title = '', $keywords = array()
             smart_admin_debug_log('Created step-by-step immigration slug: ' . $slug, 'INFO');
             return sanitize_title($slug);
         }
+    }
+    
+    // بررسی برای محتوای گردشگری و سفر
+    if (preg_match('/(?:سفر|گردشگری|توریسم|مسافرت|راهنمای سفر|travel|tourism|tourist|vacation|holiday|destination|visit)/ui', $content)) {
+        $travel_slug_patterns = array(
+            '/(?:راهنمای|راهنما|guide)\s+(?:سفر|travel)\s+(?:به|to)\s+(.*?)(?:[\.،,\s]|$)/ui',
+            '/(?:سفر|travel)\s+(?:به|to)\s+(.*?)(?:[\.،,\s]|$)/ui',
+            '/(?:راهنمای کامل|complete guide)\s+(?:سفر|travel)\s+(?:به|to)\s+(.*?)(?:[\.،,\s]|$)/ui'
+        );
+        
+        foreach ($travel_slug_patterns as $pattern) {
+            if (preg_match($pattern, $content, $matches)) {
+                $destination = trim($matches[1]);
+                if (!empty($destination)) {
+                    if ($is_persian) {
+                        $slug = 'راهنمای-سفر-به-' . $destination;
+                    } else {
+                        $slug = 'travel-guide-to-' . $destination;
+                    }
+                    smart_admin_debug_log('Created travel-specific slug: ' . $slug, 'INFO');
+                    return sanitize_title($slug);
+                }
+            }
+        }
+        
+        // اگر مقصد خاصی پیدا نشد، پیوند یکتای عمومی برای سفر
+        if ($is_persian) {
+            $slug = 'راهنمای-سفر-کامل';
+        } else {
+            $slug = 'complete-travel-guide';
+        }
+        smart_admin_debug_log('Created general travel slug: ' . $slug, 'INFO');
+        return sanitize_title($slug);
     }
     
     // اگر پیوند یکتای صریح پیدا نشد، از عنوان استفاده کن
