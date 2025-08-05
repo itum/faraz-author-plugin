@@ -2887,6 +2887,8 @@ function smart_admin_extract_seo_slug($content, $title = '', $keywords = array()
     $is_persian = preg_match('/[\x{0600}-\x{06FF}]/u', $title . ' ' . $content);
     smart_admin_debug_log('Content language is: ' . ($is_persian ? 'Persian' : 'English'), 'INFO');
     
+    // تشخیص موضوع محتوا و ایجاد پیوند یکتای مناسب
+    
     // بررسی اگر محتوا در مورد برنامه‌نویسی بک‌اند و فرانت‌اند است
     if (preg_match('/(بک.?اند|فرانت.?اند|back.?end|front.?end|full.?stack)/ui', $content)) {
         // اگر محتوا در مورد تفاوت بک‌اند و فرانت‌اند است
@@ -2898,6 +2900,51 @@ function smart_admin_extract_seo_slug($content, $title = '', $keywords = array()
             }
             smart_admin_debug_log('Created programming-specific slug: ' . $slug, 'INFO');
             return $slug;
+        }
+    }
+    
+    // بررسی اگر محتوا در مورد مهاجرت و سفر است
+    if (preg_match('/(مهاجرت|سفر|اقامت|ویزا|پاسپورت|کویت|دبی|ترکیه|کانادا|آمریکا|اروپا|استرالیا)/ui', $content)) {
+        // اگر محتوا در مورد راهنمای مهاجرت به کشور خاصی است
+        if (preg_match('/(?:راهنمای|آموزش|روش|چگونه|چطور).*(?:مهاجرت|سفر|اقامت).*(?:به|در)\s+(.*?)(?:[\.،,\s]|$)/ui', $content, $matches)) {
+            $country = trim($matches[1]);
+            if (!empty($country)) {
+                if ($is_persian) {
+                    $slug = 'راهنمای-مهاجرت-به-' . $country;
+                } else {
+                    $slug = 'immigration-guide-to-' . $country;
+                }
+                smart_admin_debug_log('Created immigration-specific slug: ' . $slug, 'INFO');
+                return sanitize_title($slug);
+            }
+        }
+        
+        // اگر محتوا یا عنوان در مورد قدم به قدم مهاجرت است
+        if (preg_match('/(?:قدم به قدم|گام به گام|مرحله به مرحله).*(?:مهاجرت|سفر|اقامت)/ui', $content . ' ' . $title) ||
+            preg_match('/(?:چطور|چگونه).*(?:مهاجرت|سفر|اقامت).*(?:کنم|کنیم|کنید)/ui', $title)) {
+            if ($is_persian) {
+                // بررسی الگوی دقیق "راهنمای قدم به قدم چطور به کویت مهاجرت کنم"
+                if (preg_match('/راهنمای قدم به قدم چطور به (.*?) مهاجرت کنم/ui', $title, $exact_matches)) {
+                    $country = trim($exact_matches[1]);
+                    $slug = 'راهنمای-قدم-به-قدم-مهاجرت-به-' . $country;
+                }
+                // استخراج نام کشور از عنوان یا محتوا
+                elseif (preg_match('/(کویت|دبی|ترکیه|کانادا|آمریکا|اروپا|استرالیا|امارات)/ui', $title . ' ' . $content, $country_matches)) {
+                    $country = trim($country_matches[1]);
+                    $slug = 'راهنمای-قدم-به-قدم-مهاجرت-به-' . $country;
+                } else {
+                    $slug = 'راهنمای-قدم-به-قدم-مهاجرت';
+                }
+            } else {
+                if (preg_match('/(kuwait|dubai|turkey|canada|usa|europe|australia|uae)/ui', $title . ' ' . $content, $country_matches)) {
+                    $country = strtolower(trim($country_matches[1]));
+                    $slug = 'step-by-step-immigration-guide-to-' . $country;
+                } else {
+                    $slug = 'step-by-step-immigration-guide';
+                }
+            }
+            smart_admin_debug_log('Created step-by-step immigration slug: ' . $slug, 'INFO');
+            return sanitize_title($slug);
         }
     }
     
