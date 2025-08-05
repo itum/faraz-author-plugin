@@ -20,6 +20,16 @@ class Smart_Admin_Image_Optimizer {
      * سازنده کلاس و ثبت هوک‌ها
      */
     public function __construct() {
+        // بررسی اینکه آیا Unsplash فعال است یا نه
+        if (!$this->is_unsplash_enabled()) {
+            error_log('[Smart Admin Image Optimizer] Unsplash is disabled, not adding any hooks');
+            // حذف هوک‌های احتمالی موجود
+            $this->remove_existing_hooks();
+            return; // اگر Unsplash غیرفعال است، هیچ هوکی اضافه نکن
+        }
+        
+        error_log('[Smart Admin Image Optimizer] Unsplash is enabled, adding hooks');
+        
         // افزودن اسکریپت‌ها
         add_action('admin_enqueue_scripts', array($this, 'enqueue_scripts'));
         
@@ -33,11 +43,58 @@ class Smart_Admin_Image_Optimizer {
         add_action('wp_ajax_smart_admin_test_permissions', array($this, 'ajax_test_permissions'));
         add_action('wp_ajax_smart_admin_test_image_download', array($this, 'ajax_test_image_download'));
         
-        // هوک برای تولید خودکار تصویر شاخص
+        // هوک برای تولید خودکار تصویر شاخص - فقط اگر Unsplash فعال باشد
         add_action('wp_after_insert_post', array($this, 'auto_generate_featured_image'), 10, 2);
         
         // افزودن متاباکس برای جستجوی تصویر
         add_action('add_meta_boxes', array($this, 'add_image_search_metabox'));
+    }
+    
+    /**
+     * حذف هوک‌های موجود برای جلوگیری از تداخل
+     */
+    private function remove_existing_hooks() {
+        // حذف هوک تولید خودکار تصویر شاخص
+        remove_action('wp_after_insert_post', array($this, 'auto_generate_featured_image'), 10);
+        error_log('[Smart Admin Image Optimizer] Removed existing wp_after_insert_post hook');
+        
+        // حذف سایر هوک‌های احتمالی
+        remove_action('admin_enqueue_scripts', array($this, 'enqueue_scripts'));
+        remove_action('media_buttons', array($this, 'add_image_search_button'));
+        remove_action('add_meta_boxes', array($this, 'add_image_search_metabox'));
+        
+        // حذف اکشن‌های AJAX
+        remove_action('wp_ajax_smart_admin_search_images', array($this, 'ajax_search_images'));
+        remove_action('wp_ajax_smart_admin_auto_suggest_images', array($this, 'ajax_auto_suggest_images'));
+        remove_action('wp_ajax_smart_admin_insert_image', array($this, 'ajax_insert_image'));
+        remove_action('wp_ajax_smart_admin_test_permissions', array($this, 'ajax_test_permissions'));
+        remove_action('wp_ajax_smart_admin_test_image_download', array($this, 'ajax_test_image_download'));
+        
+        error_log('[Smart Admin Image Optimizer] All hooks removed for Unsplash');
+    }
+    
+    /**
+     * بررسی اینکه آیا Unsplash فعال است یا نه
+     */
+    private function is_unsplash_enabled() {
+        // بررسی وجود تابع faraz_unsplash_is_auto_featured_image_enabled
+        if (function_exists('faraz_unsplash_is_auto_featured_image_enabled')) {
+            $result = faraz_unsplash_is_auto_featured_image_enabled();
+            error_log('[Smart Admin Image Optimizer] faraz_unsplash_is_auto_featured_image_enabled() returned: ' . ($result ? 'true' : 'false'));
+            return $result;
+        }
+        
+        // بررسی وجود تابع faraz_unsplash_is_image_generation_enabled
+        if (function_exists('faraz_unsplash_is_image_generation_enabled')) {
+            $result = faraz_unsplash_is_image_generation_enabled();
+            error_log('[Smart Admin Image Optimizer] faraz_unsplash_is_image_generation_enabled() returned: ' . ($result ? 'true' : 'false'));
+            return $result;
+        }
+        
+        // اگر تابع وجود ندارد، بررسی مستقیم گزینه
+        $result = get_option('faraz_unsplash_enable_image_generation', true);
+        error_log('[Smart Admin Image Optimizer] Direct option check returned: ' . ($result ? 'true' : 'false'));
+        return $result;
     }
     
     /**
@@ -145,6 +202,12 @@ class Smart_Admin_Image_Optimizer {
      * پردازش درخواست AJAX برای جستجوی تصاویر
      */
     public function ajax_search_images() {
+        // اگر Unsplash غیرفعال است، درخواست را رد کن
+        if (!$this->is_unsplash_enabled()) {
+            wp_send_json_error('Unsplash غیرفعال است.');
+            return;
+        }
+        
         check_ajax_referer('smart_admin_image_optimizer', 'nonce');
         
         if (!current_user_can('edit_posts')) {
@@ -172,6 +235,12 @@ class Smart_Admin_Image_Optimizer {
      * پردازش درخواست AJAX برای پیشنهاد خودکار تصاویر
      */
     public function ajax_auto_suggest_images() {
+        // اگر Unsplash غیرفعال است، درخواست را رد کن
+        if (!$this->is_unsplash_enabled()) {
+            wp_send_json_error('Unsplash غیرفعال است.');
+            return;
+        }
+        
         check_ajax_referer('smart_admin_image_optimizer', 'nonce');
         
         if (!current_user_can('edit_posts')) {
@@ -219,6 +288,12 @@ class Smart_Admin_Image_Optimizer {
      * پردازش درخواست AJAX برای درج تصویر
      */
     public function ajax_insert_image() {
+        // اگر Unsplash غیرفعال است، درخواست را رد کن
+        if (!$this->is_unsplash_enabled()) {
+            wp_send_json_error('Unsplash غیرفعال است.');
+            return;
+        }
+        
         check_ajax_referer('smart_admin_image_optimizer', 'nonce');
         
         if (!current_user_can('edit_posts')) {
@@ -718,6 +793,12 @@ class Smart_Admin_Image_Optimizer {
      * اکشن AJAX برای تست مجوزها
      */
     public function ajax_test_permissions() {
+        // اگر Unsplash غیرفعال است، درخواست را رد کن
+        if (!$this->is_unsplash_enabled()) {
+            wp_send_json_error('Unsplash غیرفعال است.');
+            return;
+        }
+        
         check_ajax_referer('smart_admin_image_optimizer', 'nonce');
         
         if (!current_user_can('manage_options')) {
@@ -733,13 +814,35 @@ class Smart_Admin_Image_Optimizer {
      * تولید خودکار تصویر شاخص
      */
     public function auto_generate_featured_image($post_id, $post) {
+        // لاگ برای دیباگ
+        error_log('[Smart Admin Image Optimizer] auto_generate_featured_image called for post: ' . $post_id);
+        
+        // بررسی اضافی در زمان اجرا
+        if (!$this->is_unsplash_enabled()) {
+            error_log('[Smart Admin Image Optimizer] Unsplash is disabled at runtime, skipping auto generation');
+            return;
+        }
+        
+        // بررسی مستقیم گزینه‌ها در زمان اجرا
+        $image_generation_enabled = get_option('faraz_unsplash_enable_image_generation', true);
+        $auto_featured_enabled = get_option('faraz_unsplash_enable_auto_featured_image', true);
+        
+        if (!$image_generation_enabled || !$auto_featured_enabled) {
+            error_log('[Smart Admin Image Optimizer] Direct option check failed - image_generation: ' . ($image_generation_enabled ? 'true' : 'false') . ', auto_featured: ' . ($auto_featured_enabled ? 'true' : 'false'));
+            return;
+        }
+        
+        error_log('[Smart Admin Image Optimizer] Unsplash is enabled, proceeding with auto generation');
+        
         // فقط برای پست‌های جدید
         if ($post->post_status !== 'publish') {
+            error_log('[Smart Admin Image Optimizer] Post is not published, skipping');
             return;
         }
         
         // بررسی وجود تصویر شاخص
         if (has_post_thumbnail($post_id)) {
+            error_log('[Smart Admin Image Optimizer] Post already has featured image, skipping');
             return;
         }
         
@@ -747,6 +850,7 @@ class Smart_Admin_Image_Optimizer {
         $keywords = $this->extract_content_keywords($post);
         
         if (empty($keywords)) {
+            error_log('[Smart Admin Image Optimizer] No keywords extracted, skipping');
             return;
         }
         
@@ -754,12 +858,14 @@ class Smart_Admin_Image_Optimizer {
         $images = $this->search_unsplash_images($keywords[0], 1);
         
         if (is_wp_error($images)) {
+            error_log('[Smart Admin Image Optimizer] Error searching images: ' . $images->get_error_message());
             return;
         }
         
         // درج تصویر شاخص
         $image = $images[0];
         $this->insert_image_to_post($post_id, $image['url'], $image['alt'], 'featured');
+        error_log('[Smart Admin Image Optimizer] Featured image generated successfully');
     }
 
     /**
@@ -834,6 +940,12 @@ class Smart_Admin_Image_Optimizer {
      * اکشن AJAX برای تست دانلود تصویر
      */
     public function ajax_test_image_download() {
+        // اگر Unsplash غیرفعال است، درخواست را رد کن
+        if (!$this->is_unsplash_enabled()) {
+            wp_send_json_error('Unsplash غیرفعال است.');
+            return;
+        }
+        
         check_ajax_referer('smart_admin_image_optimizer', 'nonce');
         
         if (!current_user_can('manage_options')) {
@@ -858,5 +970,21 @@ class Smart_Admin_Image_Optimizer {
     }
 }
 
-// راه‌اندازی کلاس
-new Smart_Admin_Image_Optimizer(); 
+// راه‌اندازی کلاس - فقط اگر Unsplash فعال باشد
+$unsplash_enabled = false;
+
+// بررسی وجود تابع faraz_unsplash_is_auto_featured_image_enabled
+if (function_exists('faraz_unsplash_is_auto_featured_image_enabled')) {
+    $unsplash_enabled = faraz_unsplash_is_auto_featured_image_enabled();
+} elseif (function_exists('faraz_unsplash_is_image_generation_enabled')) {
+    $unsplash_enabled = faraz_unsplash_is_image_generation_enabled();
+} else {
+    $unsplash_enabled = get_option('faraz_unsplash_enable_image_generation', true);
+}
+
+if ($unsplash_enabled) {
+    error_log('[Smart Admin Image Optimizer] Unsplash is enabled, initializing class');
+    new Smart_Admin_Image_Optimizer();
+} else {
+    error_log('[Smart Admin Image Optimizer] Unsplash is disabled, not initializing class');
+} 

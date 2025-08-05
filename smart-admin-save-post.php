@@ -33,6 +33,15 @@ add_action('admin_init', 'smart_admin_create_assistant_category');
 
 // ذخیره محتوای تولید شده به عنوان پیش‌نویس
 function smart_admin_save_ai_content_as_draft($title, $content, $keywords = array()) {
+    // استخراج پیوند یکتای بهینه شده برای SEO
+    $slug = '';
+    if (function_exists('smart_admin_extract_seo_slug')) {
+        $slug = smart_admin_extract_seo_slug($content, $title, $keywords);
+        if (function_exists('smart_admin_debug_log')) {
+            smart_admin_debug_log('Generated SEO slug for post: ' . $slug, 'INFO');
+        }
+    }
+    
     // ایجاد آرایه پست
     $post_data = array(
         'post_title'    => sanitize_text_field($title),
@@ -40,6 +49,7 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
         'post_status'   => 'draft',
         'post_type'     => 'post',
         'post_author'   => get_current_user_id(),
+        'post_name'     => $slug, // تنظیم پیوند یکتا
         'post_category' => array(get_option('smart_admin_assistant_category_id')),
         'meta_input'    => array(
             'smart_admin_generated' => 'yes',

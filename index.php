@@ -393,5 +393,23 @@ include_once plugin_dir_path(__FILE__) . 'telegram-settings.php';
 include_once plugin_dir_path(__FILE__) . 'add-status.php';
 include_once plugin_dir_path(__FILE__) . 'index-ui.php';
 include_once plugin_dir_path(__FILE__) . 'add-content.php';
-include_once plugin_dir_path(__FILE__) . 'unsplash-metabox.php';
-include_once plugin_dir_path(__FILE__) . 'unsplash-api.php';
+
+// بررسی وضعیت Unsplash قبل از بارگذاری فایل‌های مربوطه
+$unsplash_enabled = false;
+
+// بررسی وجود تابع faraz_unsplash_is_auto_featured_image_enabled
+if (function_exists('faraz_unsplash_is_auto_featured_image_enabled')) {
+    $unsplash_enabled = faraz_unsplash_is_auto_featured_image_enabled();
+} elseif (function_exists('faraz_unsplash_is_image_generation_enabled')) {
+    $unsplash_enabled = faraz_unsplash_is_image_generation_enabled();
+} else {
+    $unsplash_enabled = get_option('faraz_unsplash_enable_image_generation', true);
+}
+
+if ($unsplash_enabled) {
+    error_log('[Index.php] Unsplash is enabled, loading Unsplash files');
+    include_once plugin_dir_path(__FILE__) . 'unsplash-metabox.php';
+    include_once plugin_dir_path(__FILE__) . 'unsplash-api.php';
+} else {
+    error_log('[Index.php] Unsplash is disabled, skipping Unsplash files');
+}

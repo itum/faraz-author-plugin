@@ -280,18 +280,37 @@ function smart_admin_generate_and_send_articles() {
             // استخراج عنوان از محتوای تولید شده
             $content = $response['content'];
             $title = "مقاله تولید شده با هوش مصنوعی: " . $random_keyword;
-            // تلاش برای یافتن عنوان بهتر در خط اول محتوا
-            $first_line = strtok($content, "\n");
-            if (strlen($first_line) < 100) { // یک بررسی ساده برای اینکه عنوان خیلی طولانی نباشد
-                $title = str_replace(['#', '*'], '', $first_line);
+            
+            // استفاده از تابع استخراج عنوان SEO شده
+            if (function_exists('smart_admin_extract_seo_title')) {
+                $ai_title = smart_admin_extract_seo_title($content);
+                if (!empty($ai_title)) {
+                    $title = $ai_title;
+                    error_log("Smart Admin Scheduler: Using SEO title extracted from AI content: {$title}");
+                }
+            } else {
+                // روش قدیمی: تلاش برای یافتن عنوان بهتر در خط اول محتوا
+                $first_line = strtok($content, "\n");
+                if (strlen($first_line) < 100) { // یک بررسی ساده برای اینکه عنوان خیلی طولانی نباشد
+                    $title = str_replace(['#', '*'], '', $first_line);
+                    error_log("Smart Admin Scheduler: Using first line as title: {$title}");
+                }
             }
 
+            // استخراج پیوند یکتای بهینه شده برای SEO
+            $slug = '';
+            if (function_exists('smart_admin_extract_seo_slug')) {
+                $slug = smart_admin_extract_seo_slug($content, $title, array($random_keyword));
+                error_log("Smart Admin Scheduler: Generated SEO slug: " . $slug);
+            }
+            
             // ذخیره مقاله به عنوان پیش‌نویس
             $post_id = wp_insert_post([
                 'post_title'   => sanitize_text_field($title),
                 'post_content' => wp_kses_post($content),
                 'post_status'  => 'draft',
                 'post_author'  => 1, // یا هر نویسنده دیگری
+                'post_name'    => $slug, // تنظیم پیوند یکتا
             ]);
 
             if (!is_wp_error($post_id)) {

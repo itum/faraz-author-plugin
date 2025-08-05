@@ -238,13 +238,31 @@ function faraz_auto_report_page() {
                 $report_content = $response['content'];
                 faraz_auto_report_log("محتوای گزارش آماده شد. تعداد کاراکترها: " . strlen($report_content));
                 
+                // استخراج عنوان SEO شده از محتوای گزارش
+                $ai_title = '';
+                if (function_exists('smart_admin_extract_seo_title')) {
+                    $ai_title = smart_admin_extract_seo_title($report_content);
+                    faraz_auto_report_log("استخراج عنوان SEO شده: " . ($ai_title ? $ai_title : 'عنوان مناسب یافت نشد'));
+                }
+                
+                // استفاده از عنوان SEO شده یا عنوان پیش‌فرض
+                $post_title = !empty($ai_title) ? $ai_title : ($report_prefix . $subject);
+                
+                // استخراج پیوند یکتای بهینه شده برای SEO
+                $slug = '';
+                if (function_exists('smart_admin_extract_seo_slug')) {
+                    $slug = smart_admin_extract_seo_slug($report_content, $post_title);
+                    faraz_auto_report_log("پیوند یکتای SEO شده استخراج شد: " . $slug);
+                }
+                
                 // ایجاد پست جدید
                 $post_data = array(
-                    'post_title'    => $report_prefix . $subject,
+                    'post_title'    => $post_title,
                     'post_content'  => $report_content,
                     'post_status'   => 'draft',
                     'post_type'     => 'post',
                     'post_author'   => get_current_user_id(),
+                    'post_name'     => $slug, // تنظیم پیوند یکتا
                     'post_category' => array($category)
                 );
                 

@@ -26,8 +26,25 @@ require_once plugin_dir_path(__FILE__) . 'smart-admin-scheduler.php';
 // وارد کردن فایل بهینه‌ساز هوشمند SEO
 require_once plugin_dir_path(__FILE__) . 'smart-admin-seo-auto-optimizer.php';
 
-// وارد کردن فایل بهینه‌ساز هوشمند تصاویر
-require_once plugin_dir_path(__FILE__) . 'smart-admin-image-optimizer.php';
+// بررسی وضعیت Unsplash قبل از بارگذاری فایل بهینه‌ساز تصاویر
+$unsplash_enabled = false;
+
+// بررسی وجود تابع faraz_unsplash_is_auto_featured_image_enabled
+if (function_exists('faraz_unsplash_is_auto_featured_image_enabled')) {
+    $unsplash_enabled = faraz_unsplash_is_auto_featured_image_enabled();
+} elseif (function_exists('faraz_unsplash_is_image_generation_enabled')) {
+    $unsplash_enabled = faraz_unsplash_is_image_generation_enabled();
+} else {
+    $unsplash_enabled = get_option('faraz_unsplash_enable_image_generation', true);
+}
+
+if ($unsplash_enabled) {
+    error_log('[Smart-admin.php] Unsplash is enabled, loading image optimizer');
+    // وارد کردن فایل بهینه‌ساز هوشمند تصاویر
+    require_once plugin_dir_path(__FILE__) . 'smart-admin-image-optimizer.php';
+} else {
+    error_log('[Smart-admin.php] Unsplash is disabled, skipping image optimizer');
+}
 
 // وارد کردن فایل تنظیمات متاباکس‌ها
 require_once plugin_dir_path(__FILE__) . 'smart-admin-settings.php';
@@ -430,7 +447,12 @@ function smart_admin_page() {
         if (isset($_POST['is_template']) && $_POST['is_template'] == '1' && isset($response['content']) && !empty($response['content'])) {
             // استخراج عنوان از فیلدهای فرم یا استفاده از عنوان پیش‌فرض
             $title = '';
-            if (!empty($_POST['main_topic'])) {
+            // استخراج عنوان SEO شده از پاسخ هوش مصنوعی
+            $ai_title = smart_admin_extract_seo_title($response['content']);
+            
+            if (!empty($ai_title)) {
+                $title = $ai_title;
+            } elseif (!empty($_POST['main_topic'])) {
                 $title = sanitize_text_field($_POST['main_topic']);
             } elseif (!empty($_POST['focus_keyword'])) {
                 $title = sanitize_text_field($_POST['focus_keyword']);
@@ -2656,4 +2678,177 @@ function smart_admin_debug_log($message, $type = 'INFO') {
         $log_message = "[{$timestamp}] [{$type}] {$message}" . PHP_EOL;
         error_log($log_message);
     }
-} 
+}
+
+/**
+ * استخراج عنوان SEO شده از پاسخ هوش مصنوعی
+ * 
+ * @param string $content محتوای تولید شده توسط هوش مصنوعی
+ * @return string عنوان SEO شده یا رشته خالی در صورت عدم یافتن
+ */
+function smart_admin_extract_seo_title($content) {
+    // لاگ برای دیباگ
+    smart_admin_debug_log('Extracting SEO title from AI content', 'INFO');
+    smart_admin_debug_log('Content length: ' . strlen($content), 'INFO');
+    
+    // الگوهای مختلف برای یافتن عنوان به ترتیب اولویت
+    $patterns = array(
+        // الگوی 1: عنوان در تگ h1
+        '/<h1[^>]*>(.*?)<\/h1>/i',
+        
+        // الگوی 2: عنوان با علامت # (مارک‌داون)
+        '/^#\s+(.*?)$/m',
+        
+        // الگوی 3: خط اول که با "عنوان:" یا "موضوع:" شروع می‌شود
+        '/^(?:عنوان|موضوع)[:]\s*(.*?)$/im',
+        
+        // الگوی 4: خط اول که با "title:" شروع می‌شود
+        '/^title[:]\s*(.*?)$/im',
+        
+        // الگوی 5: عنوان با علامت ## (مارک‌داون سطح 2)
+        '/^##\s+(.*?)$/m',
+        
+        // الگوی 6: عنوان با علامت ### (مارک‌داون سطح 3)
+        '/^###\s+(.*?)$/m',
+        
+        // الگوی 7: عنوان با علامت ** (مارک‌داون پررنگ) در خط اول
+        '/^\*\*(.*?)\*\*$/m',
+        
+        // الگوی 8: عنوان در تگ strong در خط اول
+        '/^<strong>(.*?)<\/strong>$/m',
+        
+        // الگوی 9: خط اول محتوا (اگر کوتاه و مناسب باشد)
+        '/^([^\n]{15,100})$/m'
+    );
+    
+    // بررسی هر الگو
+    foreach ($patterns as $pattern) {
+        if (preg_match($pattern, $content, $matches)) {
+            $title = trim(strip_tags($matches[1]));
+            
+            // حذف علامت‌های مارک‌داون و HTML از عنوان
+            $title = preg_replace('/[\*\#\_\[\]\(\)\{\}\<\>\"\'\`\~\|\+\=\^]/i', '', $title);
+            
+            // حذف نقطه از انتهای عنوان
+            $title = rtrim($title, '.،:؛!؟،');
+            
+            // اگر عنوان معتبر است، آن را برگردان
+            if (!empty($title) && strlen($title) >= 10 && strlen($title) <= 100) {
+                smart_admin_debug_log('Found SEO title: ' . $title, 'INFO');
+                return $title;
+            }
+        }
+    }
+    
+    // اگر عنوان پیدا نشد، خط اول محتوا را بررسی کن
+    $lines = explode("\n", $content);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if (empty($line)) continue;
+        
+        // حذف علامت‌های مارک‌داون و HTML
+        $line = strip_tags($line);
+        $line = preg_replace('/[\*\#\_\[\]\(\)\{\}\<\>\"\'\`\~\|\+\=\^]/i', '', $line);
+        $line = rtrim($line, '.،:؛!؟،');
+        
+        // بررسی طول و کیفیت خط
+        if (strlen($line) >= 15 && strlen($line) <= 100 && !preg_match('/^(https?|www|\d+\.)/', $line)) {
+            smart_admin_debug_log('Using content line as title: ' . $line, 'INFO');
+            return $line;
+        }
+        
+        // فقط 3 خط اول را بررسی کن
+        if (count($lines) > 3) break;
+    }
+    
+    smart_admin_debug_log('No suitable title found', 'INFO');
+    return '';
+}
+
+/**
+ * استخراج پیوند یکتا (slug) بهینه برای SEO از پاسخ هوش مصنوعی
+ * 
+ * @param string $content محتوای تولید شده توسط هوش مصنوعی
+ * @param string $title عنوان مقاله (اختیاری)
+ * @param array $keywords کلمات کلیدی (اختیاری)
+ * @return string پیوند یکتای بهینه شده
+ */
+function smart_admin_extract_seo_slug($content, $title = '', $keywords = array()) {
+    // لاگ برای دیباگ
+    smart_admin_debug_log('Extracting SEO slug from AI content', 'INFO');
+    
+    // اگر عنوان ارسال نشده، آن را از محتوا استخراج کن
+    if (empty($title)) {
+        $title = smart_admin_extract_seo_title($content);
+    }
+    
+    // بررسی زبان محتوا (فارسی یا انگلیسی)
+    $is_persian = preg_match('/[\x{0600}-\x{06FF}]/u', $title . ' ' . $content);
+    smart_admin_debug_log('Content language is: ' . ($is_persian ? 'Persian' : 'English'), 'INFO');
+    
+    // الگوی پیوند یکتا در محتوا
+    $slug_patterns = array(
+        // الگوی 1: پیوند یکتا با برچسب خاص
+        '/(?:پیوند یکتا|slug|permalink|url)[:]\s*([\w\-\p{L}]+)/ui',
+        
+        // الگوی 2: پیوند یکتا در تگ خاص
+        '/<slug>(.*?)<\/slug>/i',
+    );
+    
+    // بررسی الگوهای پیوند یکتا در محتوا
+    foreach ($slug_patterns as $pattern) {
+        if (preg_match($pattern, $content, $matches)) {
+            $slug = trim($matches[1]);
+            if (!empty($slug)) {
+                smart_admin_debug_log('Found explicit slug in content: ' . $slug, 'INFO');
+                // اطمینان از اینکه پیوند یکتا معتبر است
+                $slug = sanitize_title($slug);
+                return $slug;
+            }
+        }
+    }
+    
+    // اگر پیوند یکتای صریح پیدا نشد، از عنوان استفاده کن
+    if (!empty($title)) {
+        // برای محتوای فارسی
+        if ($is_persian) {
+            // حداکثر 5 کلمه از عنوان را استخراج کن
+            $words = preg_split('/\s+/u', $title);
+            $slug_words = array_slice($words, 0, 5);
+            $slug = implode('-', $slug_words);
+            
+            // اطمینان از اینکه پیوند یکتا معتبر است
+            $slug = sanitize_title($slug);
+            
+            smart_admin_debug_log('Created Persian slug from title: ' . $slug, 'INFO');
+            return $slug;
+        } 
+        // برای محتوای انگلیسی
+        else {
+            // استفاده از تابع وردپرس برای ساخت پیوند یکتا از عنوان
+            $slug = sanitize_title($title);
+            
+            // محدود کردن طول پیوند یکتا
+            if (strlen($slug) > 60) {
+                $slug = substr($slug, 0, 60);
+                // اطمینان از اینکه در وسط یک کلمه قطع نشده
+                $slug = preg_replace('/-[^-]*$/', '', $slug);
+            }
+            
+            smart_admin_debug_log('Created English slug from title: ' . $slug, 'INFO');
+            return $slug;
+        }
+    }
+    
+    // اگر عنوان خالی بود، از کلمات کلیدی استفاده کن
+    if (!empty($keywords) && is_array($keywords)) {
+        $primary_keyword = sanitize_title($keywords[0]);
+        smart_admin_debug_log('Using primary keyword for slug: ' . $primary_keyword, 'INFO');
+        return $primary_keyword;
+    }
+    
+    // اگر هیچ منبعی برای ساخت پیوند یکتا نبود، یک پیوند یکتا تصادفی بساز
+    $random_slug = 'ai-content-' . substr(md5(uniqid(mt_rand(), true)), 0, 8);
+    smart_admin_debug_log('No suitable slug source found, using random: ' . $random_slug, 'INFO');
+    return $random_slug;
+}

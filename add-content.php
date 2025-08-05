@@ -454,6 +454,34 @@ function clean_unsplash_url($url) {
 function attach_thumbnail($post_id, $thumbnail_url) { 
     error_log('[Smart Image Generation] Attaching thumbnail to post ID: ' . $post_id . ' from URL: ' . $thumbnail_url);
     
+    // بررسی وضعیت فعال بودن Unsplash
+    if (function_exists('faraz_unsplash_is_auto_featured_image_enabled')) {
+        $unsplash_enabled = faraz_unsplash_is_auto_featured_image_enabled();
+        error_log('[Smart Image Generation] Unsplash auto featured image enabled: ' . ($unsplash_enabled ? 'true' : 'false'));
+        
+        if (!$unsplash_enabled) {
+            error_log('[Smart Image Generation] Unsplash auto featured image is disabled, skipping attachment');
+            return false;
+        }
+    } elseif (function_exists('faraz_unsplash_is_image_generation_enabled')) {
+        $unsplash_enabled = faraz_unsplash_is_image_generation_enabled();
+        error_log('[Smart Image Generation] Unsplash image generation enabled: ' . ($unsplash_enabled ? 'true' : 'false'));
+        
+        if (!$unsplash_enabled) {
+            error_log('[Smart Image Generation] Unsplash image generation is disabled, skipping attachment');
+            return false;
+        }
+    } else {
+        // بررسی مستقیم گزینه‌ها
+        $image_generation_enabled = get_option('faraz_unsplash_enable_image_generation', true);
+        $auto_featured_enabled = get_option('faraz_unsplash_enable_auto_featured_image', true);
+        
+        if (!$image_generation_enabled || !$auto_featured_enabled) {
+            error_log('[Smart Image Generation] Unsplash options are disabled, skipping attachment');
+            return false;
+        }
+    }
+    
     // بررسی URL تصویر
     if (empty($thumbnail_url) || !filter_var($thumbnail_url, FILTER_VALIDATE_URL)) {
         error_log('[Smart Image Generation] Invalid thumbnail URL: ' . $thumbnail_url);
@@ -572,6 +600,36 @@ function smart_generate_featured_image($post_id, $post_title, $post_content) {
     error_log('[Smart Image Generation] Post title: ' . $post_title);
     error_log('[Smart Image Generation] Post content length: ' . strlen($post_content));
     
+    // بررسی وضعیت فعال بودن Unsplash
+    if (function_exists('faraz_unsplash_is_auto_featured_image_enabled')) {
+        $unsplash_enabled = faraz_unsplash_is_auto_featured_image_enabled();
+        error_log('[Smart Image Generation] Unsplash auto featured image enabled: ' . ($unsplash_enabled ? 'true' : 'false'));
+        
+        if (!$unsplash_enabled) {
+            error_log('[Smart Image Generation] Unsplash auto featured image is disabled, skipping');
+            return false;
+        }
+    } elseif (function_exists('faraz_unsplash_is_image_generation_enabled')) {
+        $unsplash_enabled = faraz_unsplash_is_image_generation_enabled();
+        error_log('[Smart Image Generation] Unsplash image generation enabled: ' . ($unsplash_enabled ? 'true' : 'false'));
+        
+        if (!$unsplash_enabled) {
+            error_log('[Smart Image Generation] Unsplash image generation is disabled, skipping');
+            return false;
+        }
+    } else {
+        // بررسی مستقیم گزینه‌ها
+        $image_generation_enabled = get_option('faraz_unsplash_enable_image_generation', true);
+        $auto_featured_enabled = get_option('faraz_unsplash_enable_auto_featured_image', true);
+        
+        error_log('[Smart Image Generation] Direct option check - image_generation: ' . ($image_generation_enabled ? 'true' : 'false') . ', auto_featured: ' . ($auto_featured_enabled ? 'true' : 'false'));
+        
+        if (!$image_generation_enabled || !$auto_featured_enabled) {
+            error_log('[Smart Image Generation] Unsplash options are disabled, skipping');
+            return false;
+        }
+    }
+    
     // بررسی وجود تصویر شاخص
     if (has_post_thumbnail($post_id)) {
         error_log('[Smart Image Generation] Post already has featured image');
@@ -666,6 +724,34 @@ function extract_content_keywords($content) {
  */
 function search_unsplash_image($keyword, $api_key) {
     error_log('[Smart Image Generation] Searching Unsplash for keyword: ' . $keyword);
+    
+    // بررسی وضعیت فعال بودن Unsplash
+    if (function_exists('faraz_unsplash_is_auto_featured_image_enabled')) {
+        $unsplash_enabled = faraz_unsplash_is_auto_featured_image_enabled();
+        error_log('[Smart Image Generation] Unsplash auto featured image enabled: ' . ($unsplash_enabled ? 'true' : 'false'));
+        
+        if (!$unsplash_enabled) {
+            error_log('[Smart Image Generation] Unsplash auto featured image is disabled, skipping search');
+            return false;
+        }
+    } elseif (function_exists('faraz_unsplash_is_image_generation_enabled')) {
+        $unsplash_enabled = faraz_unsplash_is_image_generation_enabled();
+        error_log('[Smart Image Generation] Unsplash image generation enabled: ' . ($unsplash_enabled ? 'true' : 'false'));
+        
+        if (!$unsplash_enabled) {
+            error_log('[Smart Image Generation] Unsplash image generation is disabled, skipping search');
+            return false;
+        }
+    } else {
+        // بررسی مستقیم گزینه‌ها
+        $image_generation_enabled = get_option('faraz_unsplash_enable_image_generation', true);
+        $auto_featured_enabled = get_option('faraz_unsplash_enable_auto_featured_image', true);
+        
+        if (!$image_generation_enabled || !$auto_featured_enabled) {
+            error_log('[Smart Image Generation] Unsplash options are disabled, skipping search');
+            return false;
+        }
+    }
     
     if (empty($api_key)) {
         error_log('[Smart Image Generation] No API key provided');

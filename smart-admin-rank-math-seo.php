@@ -182,13 +182,23 @@ function smart_admin_set_rank_math_focus_keyword($post_id, $keywords = array()) 
     
     smart_admin_log('در حال تنظیم کلمات کلیدی برای پست ' . $post_id . ' با عنوان "' . $post->post_title . '"');
     
-    // لیست کلمات کلیدی پیش‌فرض برای استفاده در صورت خطا
-    $default_keywords = array('برنامه نویسی', 'وبلاگ', 'مقاله', 'آموزش', 'راهنما');
+    // تلاش برای استخراج کلمات کلیدی از محتوای پست
+    $clean_keywords = array();
     
-    // استفاده مستقیم از کلمات کلیدی پیش‌فرض به جای پردازش پیچیده
-    $clean_keywords = $default_keywords;
-    smart_admin_log('استفاده از کلمات کلیدی پیش‌فرض به دلیل مشکلات کدگذاری');
+    if (!empty($post->post_content)) {
+        // استخراج کلمات کلیدی از محتوا با استفاده از تابع استخراج کلمات کلیدی از هوش مصنوعی
+        if (function_exists('smart_admin_extract_keywords_from_ai_response')) {
+            $clean_keywords = smart_admin_extract_keywords_from_ai_response($post->post_content);
+            smart_admin_log('تلاش برای استخراج کلمات کلیدی از محتوای پست');
+        }
+    }
     
+        // اگر کلمات کلیدی استخراج نشد، از عنوان پست استفاده کن
+    if (empty($clean_keywords) && !empty($post->post_title)) {
+        $clean_keywords = array($post->post_title);
+        smart_admin_log('استفاده از عنوان پست به عنوان کلمه کلیدی به دلیل عدم استخراج کلمات کلیدی از محتوا');
+    }
+
     // تبدیل آرایه کلمات کلیدی به رشته با جداکننده کاما
     $keywords_string = implode(',', $clean_keywords);
     
@@ -384,12 +394,12 @@ function smart_admin_check_and_set_keywords($post_id, $post, $update) {
 }
 
 /**
- * استخراج کلمات کلیدی از پاسخ هوش مصنوعی
+ * استخراج کلمات کلیدی از پاسخ هوش مصنوعی یا محتوای پست
  * 
- * @param string $ai_response پاسخ دریافتی از هوش مصنوعی
+ * @param string $content پاسخ دریافتی از هوش مصنوعی یا محتوای پست
  * @return array آرایه کلمات کلیدی
  */
-function smart_admin_extract_keywords_from_ai_response($ai_response) {
+function smart_admin_extract_keywords_from_ai_response($content) {
     // الگوهای مختلف برای یافتن کلمات کلیدی در پاسخ هوش مصنوعی
     $patterns = array(
         '/کلمات\s*کلیدی\s*[:]\s*(.*?)(?:[\.\n]|$)/i',
@@ -401,8 +411,9 @@ function smart_admin_extract_keywords_from_ai_response($ai_response) {
         '/کلمات\s*کلیدی\s*[=]\s*(.*?)(?:[\.\n]|$)/i'
     );
     
+    // تلاش برای یافتن کلمات کلیدی با الگوهای مشخص
     foreach ($patterns as $pattern) {
-        if (preg_match($pattern, $ai_response, $matches)) {
+        if (preg_match($pattern, $content, $matches)) {
             if (!empty($matches[1])) {
                 // تقسیم رشته کلمات کلیدی به آرایه
                 // پشتیبانی از کاما یا ویرگول فارسی
@@ -412,15 +423,70 @@ function smart_admin_extract_keywords_from_ai_response($ai_response) {
                 $clean_keywords = array();
                 foreach ($keywords as $keyword) {
                     $keyword = trim($keyword);
-                    // حذف کاما از انتها و ابتدای کلمه کلیدی
-                    $keyword = trim($keyword, '،,');
+                    // حذف کاما، نقطه و علامت‌های دیگر از انتها و ابتدای کلمه کلیدی
+                    $keyword = trim($keyword, '،,.؛:;!؟?');
                     if (!empty($keyword)) {
                         $clean_keywords[] = $keyword;
                     }
                 }
                 
-                return $clean_keywords;
+                if (!empty($clean_keywords)) {
+                    return $clean_keywords;
+                }
             }
+        }
+    }
+    
+    // اگر کلمات کلیدی با الگوهای بالا پیدا نشد، تلاش کنیم از عنوان‌ها استخراج کنیم
+    $heading_patterns = array(
+        '/<h1[^>]*>(.*?)<\/h1>/i',
+        '/<h2[^>]*>(.*?)<\/h2>/i',
+        '/^#\s+(.*?)$/m',
+        '/^##\s+(.*?)$/m'
+    );
+    
+    $headings = array();
+    foreach ($heading_patterns as $pattern) {
+        preg_match_all($pattern, $content, $matches);
+        if (!empty($matches[1])) {
+            foreach ($matches[1] as $match) {
+                $headings[] = trim(strip_tags($match));
+            }
+        }
+    }
+    
+    // اگر عنوان‌ها پیدا شدند، از آنها به عنوان کلمات کلیدی استفاده کنیم
+    if (!empty($headings)) {
+        // حداکثر 5 عنوان اول را به عنوان کلمات کلیدی استفاده کنیم
+        return array_slice($headings, 0, 5);
+    }
+    
+    // اگر هیچ کلمه کلیدی پیدا نشد، تلاش کنیم از پاراگراف اول استخراج کنیم
+    $paragraphs = preg_split('/\n\s*\n/', $content);
+    if (!empty($paragraphs[0])) {
+        $first_paragraph = $paragraphs[0];
+        // حذف علامت‌های HTML
+        $first_paragraph = strip_tags($first_paragraph);
+        
+        // استخراج کلمات مهم از پاراگراف اول (کلمات با طول بیشتر از 4 حرف)
+        $words = preg_split('/\s+/', $first_paragraph);
+        $important_words = array();
+        foreach ($words as $word) {
+            $word = trim($word);
+            // حذف علامت‌های نقطه‌گذاری
+            $word = trim($word, '،,.؛:;!؟?()[]{}""\'');
+            if (mb_strlen($word, 'UTF-8') > 4 && !in_array($word, $important_words)) {
+                $important_words[] = $word;
+            }
+            
+            // حداکثر 5 کلمه کلیدی
+            if (count($important_words) >= 5) {
+                break;
+            }
+        }
+        
+        if (!empty($important_words)) {
+            return $important_words;
         }
     }
     
@@ -840,16 +906,27 @@ function smart_admin_rankmath_metabox_callback($post) {
     echo '</p>';
     echo '</div>';
     
-    // پیشنهاد کلمات کلیدی پیش‌فرض
-    $default_keywords = array('برنامه نویسی', 'وبلاگ', 'مقاله', 'آموزش', 'راهنما');
-    echo '<div style="margin-top: 10px;">';
-    echo '<p><strong>کلمات کلیدی پیشنهادی:</strong></p>';
-    echo '<div style="display: flex; flex-wrap: wrap; gap: 5px;">';
-    foreach ($default_keywords as $keyword) {
-        echo '<span class="keyword-suggestion" style="background: #f0f0f0; padding: 3px 8px; border-radius: 3px; cursor: pointer;">' . esc_html($keyword) . '</span>';
+    // استخراج کلمات کلیدی پیشنهادی از محتوای پست
+    $suggested_keywords = array();
+    
+    if (!empty($post->post_content)) {
+        // استخراج کلمات کلیدی از محتوا
+        if (function_exists('smart_admin_extract_keywords_from_ai_response')) {
+            $suggested_keywords = smart_admin_extract_keywords_from_ai_response($post->post_content);
+        }
     }
-    echo '</div>';
-    echo '</div>';
+    
+    // اگر کلمات کلیدی استخراج شد، آنها را نمایش بده
+    if (!empty($suggested_keywords)) {
+        echo '<div style="margin-top: 10px;">';
+        echo '<p><strong>کلمات کلیدی پیشنهادی (استخراج شده از محتوا):</strong></p>';
+        echo '<div style="display: flex; flex-wrap: wrap; gap: 5px;">';
+        foreach ($suggested_keywords as $keyword) {
+            echo '<span class="keyword-suggestion" style="background: #f0f0f0; padding: 3px 8px; border-radius: 3px; cursor: pointer;">' . esc_html($keyword) . '</span>';
+        }
+        echo '</div>';
+        echo '</div>';
+    }
     
     // توضیحات مفید
     echo '<p class="description" style="font-size: 12px; margin-top: 10px;">کلمات کلیدی فقط در متادیتای Rank Math ذخیره می‌شوند و به برچسب‌های پست اضافه نمی‌شوند.</p>';

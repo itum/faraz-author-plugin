@@ -3,9 +3,30 @@
  * Unsplash Metabox for selecting a featured image.
  */
 
+// بررسی اینکه آیا Unsplash فعال است یا نه
+function faraz_unsplash_is_enabled() {
+    // بررسی وجود تابع faraz_unsplash_is_auto_featured_image_enabled
+    if (function_exists('faraz_unsplash_is_auto_featured_image_enabled')) {
+        return faraz_unsplash_is_auto_featured_image_enabled();
+    }
+    
+    // بررسی وجود تابع faraz_unsplash_is_image_generation_enabled
+    if (function_exists('faraz_unsplash_is_image_generation_enabled')) {
+        return faraz_unsplash_is_image_generation_enabled();
+    }
+    
+    // اگر تابع وجود ندارد، بررسی مستقیم گزینه
+    return get_option('faraz_unsplash_enable_image_generation', true);
+}
+
 // Add metabox
 add_action('add_meta_boxes', 'faraz_unsplash_add_metabox');
 function faraz_unsplash_add_metabox() {
+    // اگر Unsplash غیرفعال است، متاباکس اضافه نکن
+    if (!faraz_unsplash_is_enabled()) {
+        return;
+    }
+    
     add_meta_box(
         'faraz_unsplash_metabox',
         'تصویر شاخص از Unsplash',
@@ -37,6 +58,11 @@ function faraz_unsplash_metabox_callback($post) {
 // Enqueue scripts and styles
 add_action('admin_enqueue_scripts', 'faraz_unsplash_enqueue_assets');
 function faraz_unsplash_enqueue_assets($hook) {
+    // اگر Unsplash غیرفعال است، اسکریپت‌ها را اضافه نکن
+    if (!faraz_unsplash_is_enabled()) {
+        return;
+    }
+    
     if ('post.php' != $hook && 'post-new.php' != $hook) {
         return;
     }
@@ -54,6 +80,11 @@ function faraz_unsplash_enqueue_assets($hook) {
 // AJAX handler for searching images
 add_action('wp_ajax_faraz_unsplash_search_images', 'faraz_unsplash_search_images_callback');
 function faraz_unsplash_search_images_callback() {
+    // اگر Unsplash غیرفعال است، درخواست را رد کن
+    if (!faraz_unsplash_is_enabled()) {
+        wp_send_json_error(['message' => 'Unsplash غیرفعال است.']);
+    }
+    
     check_ajax_referer('faraz_unsplash_search', 'nonce');
 
     $api_key = get_option('faraz_unsplash_api_key');
@@ -111,6 +142,11 @@ function faraz_unsplash_search_images_callback() {
 // AJAX handler for setting featured image
 add_action('wp_ajax_faraz_unsplash_set_image', 'faraz_unsplash_set_image_callback');
 function faraz_unsplash_set_image_callback() {
+    // اگر Unsplash غیرفعال است، درخواست را رد کن
+    if (!faraz_unsplash_is_enabled()) {
+        wp_send_json_error(['message' => 'Unsplash غیرفعال است.']);
+    }
+    
     check_ajax_referer('faraz_unsplash_search', 'nonce');
 
     $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
@@ -145,6 +181,11 @@ function faraz_unsplash_set_image_callback() {
 // AJAX handler for testing connection
 add_action('wp_ajax_test_unsplash_connection', 'faraz_unsplash_test_connection_callback');
 function faraz_unsplash_test_connection_callback() {
+    // اگر Unsplash غیرفعال است، درخواست را رد کن
+    if (!faraz_unsplash_is_enabled()) {
+        wp_send_json_error(['message' => 'Unsplash غیرفعال است.']);
+    }
+    
     check_ajax_referer('test_unsplash_connection', 'nonce');
 
     $api_key = get_option('faraz_unsplash_api_key');
@@ -190,4 +231,28 @@ function faraz_unsplash_test_connection_callback() {
     }
 
     wp_send_json_success(['message' => 'اتصال به Unsplash موفق است. API در دسترس می‌باشد.']);
+}
+
+// بررسی وضعیت Unsplash در زمان بارگذاری فایل
+$unsplash_metabox_enabled = false;
+
+// بررسی وجود تابع faraz_unsplash_is_auto_featured_image_enabled
+if (function_exists('faraz_unsplash_is_auto_featured_image_enabled')) {
+    $unsplash_metabox_enabled = faraz_unsplash_is_auto_featured_image_enabled();
+} elseif (function_exists('faraz_unsplash_is_image_generation_enabled')) {
+    $unsplash_metabox_enabled = faraz_unsplash_is_image_generation_enabled();
+} else {
+    $unsplash_metabox_enabled = get_option('faraz_unsplash_enable_image_generation', true);
+}
+
+if (!$unsplash_metabox_enabled) {
+    error_log('[Unsplash Metabox] Unsplash is disabled, not adding metabox hooks');
+    // حذف هوک‌های احتمالی موجود
+    remove_action('add_meta_boxes', 'faraz_unsplash_add_metabox');
+    remove_action('admin_enqueue_scripts', 'faraz_unsplash_enqueue_assets');
+    remove_action('wp_ajax_faraz_unsplash_search_images', 'faraz_unsplash_search_images_callback');
+    remove_action('wp_ajax_faraz_unsplash_set_image', 'faraz_unsplash_set_image_callback');
+    remove_action('wp_ajax_test_unsplash_connection', 'faraz_unsplash_test_connection_callback');
+} else {
+    error_log('[Unsplash Metabox] Unsplash is enabled, metabox hooks will be added');
 }
