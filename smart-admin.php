@@ -1603,6 +1603,7 @@ function smart_admin_page() {
                 <!-- ارجاع تصویر مرجع (برای image-to-image) -->
                 <input type="hidden" id="smart_admin_reference_image_id" name="smart_admin_reference_image_id" value="">
                 <input type="hidden" id="smart_admin_reference_image_url" name="smart_admin_reference_image_url" value="">
+			<input type="hidden" id="smart_admin_reference_image_urls" name="smart_admin_reference_image_urls" value="">
                 <div id="reference-image-preview" style="display:none;margin:12px 0;">
                     <div style="font-size:12px;color:#555;margin-bottom:6px;">تصویر مرجع انتخاب‌شده:</div>
                     <img id="reference-image-thumb" src="" alt="reference" style="max-width:220px;height:auto;border:1px solid #e5e5e5;border-radius:6px;">
@@ -1761,6 +1762,136 @@ function smart_admin_page() {
                 </div>
             </div>
 
+            <!-- قالب‌های ویژه محصول ووکامرس -->
+            <div class="image-templates-wrap" style="margin-top: 28px;">
+                <h3>قالب‌های ویژه محصول ووکامرس</h3>
+                <p>از این قالب برای ساخت تصاویر محصول حرفه‌ای استفاده کنید. می‌توانید یک یا چند تصویر مرجع از کتابخانه انتخاب کنید.</p>
+                <div class="templates-grid">
+                    <div class="template-card">
+                        <h3>تصویر استودیویی محصول (E-commerce)</h3>
+                        <span class="template-card-model">مدل پیشنهادی: <?php echo esc_html(get_option('smart_admin_image_model', 'gapgpt/flux.1-dev')); ?></span>
+                        <div class="template-card-description">پس‌زمینه استاندارد، نور یکنواخت، مناسب صفحه محصول، با سایه طبیعی</div>
+                        <div class="template-card-actions">
+                            <button type="button" class="use-product-template-btn" data-template="studio" data-model="<?php echo esc_attr(get_option('smart_admin_image_model', 'gapgpt/flux.1-dev')); ?>">استفاده از این قالب</button>
+                        </div>
+                    </div>
+                    <div class="template-card">
+                        <h3>تصویر لایف‌استایل مینیمال</h3>
+                        <span class="template-card-model">مدل پیشنهادی: <?php echo esc_html(get_option('smart_admin_image_model', 'gapgpt/flux.1-dev')); ?></span>
+                        <div class="template-card-description">چیدمان ساده و زیبای محصول در صحنه واقعی مینیمال</div>
+                        <div class="template-card-actions">
+                            <button type="button" class="use-product-template-btn" data-template="lifestyle" data-model="<?php echo esc_attr(get_option('smart_admin_image_model', 'gapgpt/flux.1-dev')); ?>">استفاده از این قالب</button>
+                        </div>
+                    </div>
+                    <div class="template-card">
+                        <h3>تصویر با انعکاس شیشه‌ای</h3>
+                        <span class="template-card-model">مدل پیشنهادی: <?php echo esc_html(get_option('smart_admin_image_model', 'gapgpt/flux.1-dev')); ?></span>
+                        <div class="template-card-description">پس‌زمینه روشن با انعکاس ظریف زیر محصول</div>
+                        <div class="template-card-actions">
+                            <button type="button" class="use-product-template-btn" data-template="reflect" data-model="<?php echo esc_attr(get_option('smart_admin_image_model', 'gapgpt/flux.1-dev')); ?>">استفاده از این قالب</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- مودال قالب محصول ووکامرس -->
+            <div id="product-image-template-modal" style="display:none;" class="template-form-modal">
+                <div class="template-form-content">
+                    <div class="template-form-header">
+                        <h3 id="product-template-form-title">قالب محصول ووکامرس</h3>
+                        <button type="button" class="close-product-template-form">&times;</button>
+                    </div>
+                    <form id="product-image-template-form" class="prompt-form">
+                        <div class="form-group">
+                            <label for="product-template-model-select">مدل ساخت تصویر:</label>
+                            <select id="product-template-model-select" name="image_model">
+                                <option value="gapgpt/flux.1-dev" selected>Flux 1 Dev (GapGPT) — پیشنهاد</option>
+                                <option value="gapgpt/flux.1-schnell">Flux 1 Schnell (GapGPT)</option>
+                                <option value="dall-e-3">DALL·E 3</option>
+                                <option value="flux-1-schnell">FLUX 1 Schnell</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                            <div class="form-group" style="flex:1 1 260px;">
+                                <label for="product_title">نام/نوع محصول:</label>
+                                <input type="text" id="product_title" name="product_title" placeholder="مثال: کفش رانینگ سفید مردانه">
+                            </div>
+                            <div class="form-group" style="flex:1 1 200px;">
+                                <label for="product_aspect">نسبت تصویر:</label>
+                                <select id="product_aspect" name="product_aspect">
+                                    <option value="1:1" selected>1:1</option>
+                                    <option value="4:5">4:5</option>
+                                    <option value="16:9">16:9</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                            <div class="form-group" style="flex:1 1 200px;">
+                                <label for="product_angle">زاویه دید:</label>
+                                <select id="product_angle" name="product_angle">
+                                    <option value="Front">نمای روبه‌رو</option>
+                                    <option value="3/4 45-deg" selected>سه‌چهارم 45 درجه</option>
+                                    <option value="Top-down">نمای بالا</option>
+                                    <option value="Side">نمای جانبی</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex:1 1 200px;">
+                                <label for="product_bg">پس‌زمینه:</label>
+                                <select id="product_bg" name="product_bg" data-allow-custom="1">
+                                    <option value="سفید خالص" selected>سفید خالص</option>
+                                    <option value="گرادیان خیلی روشن">گرادیان خیلی روشن</option>
+                                    <option value="شفاف">شفاف</option>
+                                    <option value="سطح چوب روشن مینیمال">سطح چوب روشن مینیمال</option>
+                                    <option value="بتن روشن مینیمال">بتن روشن مینیمال</option>
+                                    <option value="custom">سفارشی...</option>
+                                </select>
+                                <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                    <input type="text" id="product_bg_custom" name="product_bg_custom" placeholder="پس‌زمینه سفارشی">
+                                </div>
+                            </div>
+                            <div class="form-group" style="flex:1 1 200px;">
+                                <label for="product_shadow">سایه/انعکاس:</label>
+                                <select id="product_shadow" name="product_shadow">
+                                    <option value="بدون انعکاس، سایه نرم طبیعی" selected>سایه نرم طبیعی</option>
+                                    <option value="سایه Drop Shadow طبیعی">Drop Shadow</option>
+                                    <option value="انعکاس شیشه‌ای ظریف">انعکاس شیشه‌ای ظریف</option>
+                                    <option value="بدون سایه/انعکاس">بدون سایه/انعکاس</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex:1 1 220px;">
+                                <label for="product_style">سبک خروجی:</label>
+                                <select id="product_style" name="product_style">
+                                    <option value="E-commerce studio" selected>استودیویی E-commerce</option>
+                                    <option value="Minimal lifestyle scene">لایف‌استایل مینیمال</option>
+                                    <option value="Floating with soft shadow">شناور با سایه نرم</option>
+                                    <option value="Glossy reflection">انعکاس براق</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- انتخاب تصاویر مرجع -->
+                        <div class="form-group">
+                            <label>انتخاب تصاویر مرجع:</label>
+                            <div class="button-group" style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button type="button" class="button" id="select-product-ref-single">انتخاب ۱ تصویر</button>
+                                <button type="button" class="button" id="select-product-ref-multi">انتخاب چند تصویر</button>
+                            </div>
+                            <input type="hidden" id="product-reference-images-json" value="[]">
+                            <div id="product-reference-gallery" style="display:none;margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;"></div>
+                        </div>
+
+                        ${getCommonProcessingFields()}
+
+                        <button type="submit" class="submit-button" id="generate-product-image-template-btn">
+                            <span class="loading-spinner" id="loading-spinner-product-image" style="display:none"></span>
+                            <span>تولید تصویر محصول</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
             <script>
             (function(){
                 // پروفایل‌های حوزه برای پیشنهاد گزینه‌های پیش‌فرض
@@ -1897,6 +2028,147 @@ function smart_admin_page() {
                     fieldsContainer.innerHTML = getImageTemplateFields(templateTitle);
                     initCustomSelectHandlers(fieldsContainer);
                     modal.style.display = 'flex';
+                }
+
+                // ========== Product Template Modal ==========
+                const productTemplateButtons = document.querySelectorAll('.use-product-template-btn');
+                productTemplateButtons.forEach(btn => {
+                    btn.addEventListener('click', function(){
+                        const model = this.getAttribute('data-model');
+                        const type = this.getAttribute('data-template');
+                        showProductTemplateForm(type, model);
+                    });
+                });
+
+                const productModal = document.getElementById('product-image-template-modal');
+                const closeProductTemplateBtn = document.querySelector('.close-product-template-form');
+                if (closeProductTemplateBtn) {
+                    closeProductTemplateBtn.addEventListener('click', function(){
+                        productModal.style.display = 'none';
+                    });
+                }
+                if (productModal) {
+                    productModal.addEventListener('click', function(e){ if (e.target === this) this.style.display = 'none'; });
+                }
+
+                function showProductTemplateForm(type, model){
+                    const titleMap = { studio: 'تصویر استودیویی محصول (E-commerce)', lifestyle: 'تصویر لایف‌استایل مینیمال', reflect: 'تصویر با انعکاس شیشه‌ای' };
+                    document.getElementById('product-template-form-title').textContent = titleMap[type] || 'قالب محصول ووکامرس';
+                    const modelSelect = document.getElementById('product-template-model-select');
+                    if (modelSelect) modelSelect.value = model || 'gapgpt/flux.1-dev';
+                    // پیش‌تنظیم فیلدها بر اساس نوع
+                    if (type === 'studio') {
+                        document.getElementById('product_bg').value = 'سفید خالص';
+                        document.getElementById('product_shadow').value = 'بدون انعکاس، سایه نرم طبیعی';
+                        document.getElementById('product_style').value = 'E-commerce studio';
+                    } else if (type === 'lifestyle') {
+                        document.getElementById('product_bg').value = 'سطح چوب روشن مینیمال';
+                        document.getElementById('product_shadow').value = 'سایه Drop Shadow طبیعی';
+                        document.getElementById('product_style').value = 'Minimal lifestyle scene';
+                    } else if (type === 'reflect') {
+                        document.getElementById('product_bg').value = 'گرادیان خیلی روشن';
+                        document.getElementById('product_shadow').value = 'انعکاس شیشه‌ای ظریف';
+                        document.getElementById('product_style').value = 'Glossy reflection';
+                    }
+                    initCustomSelectHandlers(productModal);
+                    productModal.style.display = 'flex';
+                }
+
+                // انتخاب تصویر(های) مرجع محصول
+                document.addEventListener('click', function(e){
+                    if (e.target && (e.target.id === 'select-product-ref-single' || e.target.id === 'select-product-ref-multi')) {
+                        e.preventDefault();
+                        if (typeof wp === 'undefined' || !wp.media) { alert('کتابخانه رسانه وردپرس در دسترس نیست.'); return; }
+                        const multiple = e.target.id === 'select-product-ref-multi';
+                        const frame = wp.media({ title: multiple ? 'انتخاب چند تصویر' : 'انتخاب تصویر', multiple, library: { type: 'image' } });
+                        frame.on('select', function(){
+                            const sel = frame.state().get('selection');
+                            const items = [];
+                            sel.each(att => { const a = att.toJSON(); items.push({ id: a.id, url: a.url }); });
+                            const jsonEl = document.getElementById('product-reference-images-json');
+                            jsonEl.value = JSON.stringify(items);
+                            const gal = document.getElementById('product-reference-gallery');
+                            gal.innerHTML = '';
+                            if (items.length) {
+                                gal.style.display = 'flex';
+                                items.forEach(it => {
+                                    const img = document.createElement('img');
+                                    img.src = it.url; img.style.maxWidth = '110px'; img.style.height = 'auto'; img.style.border = '1px solid #e5e5e5'; img.style.borderRadius = '6px';
+                                    gal.appendChild(img);
+                                });
+                            } else { gal.style.display = 'none'; }
+                        });
+                        frame.open();
+                    }
+                });
+
+                // سابمیت قالب محصول
+                const productForm = document.getElementById('product-image-template-form');
+                if (productForm) {
+                    productForm.addEventListener('submit', function(e){
+                        e.preventDefault();
+                        const fd = new FormData(productForm);
+                        const items = JSON.parse(document.getElementById('product-reference-images-json').value || '[]');
+                        const prompt = buildProductPromptFromFormData(fd);
+
+                        const imageTab = document.getElementById('images');
+                        const mainForm = imageTab ? imageTab.querySelector('form') : null;
+                        if (mainForm) {
+                            const promptField = mainForm.querySelector('#smart_admin_image_prompt');
+                            const modelSelect = mainForm.querySelector('#smart_admin_image_model');
+                            const sizeSelect = mainForm.querySelector('#smart_admin_image_size');
+                            const qualitySelect = mainForm.querySelector('#smart_admin_image_quality');
+                            const refIdInput = mainForm.querySelector('#smart_admin_reference_image_id');
+                            const refUrlInput = mainForm.querySelector('#smart_admin_reference_image_url');
+                            const refUrlsInput = mainForm.querySelector('#smart_admin_reference_image_urls');
+
+                            if (promptField) promptField.value = prompt;
+                            if (modelSelect) modelSelect.value = document.getElementById('product-template-model-select').value || modelSelect.value;
+                            if (qualitySelect) qualitySelect.value = 'high';
+
+                            // اندازه براساس نسبت
+                            const aspect = fd.get('product_aspect') || '1:1';
+                            const aspectToSize = { '1:1': '1024x1024', '4:5': '1024x1280', '16:9': '1280x720' };
+                            if (sizeSelect && aspectToSize[aspect]) sizeSelect.value = aspectToSize[aspect];
+
+                            // تصویر(های) مرجع
+                            if (items.length) {
+                                if (refIdInput) refIdInput.value = items[0].id;
+                                if (refUrlInput) refUrlInput.value = items[0].url;
+                                if (refUrlsInput) refUrlsInput.value = JSON.stringify(items.map(i => i.url));
+                                const preview = document.getElementById('reference-image-preview');
+                                const img = document.getElementById('reference-image-thumb');
+                                if (preview && img) { img.src = items[0].url; preview.style.display = 'block'; }
+                            }
+
+                            productModal.style.display = 'none';
+                            mainForm.submit();
+                        }
+                    });
+                }
+
+                function buildProductPromptFromFormData(fd){
+                    const title = fd.get('product_title') || 'یک محصول';
+                    const angle = fd.get('product_angle') || '3/4 45-deg';
+                    const bg = (fd.get('product_bg') === 'custom' ? (fd.get('product_bg_custom') || '') : fd.get('product_bg')) || 'سفید خالص';
+                    const shadow = fd.get('product_shadow') || 'بدون انعکاس، سایه نرم طبیعی';
+                    const style = fd.get('product_style') || 'E-commerce studio';
+                    const aspect = fd.get('product_aspect') || '1:1';
+                    const processing = document.getElementById('processing_style_select')?.value || 'Photorealistic';
+                    const stylization = document.getElementById('stylization_select')?.value || 'Medium';
+                    const tone = document.getElementById('color_tone_select')?.value || 'Neutral';
+                    const parts = [];
+                    parts.push(`Product photo: ${title}`);
+                    parts.push(`Angle: ${angle}`);
+                    parts.push(`Background: ${bg}`);
+                    parts.push(`Shadow/Reflection: ${shadow}`);
+                    parts.push(`Style: ${style}`);
+                    parts.push(`Aspect ratio: ${aspect}`);
+                    parts.push(`Processing style: ${processing}`);
+                    parts.push(`Stylization: ${stylization}`);
+                    parts.push(`Color tone: ${tone}`);
+                    parts.push('Ultra-clean studio quality, high detail, sharp focus, consistent lighting, e-commerce ready');
+                    return parts.join(' | ');
                 }
 
                 function getImageTemplateFields(templateTitle){
@@ -4066,6 +4338,7 @@ function smart_admin_generate_image($prompt, $model, $api_key, $options = array(
     $response_format = isset($options['response_format']) ? $options['response_format'] : 'url';
     $reference_image_url = isset($options['reference_image_url']) ? $options['reference_image_url'] : '';
     $reference_image_id = isset($options['reference_image_id']) ? $options['reference_image_id'] : '';
+    $reference_image_urls = isset($options['reference_image_urls']) ? $options['reference_image_urls'] : '';
 
     $body = array(
         'model' => $model,
@@ -4082,6 +4355,15 @@ function smart_admin_generate_image($prompt, $model, $api_key, $options = array(
     }
     if (!empty($reference_image_id)) {
         $body['reference_image_id'] = $reference_image_id;
+    }
+    if (!empty($reference_image_urls)) {
+        // اگر رشته JSON باشد، همان را پاس می‌دهیم؛ در غیر اینصورت آرایه را ارسال می‌کنیم
+        if (is_string($reference_image_urls)) {
+            $decoded = json_decode($reference_image_urls, true);
+            $body['reference_image_urls'] = is_array($decoded) ? $decoded : array($reference_image_urls);
+        } else if (is_array($reference_image_urls)) {
+            $body['reference_image_urls'] = $reference_image_urls;
+        }
     }
 
     smart_admin_log('Request URL: ' . $url);
