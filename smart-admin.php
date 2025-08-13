@@ -5367,7 +5367,8 @@ function smart_admin_extract_seo_title($content, $main_topic = '') {
             if (preg_match($pattern, $content, $matches)) {
                 $destination = trim($matches[1]);
                 if (!empty($destination)) {
-                    $title = "راهنمای کامل سفر به " . $destination . ": تجربه‌ای فراموش‌نشدنی";
+                    // عنوان استاندارد بدون کلیشه‌ها و نشانه‌های تزئینی
+                    $title = "سفر به " . $destination . " - نکات و جاذبه‌ها";
                     smart_admin_debug_log('Created travel-specific title: ' . $title, 'INFO');
                     return $title;
                 }
@@ -5376,7 +5377,7 @@ function smart_admin_extract_seo_title($content, $main_topic = '') {
         
         // اگر مقصد خاصی پیدا نشد، عنوان عمومی برای سفر
         if (preg_match('/(?:سفر|travel|گردشگری|tourism)/ui', $content)) {
-            $title = "راهنمای کامل سفر: تجربه‌ای فراموش‌نشدنی";
+            $title = "راهنمای سفر - نکات و برنامه پیشنهادی";
             smart_admin_debug_log('Created general travel title: ' . $title, 'INFO');
             return $title;
         }
