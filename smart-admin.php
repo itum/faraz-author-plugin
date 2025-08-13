@@ -113,6 +113,7 @@ function smart_admin_add_menu()
 function smart_admin_register_settings() {
     register_setting('smart_admin_settings', 'smart_admin_api_key');
     register_setting('smart_admin_settings', 'smart_admin_model');
+	register_setting('smart_admin_settings', 'smart_admin_image_model');
 }
 add_action('admin_init', 'smart_admin_register_settings');
 
@@ -738,8 +739,9 @@ function smart_admin_page() {
     
     // پیام موفقیت برای نمایش
     $success_message = '';
+	$image_result = null;
     
-    // ذخیره پرامپت و درخواست به API
+	// ذخیره پرامپت و درخواست به API
     if (isset($_POST['smart_admin_prompt']) || (isset($_POST['is_template']) && $_POST['is_template'] == '1')) {
         // افزودن نانس برای امنیت
         check_admin_referer('smart_admin_prompt_action', 'smart_admin_nonce');
@@ -753,6 +755,25 @@ function smart_admin_page() {
         } else {
             $prompt = sanitize_textarea_field($_POST['smart_admin_prompt']);
         }
+
+	// ساخت تصویر مستقل از تب «ساخت تصویر»
+	if (isset($_POST['smart_admin_image_prompt'])) {
+		check_admin_referer('smart_admin_image_action', 'smart_admin_image_nonce');
+		$image_model = isset($_POST['smart_admin_image_model']) && $_POST['smart_admin_image_model'] !== ''
+			? sanitize_text_field($_POST['smart_admin_image_model'])
+			: get_option('smart_admin_image_model', 'gapgpt/flux.1-schnell');
+		$api_key = get_option('smart_admin_api_key');
+		$image_prompt = sanitize_textarea_field($_POST['smart_admin_image_prompt']);
+		$image_size = isset($_POST['smart_admin_image_size']) ? sanitize_text_field($_POST['smart_admin_image_size']) : '1024x1024';
+		$image_quality = isset($_POST['smart_admin_image_quality']) ? sanitize_text_field($_POST['smart_admin_image_quality']) : 'standard';
+		$image_n = isset($_POST['smart_admin_image_n']) ? max(1, min(4, intval($_POST['smart_admin_image_n']))) : 1;
+
+		$image_result = smart_admin_generate_image($image_prompt, $image_model, $api_key, array(
+			'n' => $image_n,
+			'size' => $image_size,
+			'quality' => $image_quality
+		));
+	}
         
         // اضافه کردن لحن انسانی به پرامپت اگر انتخاب شده باشد
         if (isset($_POST['use_human_tone']) && $_POST['use_human_tone'] == '1') {
@@ -1476,12 +1497,92 @@ function smart_admin_page() {
         <div class="smart-admin-tabs">
             <a href="#" class="tab-link active" data-tab="prompt">ایجاد محتوا با هوش مصنوعی</a>
             <a href="#" class="tab-link" data-tab="templates">قالب‌های آماده</a>
+            <a href="#" class="tab-link" data-tab="images">ساخت تصویر</a>
             <a href="#" class="tab-link" data-tab="saved">پرامپت‌های ذخیره شده</a>
             <a href="#" class="tab-link" data-tab="drafts">پیش‌نویس‌ها</a>
             <a href="#" class="tab-link" data-tab="scheduler">زمان‌بندی محتوا</a>
             <a href="#" class="tab-link" data-tab="settings">تنظیمات</a>
         </div>
         
+        <div id="images" class="tab-content">
+            <h3>ساخت تصویر با مدل‌های GapGPT و دیگر ارائه‌دهندگان</h3>
+            <form method="post" class="prompt-form">
+                <?php wp_nonce_field('smart_admin_image_action', 'smart_admin_image_nonce'); ?>
+                <div class="form-group">
+                    <label for="smart_admin_image_model">مدل ساخت تصویر:</label>
+                    <select id="smart_admin_image_model" name="smart_admin_image_model">
+                        <optgroup label="GapGPT">
+                            <option value="gapgpt/flux.1-schnell" <?php selected(get_option('smart_admin_image_model', 'gapgpt/flux.1-schnell'), 'gapgpt/flux.1-schnell'); ?>>Flux 1 Schnell (GapGPT)</option>
+                            <option value="gapgpt/flux.1-dev" <?php selected(get_option('smart_admin_image_model'), 'gapgpt/flux.1-dev'); ?>>Flux 1 Dev (GapGPT)</option>
+                        </optgroup>
+                        <optgroup label="OpenAI">
+                            <option value="dall-e-3" <?php selected(get_option('smart_admin_image_model'), 'dall-e-3'); ?>>DALL·E 3</option>
+                            <option value="dall-e-2" <?php selected(get_option('smart_admin_image_model'), 'dall-e-2'); ?>>DALL·E 2</option>
+                        </optgroup>
+                        <optgroup label="BFL - FLUX">
+                            <option value="flux-1-schnell" <?php selected(get_option('smart_admin_image_model'), 'flux-1-schnell'); ?>>FLUX 1 Schnell</option>
+                            <option value="flux/dev" <?php selected(get_option('smart_admin_image_model'), 'flux/dev'); ?>>FLUX Dev</option>
+                            <option value="flux-pro/kontext/text-to-image" <?php selected(get_option('smart_admin_image_model'), 'flux-pro/kontext/text-to-image'); ?>>FLUX Pro Kontext</option>
+                            <option value="flux-pro/kontext/max/text-to-image" <?php selected(get_option('smart_admin_image_model'), 'flux-pro/kontext/max/text-to-image'); ?>>FLUX Pro Kontext Max</option>
+                        </optgroup>
+                        <optgroup label="Google">
+                            <option value="imagen-3.0-generate-002" <?php selected(get_option('smart_admin_image_model'), 'imagen-3.0-generate-002'); ?>>Imagen 3 Generate 002</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="smart_admin_image_prompt">شرح تصویر (پرامپت):</label>
+                    <textarea id="smart_admin_image_prompt" name="smart_admin_image_prompt" placeholder="توضیح دقیق تصویر مورد نظر را وارد کنید..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="smart_admin_image_size">اندازه خروجی:</label>
+                    <select id="smart_admin_image_size" name="smart_admin_image_size">
+                        <option value="512x512">512x512</option>
+                        <option value="768x768">768x768</option>
+                        <option value="1024x1024" selected>1024x1024</option>
+                        <option value="2048x2048">2048x2048</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="smart_admin_image_quality">کیفیت:</label>
+                    <select id="smart_admin_image_quality" name="smart_admin_image_quality">
+                        <option value="standard" selected>Standard</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="smart_admin_image_n">تعداد تصاویر (1 تا 4):</label>
+                    <input type="number" id="smart_admin_image_n" name="smart_admin_image_n" min="1" max="4" value="1">
+                </div>
+
+                <button type="submit" class="submit-button">تولید تصویر</button>
+            </form>
+
+            <?php if (!empty($image_result)): ?>
+                <div class="generated-image-container" style="margin-top:20px">
+                    <?php if (isset($image_result['error'])): ?>
+                        <div class="response-container error"><p><span class="error-icon">⚠️</span><strong>خطا:</strong> <?php echo esc_html($image_result['error']); ?></p></div>
+                    <?php else: ?>
+                        <h4>نتیجه:</h4>
+                        <div class="generated-image" style="display:flex;gap:12px;flex-wrap:wrap">
+                            <?php foreach ($image_result['images'] as $img): ?>
+                                <div style="text-align:center">
+                                    <img src="<?php echo esc_url($img); ?>" alt="تصویر تولید شده" style="max-width:250px;height:auto;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.1)">
+                                    <div class="image-info" style="margin-top:8px">
+                                        <button type="button" class="button button-secondary" onclick="downloadImage('<?php echo esc_url($img); ?>', 'generated-image')">دانلود</button>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+
         <div id="prompt" class="tab-content active">
             <form method="post" class="prompt-form" id="ai-prompt-form">
                 <?php wp_nonce_field('smart_admin_prompt_action', 'smart_admin_nonce'); ?>
@@ -1830,6 +1931,29 @@ function smart_admin_page() {
                         </optgroup>
                     </select>
                 </div>
+
+				<div class="form-group">
+					<label for="smart_admin_image_model">مدل پیش‌فرض ساخت تصویر (GapGPT):</label>
+					<select id="smart_admin_image_model" name="smart_admin_image_model">
+						<optgroup label="GapGPT - Image">
+							<option value="gapgpt/flux.1-schnell" <?php selected(get_option('smart_admin_image_model'), 'gapgpt/flux.1-schnell'); ?>>Flux 1 Schnell (GapGPT)</option>
+							<option value="gapgpt/flux.1-dev" <?php selected(get_option('smart_admin_image_model'), 'gapgpt/flux.1-dev'); ?>>Flux 1 Dev (GapGPT)</option>
+						</optgroup>
+						<optgroup label="OpenAI - Image">
+							<option value="dall-e-3" <?php selected(get_option('smart_admin_image_model'), 'dall-e-3'); ?>>DALL·E 3</option>
+							<option value="dall-e-2" <?php selected(get_option('smart_admin_image_model'), 'dall-e-2'); ?>>DALL·E 2</option>
+						</optgroup>
+						<optgroup label="BFL - FLUX">
+							<option value="flux-1-schnell" <?php selected(get_option('smart_admin_image_model'), 'flux-1-schnell'); ?>>FLUX 1 Schnell</option>
+							<option value="flux/dev" <?php selected(get_option('smart_admin_image_model'), 'flux/dev'); ?>>FLUX Dev</option>
+							<option value="flux-pro/kontext/text-to-image" <?php selected(get_option('smart_admin_image_model'), 'flux-pro/kontext/text-to-image'); ?>>FLUX Pro Kontext</option>
+							<option value="flux-pro/kontext/max/text-to-image" <?php selected(get_option('smart_admin_image_model'), 'flux-pro/kontext/max/text-to-image'); ?>>FLUX Pro Kontext Max</option>
+						</optgroup>
+						<optgroup label="Google">
+							<option value="imagen-3.0-generate-002" <?php selected(get_option('smart_admin_image_model'), 'imagen-3.0-generate-002'); ?>>Imagen 3 Generate 002</option>
+						</optgroup>
+					</select>
+				</div>
                 
                 <?php submit_button('ذخیره تنظیمات', 'submit-button', 'submit', false); ?>
             </form>
@@ -1958,6 +2082,16 @@ function smart_admin_page() {
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // تابع عمومی دانلود تصویر برای تمام تب‌ها
+        window.downloadImage = function(imageUrl, filename) {
+            const link = document.createElement('a');
+            link.href = imageUrl;
+            link.download = (filename || 'image') + '.jpg';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
         // مدیریت تب‌ها
         const tabLinks = document.querySelectorAll('.tab-link');
         const tabContents = document.querySelectorAll('.tab-content');
@@ -2945,10 +3079,16 @@ function smart_admin_page() {
 // تابع تشخیص مدل‌های تولید تصویر
 function smart_admin_is_image_generation_model($model) {
     $image_generation_models = array(
+        'gapgpt/flux.1-schnell',
+        'gapgpt/flux.1-dev',
         'gemini-2.0-flash-preview-image-generation',
         'gemini-2.5-flash-preview-native-audio-dialog',
         'dall-e-3',
         'dall-e-2',
+        'flux-1-schnell',
+        'flux/dev',
+        'flux-pro/kontext/text-to-image',
+        'flux-pro/kontext/max/text-to-image',
         'midjourney',
         'stable-diffusion'
     );
@@ -2996,16 +3136,21 @@ function smart_admin_extract_image_keywords($content) {
 }
 
 // تابع تولید تصویر با API
-function smart_admin_generate_image($prompt, $model, $api_key) {
+function smart_admin_generate_image($prompt, $model, $api_key, $options = array()) {
     $url = 'https://api.gapgpt.app/v1/images/generations';
     
+    $n = isset($options['n']) ? max(1, min(4, intval($options['n']))) : 1;
+    $size = isset($options['size']) ? $options['size'] : '1024x1024';
+    $quality = isset($options['quality']) ? $options['quality'] : 'standard';
+    $response_format = isset($options['response_format']) ? $options['response_format'] : 'url';
+
     $body = array(
         'model' => $model,
         'prompt' => $prompt,
-        'n' => 1,
-        'size' => '1024x1024',
-        'quality' => 'standard',
-        'response_format' => 'url'
+        'n' => $n,
+        'size' => $size,
+        'quality' => $quality,
+        'response_format' => $response_format
     );
     
     $args = array(
@@ -3031,14 +3176,22 @@ function smart_admin_generate_image($prompt, $model, $api_key) {
         return array('error' => isset($response_body['error']['message']) ? $response_body['error']['message'] : 'خطا در تولید تصویر');
     }
     
-    if (isset($response_body['data'][0]['url'])) {
-        return array(
-            'image_url' => $response_body['data'][0]['url'],
-            'prompt' => $prompt
-        );
-    } else {
-        return array('error' => 'خطا در دریافت تصویر');
+    if (isset($response_body['data']) && is_array($response_body['data']) && !empty($response_body['data'])) {
+        $urls = array();
+        foreach ($response_body['data'] as $item) {
+            if (isset($item['url'])) {
+                $urls[] = $item['url'];
+            }
+        }
+        if (!empty($urls)) {
+            return array(
+                'image_url' => $urls[0],
+                'images' => $urls,
+                'prompt' => $prompt
+            );
+        }
     }
+    return array('error' => 'خطا در دریافت تصویر');
 }
 
 // تابع ترجمه و بهبود پیام‌های خطا
