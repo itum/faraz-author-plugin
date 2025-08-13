@@ -29,6 +29,20 @@ require_once plugin_dir_path(__FILE__) . 'smart-admin-seo-auto-optimizer.php';
 // بررسی وضعیت Unsplash قبل از بارگذاری فایل بهینه‌ساز تصاویر
 $unsplash_enabled = false;
 
+// لاگر داخلی افزونه
+if (!function_exists('smart_admin_log')) {
+    function smart_admin_log($message) {
+        $prefix = '[Smart-Admin] ';
+        $timestamp = date('Y-m-d H:i:s');
+        $line = "[$timestamp] $prefix$message" . PHP_EOL;
+        // نوشتن در فایل لاگ اختصاصی افزونه
+        $log_file = plugin_dir_path(__FILE__) . 'smart-admin-debug.log';
+        @file_put_contents($log_file, $line, FILE_APPEND);
+        // همچنین ارسال به error_log (اگر WP_DEBUG فعال باشد به wp-content/debug.log میرود)
+        @error_log($prefix . $message);
+    }
+}
+
 // بررسی وجود تابع faraz_unsplash_is_auto_featured_image_enabled
 if (function_exists('faraz_unsplash_is_auto_featured_image_enabled')) {
     $unsplash_enabled = faraz_unsplash_is_auto_featured_image_enabled();
@@ -3137,6 +3151,9 @@ function smart_admin_extract_image_keywords($content) {
 
 // تابع تولید تصویر با API
 function smart_admin_generate_image($prompt, $model, $api_key, $options = array()) {
+    smart_admin_log('Generate image called');
+    smart_admin_log('Model: ' . $model);
+    smart_admin_log('Prompt: ' . mb_substr($prompt, 0, 200));
     $url = 'https://api.gapgpt.app/v1/images/generations';
     
     $n = isset($options['n']) ? max(1, min(4, intval($options['n']))) : 1;
@@ -3152,6 +3169,9 @@ function smart_admin_generate_image($prompt, $model, $api_key, $options = array(
         'quality' => $quality,
         'response_format' => $response_format
     );
+
+    smart_admin_log('Request URL: ' . $url);
+    smart_admin_log('Request Body: ' . json_encode($body, JSON_UNESCAPED_UNICODE));
     
     $args = array(
         'body' => json_encode($body),
@@ -3164,6 +3184,12 @@ function smart_admin_generate_image($prompt, $model, $api_key, $options = array(
     );
     
     $response = wp_remote_post($url, $args);
+    if (is_wp_error($response)) {
+        smart_admin_log('HTTP Error: ' . $response->get_error_message());
+    } else {
+        smart_admin_log('HTTP Status: ' . wp_remote_retrieve_response_code($response));
+        smart_admin_log('Raw Response: ' . wp_remote_retrieve_body($response));
+    }
     
     if (is_wp_error($response)) {
         return array('error' => $response->get_error_message());
@@ -3173,7 +3199,9 @@ function smart_admin_generate_image($prompt, $model, $api_key, $options = array(
     $response_body = json_decode(wp_remote_retrieve_body($response), true);
     
     if ($response_code !== 200) {
-        return array('error' => isset($response_body['error']['message']) ? $response_body['error']['message'] : 'خطا در تولید تصویر');
+        $msg = isset($response_body['error']['message']) ? $response_body['error']['message'] : 'خطا در تولید تصویر';
+        smart_admin_log('API Error: ' . $msg);
+        return array('error' => $msg);
     }
     
     if (isset($response_body['data']) && is_array($response_body['data']) && !empty($response_body['data'])) {
@@ -3191,6 +3219,7 @@ function smart_admin_generate_image($prompt, $model, $api_key, $options = array(
             );
         }
     }
+    smart_admin_log('Image URLs not found in response payload');
     return array('error' => 'خطا در دریافت تصویر');
 }
 
@@ -3262,6 +3291,7 @@ function smart_admin_translate_error_message($error_message) {
 
 // تابع ارسال درخواست به API گپ جی‌پی‌تی
 function send_to_gapgpt_api($prompt, $model, $api_key) {
+    smart_admin_log('Chat API called - model: ' . $model);
     // تنظیمات درخواست
     $url = 'https://api.gapgpt.app/v1/chat/completions';
     
@@ -3287,6 +3317,11 @@ function send_to_gapgpt_api($prompt, $model, $api_key) {
     
     // ارسال درخواست
     $response = wp_remote_post($url, $args);
+    if (is_wp_error($response)) {
+        smart_admin_log('Chat HTTP Error: ' . $response->get_error_message());
+    } else {
+        smart_admin_log('Chat HTTP Status: ' . wp_remote_retrieve_response_code($response));
+    }
     
     // بررسی خطا
     if (is_wp_error($response)) {
@@ -3309,6 +3344,7 @@ function send_to_gapgpt_api($prompt, $model, $api_key) {
         
         // ترجمه و بهبود پیام‌های خطا
         $error_message = smart_admin_translate_error_message($error_message);
+        smart_admin_log('Chat API Error: ' . $error_message);
         
         return array('error' => $error_message);
     }
