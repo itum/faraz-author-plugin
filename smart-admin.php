@@ -1599,6 +1599,351 @@ function smart_admin_page() {
                 <button type="submit" class="submit-button">تولید تصویر</button>
             </form>
 
+            <!-- قالب‌های آماده ساخت تصویر (عمومی) -->
+            <div class="image-templates-wrap" style="margin-top: 28px;">
+                <h3>قالب‌های آماده ساخت تصویر — دسته‌بندی: عمومی</h3>
+                <p>با استفاده از این قالب‌ها می‌توانید پرامپت‌های دقیق برای ساخت تصویر ایجاد کنید. پس از پر کردن فرم مودال، پرامپت به صورت خودکار در فرم بالا قرار گرفته و ارسال می‌شود.</p>
+
+                <div class="templates-grid">
+                    <?php 
+                    $default_image_templates = array(
+                        array(
+                            'title' => 'پرتره استودیویی حرفه‌ای',
+                            'model' => get_option('smart_admin_image_model', 'gapgpt/flux.1-schnell'),
+                            'description' => 'چهره انسان با نورپردازی استودیویی، پس‌زمینه ساده، جزئیات بالا، تمرکز روی چشم‌ها، پوست طبیعی'
+                        ),
+                        array(
+                            'title' => 'عکس محصول ای‌کامرس (پس‌زمینه سفید)',
+                            'model' => get_option('smart_admin_image_model', 'gapgpt/flux.1-schnell'),
+                            'description' => 'عکاسی محصول با نور نرم، سایه طبیعی، پس‌زمینه سفید خالص، مناسب فروشگاه اینترنتی'
+                        ),
+                        array(
+                            'title' => 'پوستر تبلیغاتی مینیمال',
+                            'model' => get_option('smart_admin_image_model', 'dall-e-3'),
+                            'description' => 'طراحی پوستر مینیمال با پیام اصلی، رنگ‌های برند و تایپوگرافی برجسته'
+                        ),
+                        array(
+                            'title' => 'منظرۀ سینمایی حماسی',
+                            'model' => get_option('smart_admin_image_model', 'gapgpt/flux.1-dev'),
+                            'description' => 'منظره طبیعی با عمق میدان سینمایی، نور طلوع/غروب، حال‌وهوای دراماتیک'
+                        ),
+                        array(
+                            'title' => 'آیکون فلت مدرن',
+                            'model' => get_option('smart_admin_image_model', 'dall-e-3'),
+                            'description' => 'آیکون ساده و فلت با رنگ‌های محدود، کنتراست خوب و خوانایی در اندازه کوچک'
+                        )
+                    );
+                    foreach ($default_image_templates as $index => $tpl):
+                    ?>
+                        <div class="template-card">
+                            <h3><?php echo esc_html($tpl['title']); ?></h3>
+                            <span class="template-card-model">مدل پیش‌فرض: <?php echo esc_html($tpl['model']); ?></span>
+                            <div class="template-card-description"><?php echo esc_html($tpl['description']); ?></div>
+                            <div class="template-card-actions">
+                                <button type="button" class="use-image-template-btn"
+                                    data-template-title="<?php echo esc_attr($tpl['title']); ?>"
+                                    data-model="<?php echo esc_attr($tpl['model']); ?>">
+                                    استفاده از این قالب
+                                </button>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- مودال فرم داینامیک قالب‌های تصویر -->
+            <div id="image-template-form-modal" style="display: none;" class="template-form-modal">
+                <div class="template-form-content">
+                    <div class="template-form-header">
+                        <h3 id="image-template-form-title">قالب ساخت تصویر</h3>
+                        <button type="button" class="close-image-template-form">&times;</button>
+                    </div>
+                    <form id="image-template-form" class="prompt-form">
+                        <div class="form-group">
+                            <label for="image-template-model-select">مدل ساخت تصویر:</label>
+                            <select id="image-template-model-select" name="image_model">
+                                <optgroup label="GapGPT">
+                                    <option value="gapgpt/flux.1-schnell" <?php selected(get_option('smart_admin_image_model', 'gapgpt/flux.1-schnell'), 'gapgpt/flux.1-schnell'); ?>>Flux 1 Schnell (GapGPT)</option>
+                                    <option value="gapgpt/flux.1-dev" <?php selected(get_option('smart_admin_image_model'), 'gapgpt/flux.1-dev'); ?>>Flux 1 Dev (GapGPT)</option>
+                                </optgroup>
+                                <optgroup label="OpenAI">
+                                    <option value="dall-e-3" <?php selected(get_option('smart_admin_image_model'), 'dall-e-3'); ?>>DALL·E 3</option>
+                                    <option value="dall-e-2" <?php selected(get_option('smart_admin_image_model'), 'dall-e-2'); ?>>DALL·E 2</option>
+                                </optgroup>
+                                <optgroup label="BFL - FLUX">
+                                    <option value="flux-1-schnell" <?php selected(get_option('smart_admin_image_model'), 'flux-1-schnell'); ?>>FLUX 1 Schnell</option>
+                                    <option value="flux/dev" <?php selected(get_option('smart_admin_image_model'), 'flux/dev'); ?>>FLUX Dev</option>
+                                    <option value="flux-pro/kontext/text-to-image" <?php selected(get_option('smart_admin_image_model'), 'flux-pro/kontext/text-to-image'); ?>>FLUX Pro Kontext</option>
+                                    <option value="flux-pro/kontext/max/text-to-image" <?php selected(get_option('smart_admin_image_model'), 'flux-pro/kontext/max/text-to-image'); ?>>FLUX Pro Kontext Max</option>
+                                </optgroup>
+                                <optgroup label="Google">
+                                    <option value="imagen-3.0-generate-002" <?php selected(get_option('smart_admin_image_model'), 'imagen-3.0-generate-002'); ?>>Imagen 3 Generate 002</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                            <div class="form-group" style="flex:1 1 180px; min-width:180px;">
+                                <label for="image-template-size">اندازه خروجی:</label>
+                                <select id="image-template-size" name="image_size">
+                                    <option value="512x512">512x512</option>
+                                    <option value="768x768">768x768</option>
+                                    <option value="1024x1024" selected>1024x1024</option>
+                                    <option value="2048x2048">2048x2048</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex:1 1 180px; min-width:180px;">
+                                <label for="image-template-quality">کیفیت:</label>
+                                <select id="image-template-quality" name="image_quality">
+                                    <option value="standard" selected>Standard</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex:1 1 180px; min-width:180px;">
+                                <label for="image-template-n">تعداد تصاویر:</label>
+                                <input type="number" id="image-template-n" name="image_n" min="1" max="4" value="1">
+                            </div>
+                        </div>
+
+                        <div id="image-template-fields"></div>
+
+                        <button type="submit" class="submit-button" id="generate-image-template-btn">
+                            <span class="loading-spinner" id="loading-spinner-image-template" style="display:none"></span>
+                            <span>تولید تصویر با این قالب</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <script>
+            (function(){
+                const imageTemplateButtons = document.querySelectorAll('.use-image-template-btn');
+                imageTemplateButtons.forEach(btn => {
+                    btn.addEventListener('click', function(){
+                        const title = this.getAttribute('data-template-title');
+                        const model = this.getAttribute('data-model');
+                        showImageTemplateForm(title, model);
+                    });
+                });
+
+                const closeImageTemplateBtn = document.querySelector('.close-image-template-form');
+                if (closeImageTemplateBtn) {
+                    closeImageTemplateBtn.addEventListener('click', function(){
+                        document.getElementById('image-template-form-modal').style.display = 'none';
+                    });
+                }
+                const imageTemplateModal = document.getElementById('image-template-form-modal');
+                if (imageTemplateModal) {
+                    imageTemplateModal.addEventListener('click', function(e){
+                        if (e.target === this) {
+                            this.style.display = 'none';
+                        }
+                    });
+                }
+
+                const imageTemplateForm = document.getElementById('image-template-form');
+                if (imageTemplateForm) {
+                    imageTemplateForm.addEventListener('submit', function(e){
+                        e.preventDefault();
+                        const formData = new FormData(imageTemplateForm);
+                        const templateTitle = document.getElementById('image-template-form-title').textContent;
+                        const prompt = buildImagePromptFromFormData(formData, templateTitle);
+
+                        // اعمال در فرم اصلی ساخت تصویر
+                        const imageTab = document.getElementById('images');
+                        const mainForm = imageTab ? imageTab.querySelector('form') : null;
+                        if (mainForm) {
+                            const promptField = mainForm.querySelector('#smart_admin_image_prompt');
+                            const modelSelect = mainForm.querySelector('#smart_admin_image_model');
+                            const sizeSelect = mainForm.querySelector('#smart_admin_image_size');
+                            const qualitySelect = mainForm.querySelector('#smart_admin_image_quality');
+                            const nInput = mainForm.querySelector('#smart_admin_image_n');
+
+                            if (promptField) promptField.value = prompt;
+                            if (modelSelect) modelSelect.value = document.getElementById('image-template-model-select').value || modelSelect.value;
+                            if (sizeSelect) sizeSelect.value = document.getElementById('image-template-size').value || sizeSelect.value;
+                            if (qualitySelect) qualitySelect.value = document.getElementById('image-template-quality').value || qualitySelect.value;
+                            if (nInput) nInput.value = document.getElementById('image-template-n').value || nInput.value;
+
+                            // ارسال خودکار فرم اصلی
+                            document.getElementById('image-template-form-modal').style.display = 'none';
+                            mainForm.submit();
+                        }
+                    });
+                }
+
+                function showImageTemplateForm(templateTitle, model){
+                    const modal = document.getElementById('image-template-form-modal');
+                    const titleEl = document.getElementById('image-template-form-title');
+                    const modelSelect = document.getElementById('image-template-model-select');
+                    const fieldsContainer = document.getElementById('image-template-fields');
+                    titleEl.textContent = templateTitle;
+                    if (modelSelect) modelSelect.value = model;
+                    fieldsContainer.innerHTML = getImageTemplateFields(templateTitle);
+                    modal.style.display = 'flex';
+                }
+
+                function getImageTemplateFields(templateTitle){
+                    switch(templateTitle){
+                        case 'پرتره استودیویی حرفه‌ای':
+                            return `
+                                <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                                    <div class="form-group" style="flex:1 1 260px;">
+                                        <label for="subject">سوژه (جنسیت/سن/ظاهر):</label>
+                                        <input type="text" id="subject" name="subject" placeholder="مثال: زن ۳۰ ساله با موهای مشکی و فر">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 220px;">
+                                        <label for="mood">حال‌و‌هوا:</label>
+                                        <input type="text" id="mood" name="mood" placeholder="مثال: حرفه‌ای، آرام، اعتماد به نفس">
+                                    </div>
+                                </div>
+                                <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                                    <div class="form-group" style="flex:1 1 220px;">
+                                        <label for="lighting">نورپردازی:</label>
+                                        <input type="text" id="lighting" name="lighting" placeholder="مثال: ریم لایت + سافت‌باکس 45 درجه">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 220px;">
+                                        <label for="camera">دوربین/لنز:</label>
+                                        <input type="text" id="camera" name="camera" placeholder="مثال: 85mm f/1.4, full-frame">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 220px;">
+                                        <label for="background">پس‌زمینه:</label>
+                                        <input type="text" id="background" name="background" placeholder="مثال: پس‌زمینه تیره، گرادیانی">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="details">جزئیات و سبک:</label>
+                                    <input type="text" id="details" name="details" placeholder="مثال: پوست طبیعی، رئالیستی، جزئیات بالا، رنگ‌های طبیعی">
+                                </div>
+                            `;
+                        case 'عکس محصول ای‌کامرس (پس‌زمینه سفید)':
+                            return `
+                                <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                                    <div class="form-group" style="flex:1 1 260px;">
+                                        <label for="product">نام محصول/دسته:</label>
+                                        <input type="text" id="product" name="product" placeholder="مثال: کفش ورزشی سفید">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 220px;">
+                                        <label for="angle">زاویه دید:</label>
+                                        <input type="text" id="angle" name="angle" placeholder="مثال: 45 درجه، نمای سه‌چهارم">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 220px;">
+                                        <label for="shadow">سایه/انعکاس:</label>
+                                        <input type="text" id="shadow" name="shadow" placeholder="مثال: سایه نرم طبیعی، بدون انعکاس">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="props">تجهیزات/جزئیات تکمیلی:</label>
+                                    <input type="text" id="props" name="props" placeholder="مثال: سطح سفید تمیز، نور یکنواخت، پس‌زمینه کاملاً سفید">
+                                </div>
+                            `;
+                        case 'پوستر تبلیغاتی مینیمال':
+                            return `
+                                <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                                    <div class="form-group" style="flex:1 1 240px;">
+                                        <label for="topic">موضوع/محصول/خدمت:</label>
+                                        <input type="text" id="topic" name="topic" placeholder="مثال: اپلیکیشن مدیریت مالی">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 200px;">
+                                        <label for="message">پیام کلیدی:</label>
+                                        <input type="text" id="message" name="message" placeholder="مثال: ساده، سریع، امن">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 200px;">
+                                        <label for="brand_colors">رنگ‌های برند:</label>
+                                        <input type="text" id="brand_colors" name="brand_colors" placeholder="مثال: آبی #1E90FF و خاکستری تیره">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="audience">مخاطب هدف:</label>
+                                    <input type="text" id="audience" name="audience" placeholder="مثال: دانشجویان و فریلنسرها">
+                                </div>
+                            `;
+                        case 'منظرۀ سینمایی حماسی':
+                            return `
+                                <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                                    <div class="form-group" style="flex:1 1 240px;">
+                                        <label for="location">لوکیشن/منظره:</label>
+                                        <input type="text" id="location" name="location" placeholder="مثال: کوهستان مه‌آلود با دریاچه">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 200px;">
+                                        <label for="time">زمان/نور:</label>
+                                        <input type="text" id="time" name="time" placeholder="مثال: غروب طلایی">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 200px;">
+                                        <label for="weather">هوا/اتمسفر:</label>
+                                        <input type="text" id="weather" name="weather" placeholder="مثال: مه سبک، ابرهای دراماتیک">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cinematic">جزئیات سینمایی/کمپوزیشن:</label>
+                                    <input type="text" id="cinematic" name="cinematic" placeholder="مثال: عمق میدان کم، نسبت طلایی، کنتراست بالا">
+                                </div>
+                            `;
+                        case 'آیکون فلت مدرن':
+                            return `
+                                <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                                    <div class="form-group" style="flex:1 1 260px;">
+                                        <label for="icon_concept">مفهوم آیکون:</label>
+                                        <input type="text" id="icon_concept" name="icon_concept" placeholder="مثال: ابر داده (Cloud)">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 200px;">
+                                        <label for="icon_colors">پالت رنگی:</label>
+                                        <input type="text" id="icon_colors" name="icon_colors" placeholder="مثال: ۲-۳ رنگ تخت، کنتراست بالا">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="icon_rules">قیود سبک/خوانایی:</label>
+                                    <input type="text" id="icon_rules" name="icon_rules" placeholder="مثال: خطوط ساده، بدون نویز، بدون متن، پس‌زمینه شفاف یا تک‌رنگ">
+                                </div>
+                            `;
+                        default:
+                            return '';
+                    }
+                }
+
+                function buildImagePromptFromFormData(fd, templateTitle){
+                    let parts = [];
+                    switch(templateTitle){
+                        case 'پرتره استودیویی حرفه‌ای':
+                            parts.push(`پرتره استودیویی رئالیستی از ${fd.get('subject') || 'یک فرد'}، حال‌و‌هوا: ${fd.get('mood') || 'حرفه‌ای'}`);
+                            parts.push(`نورپردازی: ${fd.get('lighting') || 'ریم لایت + نور نرم سافت‌باکس'}`);
+                            parts.push(`دوربین/لنز: ${fd.get('camera') || '85mm f/1.4، فول‌فریم'}`);
+                            parts.push(`پس‌زمینه: ${fd.get('background') || 'تیره و مینیمال'}`);
+                            parts.push(`جزئیات: ${fd.get('details') || 'پوست طبیعی، فوکوس روی چشم‌ها، جزئیات بالا'}`);
+                            break;
+                        case 'عکس محصول ای‌کامرس (پس‌زمینه سفید)':
+                            parts.push(`عکاسی محصول از ${fd.get('product') || 'یک محصول'} روی پس‌زمینه سفید خالص`);
+                            parts.push(`زاویه دید: ${fd.get('angle') || 'سه‌چهارم 45 درجه'}`);
+                            parts.push(`سایه/انعکاس: ${fd.get('shadow') || 'سایه نرم طبیعی، بدون انعکاس'}`);
+                            parts.push(`${fd.get('props') || 'نور یکنواخت، سطح سفید تمیز'}`);
+                            parts.push('ترکیب‌بندی تمیز، مناسب فروشگاه اینترنتی، وضوح بالا');
+                            break;
+                        case 'پوستر تبلیغاتی مینیمال':
+                            parts.push(`طراحی پوستر تبلیغاتی مینیمال برای ${fd.get('topic') || 'یک محصول'}`);
+                            parts.push(`پیام/تیتر: ${fd.get('message') || 'پیام اصلی کوتاه و واضح'}`);
+                            parts.push(`رنگ‌های برند: ${fd.get('brand_colors') || 'پالت محدود با کنتراست بالا'}`);
+                            parts.push(`مخاطب هدف: ${fd.get('audience') || 'عمومی'}`);
+                            parts.push('فضای منفی کافی، تایپوگرافی برجسته، بدون شلوغی، ترکیب‌بندی متوازن');
+                            break;
+                        case 'منظرۀ سینمایی حماسی':
+                            parts.push(`منظرۀ طبیعی سینمایی: ${fd.get('location') || 'منظره طبیعی'}، زمان: ${fd.get('time') || 'غروب'}، هوا: ${fd.get('weather') || 'مه ملایم'}`);
+                            parts.push(`جزئیات سینمایی/کمپوزیشن: ${fd.get('cinematic') || 'عمق میدان کم، نسبت طلایی، نور دراماتیک'}`);
+                            parts.push('رنگ‌های سینمایی، کنتراست بالا، حس مقیاس و عمق');
+                            break;
+                        case 'آیکون فلت مدرن':
+                            parts.push(`آیکون فلت مدرن با مفهوم ${fd.get('icon_concept') || 'مفهوم مشخص'}`);
+                            parts.push(`پالت رنگ: ${fd.get('icon_colors') || '۲-۳ رنگ تخت با کنتراست بالا'}`);
+                            parts.push(`${fd.get('icon_rules') || 'خطوط ساده، بدون نویز، بدون متن، پس‌زمینه تک‌رنگ'}`);
+                            parts.push('سبک فلت، ساده، خوانا در اندازه کوچک');
+                            break;
+                        default:
+                            parts.push('تصویر با کیفیت بالا و ترکیب‌بندی دقیق');
+                    }
+                    return parts.filter(Boolean).join(' | ');
+                }
+            })();
+            </script>
+
             <?php if (!empty($image_result)): ?>
                 <div class="generated-image-container" style="margin-top:20px">
                     <?php if (isset($image_result['error'])): ?>
