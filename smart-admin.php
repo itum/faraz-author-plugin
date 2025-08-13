@@ -36,8 +36,11 @@ if (!function_exists('smart_admin_log')) {
         $timestamp = date('Y-m-d H:i:s');
         $line = "[$timestamp] $prefix$message" . PHP_EOL;
         // نوشتن در فایل لاگ اختصاصی افزونه
-        $log_file = plugin_dir_path(__FILE__) . 'smart-admin-debug.log';
-        @file_put_contents($log_file, $line, FILE_APPEND);
+        $log_file_plugin = plugin_dir_path(__FILE__) . 'smart-admin-debug.log';
+        @file_put_contents($log_file_plugin, $line, FILE_APPEND);
+        // نوشتن هم‌زمان در wp-content برای اطمینان از مجوز نوشتن
+        $log_file_wpcontent = trailingslashit(WP_CONTENT_DIR) . 'smart-admin-debug.log';
+        @file_put_contents($log_file_wpcontent, $line, FILE_APPEND);
         // همچنین ارسال به error_log (اگر WP_DEBUG فعال باشد به wp-content/debug.log میرود)
         @error_log($prefix . $message);
     }
@@ -750,6 +753,7 @@ function smart_admin_page() {
     if (!current_user_can('manage_options')) {
         wp_die(__('شما اجازه دسترسی به این صفحه را ندارید.'));
     }
+    smart_admin_log('Admin page loaded');
     
     // پیام موفقیت برای نمایش
     $success_message = '';
@@ -771,7 +775,8 @@ function smart_admin_page() {
         }
 
 	// ساخت تصویر مستقل از تب «ساخت تصویر»
-	if (isset($_POST['smart_admin_image_prompt'])) {
+    if (isset($_POST['smart_admin_image_prompt'])) {
+        smart_admin_log('Image form submitted');
 		check_admin_referer('smart_admin_image_action', 'smart_admin_image_nonce');
 		$image_model = isset($_POST['smart_admin_image_model']) && $_POST['smart_admin_image_model'] !== ''
 			? sanitize_text_field($_POST['smart_admin_image_model'])
@@ -781,6 +786,9 @@ function smart_admin_page() {
 		$image_size = isset($_POST['smart_admin_image_size']) ? sanitize_text_field($_POST['smart_admin_image_size']) : '1024x1024';
 		$image_quality = isset($_POST['smart_admin_image_quality']) ? sanitize_text_field($_POST['smart_admin_image_quality']) : 'standard';
 		$image_n = isset($_POST['smart_admin_image_n']) ? max(1, min(4, intval($_POST['smart_admin_image_n']))) : 1;
+
+        smart_admin_log('Selected image model: ' . $image_model);
+        smart_admin_log('Selected size: ' . $image_size . ' | quality: ' . $image_quality . ' | n: ' . $image_n);
 
 		$image_result = smart_admin_generate_image($image_prompt, $image_model, $api_key, array(
 			'n' => $image_n,
