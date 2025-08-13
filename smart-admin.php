@@ -1820,6 +1820,7 @@ function smart_admin_page() {
                     titleEl.textContent = templateTitle;
                     if (modelSelect) modelSelect.value = model;
                     fieldsContainer.innerHTML = getImageTemplateFields(templateTitle);
+                    initCustomSelectHandlers(fieldsContainer);
                     modal.style.display = 'flex';
                 }
 
@@ -1833,28 +1834,84 @@ function smart_admin_page() {
                                         <input type="text" id="subject" name="subject" placeholder="مثال: زن ۳۰ ساله با موهای مشکی و فر">
                                     </div>
                                     <div class="form-group" style="flex:1 1 220px;">
-                                        <label for="mood">حال‌و‌هوا:</label>
-                                        <input type="text" id="mood" name="mood" placeholder="مثال: حرفه‌ای، آرام، اعتماد به نفس">
+                                        <label for="mood_select">حال‌و‌هوا:</label>
+                                        <select id="mood_select" name="mood_select" data-allow-custom="1">
+                                            <option value="حرفه‌ای">حرفه‌ای</option>
+                                            <option value="دوستانه">دوستانه</option>
+                                            <option value="جدی">جدی</option>
+                                            <option value="خلاقانه">خلاقانه</option>
+                                            <option value="دراماتیک">دراماتیک</option>
+                                            <option value="شاد">شاد</option>
+                                            <option value="مینیمال">مینیمال</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="mood_custom" name="mood_custom" placeholder="حال‌وهوای سفارشی را وارد کنید">
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
                                     <div class="form-group" style="flex:1 1 220px;">
-                                        <label for="lighting">نورپردازی:</label>
-                                        <input type="text" id="lighting" name="lighting" placeholder="مثال: ریم لایت + سافت‌باکس 45 درجه">
+                                        <label for="lighting_select">نورپردازی:</label>
+                                        <select id="lighting_select" name="lighting_select" data-allow-custom="1">
+                                            <option value="ریم لایت">ریم لایت</option>
+                                            <option value="Rembrandt">Rembrandt</option>
+                                            <option value="Butterfly">Butterfly</option>
+                                            <option value="High-key">High-key</option>
+                                            <option value="Low-key">Low-key</option>
+                                            <option value="نور پنجره طبیعی">نور پنجره طبیعی</option>
+                                            <option value="Softbox 45°">Softbox 45°</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="lighting_custom" name="lighting_custom" placeholder="نورپردازی سفارشی را وارد کنید">
+                                        </div>
                                     </div>
                                     <div class="form-group" style="flex:1 1 220px;">
-                                        <label for="camera">دوربین/لنز:</label>
-                                        <input type="text" id="camera" name="camera" placeholder="مثال: 85mm f/1.4, full-frame">
+                                        <label for="camera_select">دوربین/لنز:</label>
+                                        <select id="camera_select" name="camera_select" data-allow-custom="1">
+                                            <option value="85mm f/1.4">85mm f/1.4</option>
+                                            <option value="50mm f/1.8">50mm f/1.8</option>
+                                            <option value="35mm f/1.4">35mm f/1.4</option>
+                                            <option value="24-70mm f/2.8">24-70mm f/2.8</option>
+                                            <option value="Medium format">Medium format</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="camera_custom" name="camera_custom" placeholder="لنز/دوربین سفارشی را وارد کنید">
+                                        </div>
                                     </div>
                                     <div class="form-group" style="flex:1 1 220px;">
-                                        <label for="background">پس‌زمینه:</label>
-                                        <input type="text" id="background" name="background" placeholder="مثال: پس‌زمینه تیره، گرادیانی">
+                                        <label for="background_select">پس‌زمینه:</label>
+                                        <select id="background_select" name="background_select" data-allow-custom="1">
+                                            <option value="تیره">تیره</option>
+                                            <option value="روشن">روشن</option>
+                                            <option value="گرادیانی">گرادیانی</option>
+                                            <option value="سفید خالص">سفید خالص</option>
+                                            <option value="خاکستری روشن">خاکستری روشن</option>
+                                            <option value="بافت ملایم">بافت ملایم</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="background_custom" name="background_custom" placeholder="پس‌زمینه سفارشی را وارد کنید">
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="details">جزئیات و سبک:</label>
-                                    <input type="text" id="details" name="details" placeholder="مثال: پوست طبیعی، رئالیستی، جزئیات بالا، رنگ‌های طبیعی">
+                                    <label for="details_select">جزئیات و سبک:</label>
+                                    <select id="details_select" name="details_select" data-allow-custom="1">
+                                        <option value="پوست طبیعی، رتوش سبک">پوست طبیعی، رتوش سبک</option>
+                                        <option value="جزئیات بالا، کنتراست متعادل">جزئیات بالا، کنتراست متعادل</option>
+                                        <option value="بوکه پس‌زمینه نرم">بوکه پس‌زمینه نرم</option>
+                                        <option value="HDR ملایم">HDR ملایم</option>
+                                        <option value="اشباع رنگ ملایم">اشباع رنگ ملایم</option>
+                                        <option value="custom">سفارشی...</option>
+                                    </select>
+                                    <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                        <input type="text" id="details_custom" name="details_custom" placeholder="جزئیات/سبک سفارشی را وارد کنید">
+                                    </div>
                                 </div>
+                                ${getCommonProcessingFields()}
                             `;
                         case 'عکس محصول ای‌کامرس (پس‌زمینه سفید)':
                             return `
@@ -1864,18 +1921,47 @@ function smart_admin_page() {
                                         <input type="text" id="product" name="product" placeholder="مثال: کفش ورزشی سفید">
                                     </div>
                                     <div class="form-group" style="flex:1 1 220px;">
-                                        <label for="angle">زاویه دید:</label>
-                                        <input type="text" id="angle" name="angle" placeholder="مثال: 45 درجه، نمای سه‌چهارم">
+                                        <label for="angle_select">زاویه دید:</label>
+                                        <select id="angle_select" name="angle_select" data-allow-custom="1">
+                                            <option value="سه‌چهارم 45 درجه">سه‌چهارم 45 درجه</option>
+                                            <option value="نمای روبه‌رو (Front)">نمای روبه‌رو (Front)</option>
+                                            <option value="نمای بالا (Top-down)">نمای بالا (Top-down)</option>
+                                            <option value="نمای جانبی (Side)">نمای جانبی (Side)</option>
+                                            <option value="ماکرو (Macro)">ماکرو (Macro)</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="angle_custom" name="angle_custom" placeholder="زاویه سفارشی را وارد کنید">
+                                        </div>
                                     </div>
                                     <div class="form-group" style="flex:1 1 220px;">
-                                        <label for="shadow">سایه/انعکاس:</label>
-                                        <input type="text" id="shadow" name="shadow" placeholder="مثال: سایه نرم طبیعی، بدون انعکاس">
+                                        <label for="shadow_select">سایه/انعکاس:</label>
+                                        <select id="shadow_select" name="shadow_select" data-allow-custom="1">
+                                            <option value="بدون انعکاس، سایه نرم طبیعی">بدون انعکاس، سایه نرم طبیعی</option>
+                                            <option value="سایه Drop Shadow طبیعی">سایه Drop Shadow طبیعی</option>
+                                            <option value="انعکاس ملایم زیر محصول">انعکاس ملایم زیر محصول</option>
+                                            <option value="بدون سایه/انعکاس">بدون سایه/انعکاس</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="shadow_custom" name="shadow_custom" placeholder="سایه/انعکاس سفارشی را وارد کنید">
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="props">تجهیزات/جزئیات تکمیلی:</label>
-                                    <input type="text" id="props" name="props" placeholder="مثال: سطح سفید تمیز، نور یکنواخت، پس‌زمینه کاملاً سفید">
+                                    <label for="props_select">تجهیزات/جزئیات تکمیلی:</label>
+                                    <select id="props_select" name="props_select" data-allow-custom="1">
+                                        <option value="نور یکنواخت، پس‌زمینه کاملاً سفید">نور یکنواخت، پس‌زمینه کاملاً سفید</option>
+                                        <option value="سطح سفید تمیز با سایه نرم">سطح سفید تمیز با سایه نرم</option>
+                                        <option value="پس‌زمینه گرادیانی خیلی روشن">پس‌زمینه گرادیانی خیلی روشن</option>
+                                        <option value="پس‌زمینه شفاف (برای برش)">پس‌زمینه شفاف (برای برش)</option>
+                                        <option value="custom">سفارشی...</option>
+                                    </select>
+                                    <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                        <input type="text" id="props_custom" name="props_custom" placeholder="جزئیات سفارشی را وارد کنید">
+                                    </div>
                                 </div>
+                                ${getCommonProcessingFields()}
                             `;
                         case 'پوستر تبلیغاتی مینیمال':
                             return `
@@ -1889,14 +1975,25 @@ function smart_admin_page() {
                                         <input type="text" id="message" name="message" placeholder="مثال: ساده، سریع، امن">
                                     </div>
                                     <div class="form-group" style="flex:1 1 200px;">
-                                        <label for="brand_colors">رنگ‌های برند:</label>
-                                        <input type="text" id="brand_colors" name="brand_colors" placeholder="مثال: آبی #1E90FF و خاکستری تیره">
+                                        <label for="brand_colors_select">رنگ‌های برند/پالت:</label>
+                                        <select id="brand_colors_select" name="brand_colors_select" data-allow-custom="1">
+                                            <option value="رنگ‌های برند">رنگ‌های برند</option>
+                                            <option value="مونوکروم (سیاه/سفید/خاکستری)">مونوکروم (سیاه/سفید/خاکستری)</option>
+                                            <option value="دو‌رنگ (Duotone)">دو‌رنگ (Duotone)</option>
+                                            <option value="پاستلی">پاستلی</option>
+                                            <option value="پرطراوت (Vibrant)">پرطراوت (Vibrant)</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="brand_colors_custom" name="brand_colors_custom" placeholder="پالت رنگ سفارشی">
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label for="audience">مخاطب هدف:</label>
                                     <input type="text" id="audience" name="audience" placeholder="مثال: دانشجویان و فریلنسرها">
                                 </div>
+                                ${getCommonProcessingFields()}
                             `;
                         case 'منظرۀ سینمایی حماسی':
                             return `
@@ -1906,18 +2003,50 @@ function smart_admin_page() {
                                         <input type="text" id="location" name="location" placeholder="مثال: کوهستان مه‌آلود با دریاچه">
                                     </div>
                                     <div class="form-group" style="flex:1 1 200px;">
-                                        <label for="time">زمان/نور:</label>
-                                        <input type="text" id="time" name="time" placeholder="مثال: غروب طلایی">
+                                        <label for="time_select">زمان/نور:</label>
+                                        <select id="time_select" name="time_select" data-allow-custom="1">
+                                            <option value="طلوع">طلوع</option>
+                                            <option value="غروب">غروب</option>
+                                            <option value="Golden hour">Golden hour</option>
+                                            <option value="Blue hour">Blue hour</option>
+                                            <option value="شب">شب</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="time_custom" name="time_custom" placeholder="زمان/نور سفارشی">
+                                        </div>
                                     </div>
                                     <div class="form-group" style="flex:1 1 200px;">
-                                        <label for="weather">هوا/اتمسفر:</label>
-                                        <input type="text" id="weather" name="weather" placeholder="مثال: مه سبک، ابرهای دراماتیک">
+                                        <label for="weather_select">هوا/اتمسفر:</label>
+                                        <select id="weather_select" name="weather_select" data-allow-custom="1">
+                                            <option value="هوای صاف">هوای صاف</option>
+                                            <option value="ابری">ابری</option>
+                                            <option value="مه ملایم">مه ملایم</option>
+                                            <option value="بارانی">بارانی</option>
+                                            <option value="برفی">برفی</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="weather_custom" name="weather_custom" placeholder="وضعیت هوا سفارشی">
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="cinematic">جزئیات سینمایی/کمپوزیشن:</label>
-                                    <input type="text" id="cinematic" name="cinematic" placeholder="مثال: عمق میدان کم، نسبت طلایی، کنتراست بالا">
+                                    <label for="cinematic_select">جزئیات سینمایی/کمپوزیشن:</label>
+                                    <select id="cinematic_select" name="cinematic_select" data-allow-custom="1">
+                                        <option value="عمق میدان کم">عمق میدان کم</option>
+                                        <option value="نسبت طلایی">نسبت طلایی</option>
+                                        <option value="Rule of thirds">Rule of thirds</option>
+                                        <option value="واید انگل دراماتیک">واید انگل دراماتیک</option>
+                                        <option value="لانگ اکسپوژر">لانگ اکسپوژر</option>
+                                        <option value="aerial">نمای هوایی</option>
+                                        <option value="custom">سفارشی...</option>
+                                    </select>
+                                    <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                        <input type="text" id="cinematic_custom" name="cinematic_custom" placeholder="جزئیات سینمایی سفارشی">
+                                    </div>
                                 </div>
+                                ${getCommonProcessingFields()}
                             `;
                         case 'آیکون فلت مدرن':
                             return `
@@ -1927,14 +2056,33 @@ function smart_admin_page() {
                                         <input type="text" id="icon_concept" name="icon_concept" placeholder="مثال: ابر داده (Cloud)">
                                     </div>
                                     <div class="form-group" style="flex:1 1 200px;">
-                                        <label for="icon_colors">پالت رنگی:</label>
-                                        <input type="text" id="icon_colors" name="icon_colors" placeholder="مثال: ۲-۳ رنگ تخت، کنتراست بالا">
+                                        <label for="icon_colors_select">پالت رنگی:</label>
+                                        <select id="icon_colors_select" name="icon_colors_select" data-allow-custom="1">
+                                            <option value="۲-۳ رنگ تخت با کنتراست بالا">۲-۳ رنگ تخت با کنتراست بالا</option>
+                                            <option value="تک‌رنگ (Monochrome)">تک‌رنگ (Monochrome)</option>
+                                            <option value="دو‌رنگ (Duotone)">دو‌رنگ (Duotone)</option>
+                                            <option value="پاستلی">پاستلی</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="icon_colors_custom" name="icon_colors_custom" placeholder="پالت سفارشی">
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="icon_rules">قیود سبک/خوانایی:</label>
-                                    <input type="text" id="icon_rules" name="icon_rules" placeholder="مثال: خطوط ساده، بدون نویز، بدون متن، پس‌زمینه شفاف یا تک‌رنگ">
+                                    <label for="icon_rules_select">قیود سبک/خوانایی:</label>
+                                    <select id="icon_rules_select" name="icon_rules_select" data-allow-custom="1">
+                                        <option value="خطوط ساده، بدون نویز، بدون متن">خطوط ساده، بدون نویز، بدون متن</option>
+                                        <option value="Outline با ضخامت یکنواخت">Outline با ضخامت یکنواخت</option>
+                                        <option value="Fill تخت بدون گرادیان">Fill تخت بدون گرادیان</option>
+                                        <option value="سایه خیلی ظریف">سایه خیلی ظریف</option>
+                                        <option value="custom">سفارشی...</option>
+                                    </select>
+                                    <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                        <input type="text" id="icon_rules_custom" name="icon_rules_custom" placeholder="قیود سفارشی">
+                                    </div>
                                 </div>
+                                ${getCommonProcessingFields()}
                             `;
                         case 'تصویر شاخص خبر/مقاله (حرفه‌ای)':
                             return `
@@ -1944,20 +2092,52 @@ function smart_admin_page() {
                                         <input type="text" id="headline_topic" name="headline_topic" placeholder="مثال: رشد بازار انرژی های تجدیدپذیر">
                                     </div>
                                     <div class="form-group" style="flex:1 1 200px;">
-                                        <label for="domain">حوزه (برای هماهنگی سبک):</label>
-                                        <input type="text" id="domain" name="domain" placeholder="مثال: فناوری، اقتصادی، گردشگری، سلامت">
+                                        <label for="domain_select">حوزه (برای هماهنگی سبک):</label>
+                                        <select id="domain_select" name="domain_select" data-allow-custom="1">
+                                            <option value="فناوری">فناوری</option>
+                                            <option value="گردشگری">گردشگری</option>
+                                            <option value="خوراکی و آشپزی">خوراکی و آشپزی</option>
+                                            <option value="اقتصادی/کسب‌وکار">اقتصادی/کسب‌وکار</option>
+                                            <option value="آب و انرژی">آب و انرژی</option>
+                                            <option value="نفت و گاز">نفت و گاز</option>
+                                            <option value="ایمنی و آتشنشانی">ایمنی و آتشنشانی</option>
+                        					<option value="عمومی">عمومی</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="domain_custom" name="domain_custom" placeholder="حوزه سفارشی">
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
                                     <div class="form-group" style="flex:1 1 200px;">
-                                        <label for="color_style">استایل رنگ:</label>
-                                        <input type="text" id="color_style" name="color_style" placeholder="مثال: آبی تیره + فیروزه ای، یا مونوکروماتیک خاکستری">
+                                        <label for="color_style_select">استایل رنگ:</label>
+                                        <select id="color_style_select" name="color_style_select" data-allow-custom="1">
+                                            <option value="مونوکروم حرفه‌ای">مونوکروم حرفه‌ای</option>
+                                            <option value="آبی سازمانی + فیروزه‌ای">آبی سازمانی + فیروزه‌ای</option>
+                                            <option value="پالت پاستلی ملایم">پالت پاستلی ملایم</option>
+                                            <option value="پالت پرطراوت (Vibrant)">پالت پرطراوت (Vibrant)</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="color_style_custom" name="color_style_custom" placeholder="استایل رنگ سفارشی">
+                                        </div>
                                     </div>
                                     <div class="form-group" style="flex:1 1 200px;">
-                                        <label for="visual_style">حال‌و‌هوای بصری:</label>
-                                        <input type="text" id="visual_style" name="visual_style" placeholder="مثال: حرفه‌ای، خبری، مدرن، بدون متن">
+                                        <label for="visual_style_select">حال‌و‌هوای بصری:</label>
+                                        <select id="visual_style_select" name="visual_style_select" data-allow-custom="1">
+                                            <option value="حرفه‌ای، خبری، مدرن، بدون متن">حرفه‌ای، خبری، مدرن، بدون متن</option>
+                                            <option value="مینیمال، تمیز، بدون متن">مینیمال، تمیز، بدون متن</option>
+                                            <option value="سینمایی ملایم، بدون متن">سینمایی ملایم، بدون متن</option>
+                                            <option value="Illustrative بدون متن">Illustrative بدون متن</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="visual_style_custom" name="visual_style_custom" placeholder="حال‌وهوای بصری سفارشی">
+                                        </div>
                                     </div>
                                 </div>
+                                ${getCommonProcessingFields()}
                             `;
                         case 'اسکرین‌شات حرفه‌ای (فریم دستگاه/مرورگر)':
                             return `
@@ -1988,13 +2168,24 @@ function smart_admin_page() {
                                     <label for="ui_details">جزئیات UI که باید دیده شود:</label>
                                     <input type="text" id="ui_details" name="ui_details" placeholder="مثال: نمودار خطی، کارت متریک، سایدبار مینیمال، بدون متن واقعی">
                                 </div>
+                                ${getCommonProcessingFields()}
                             `;
                         case 'تصویر محصول حرفه‌ای (ویرایش با مرجع کتابخانه)':
                             return `
                                 <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
                                     <div class="form-group" style="flex:1 1 240px;">
-                                        <label for="product_fix">اصلاحات مورد نظر:</label>
-                                        <input type="text" id="product_fix" name="product_fix" placeholder="مثال: حذف پس‌زمینه، سفید خالص، سایه نرم، روشنایی متعادل">
+                                        <label for="product_fix_select">اصلاحات مورد نظر:</label>
+                                        <select id="product_fix_select" name="product_fix_select" data-allow-custom="1">
+                                            <option value="حذف پس‌زمینه به سفید خالص">حذف پس‌زمینه به سفید خالص</option>
+                                            <option value="پاکسازی نویز و لکه + افزایش شفافیت">پاکسازی نویز و لکه + افزایش شفافیت</option>
+                                            <option value="اصلاح رنگ و کنتراست استاندارد">اصلاح رنگ و کنتراست استاندارد</option>
+                                            <option value="صاف‌کردن پرسپکتیو و راستا">صاف‌کردن پرسپکتیو و راستا</option>
+                                            <option value="افزودن سایه نرم طبیعی">افزودن سایه نرم طبیعی</option>
+                                            <option value="custom">سفارشی...</option>
+                                        </select>
+                                        <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                            <input type="text" id="product_fix_custom" name="product_fix_custom" placeholder="اصلاحات سفارشی">
+                                        </div>
                                     </div>
                                     <div class="form-group" style="flex:1 1 220px;">
                                         <label for="product_context">سناریوی خروجی (اختیاری):</label>
@@ -2009,52 +2200,125 @@ function smart_admin_page() {
                                         <img id="image-template-reference-thumb" src="" alt="ref" style="max-width:220px;height:auto;border:1px solid #e5e5e5;border-radius:6px;">
                                     </div>
                                 </div>
+                                ${getCommonProcessingFields()}
                             `;
                         default:
                             return '';
                     }
                 }
 
+                function getChoice(fd, base){
+                    const sel = fd.get(base + '_select');
+                    if (!sel) return '';
+                    if (sel === 'custom') {
+                        return fd.get(base + '_custom') || '';
+                    }
+                    return sel;
+                }
+
+                function getCommonProcessingFields(){
+                    return `
+                        <div class="form-group" style="margin-top:8px;">
+                            <label for="processing_style_select">نوع پردازش/سبک کلی:</label>
+                            <select id="processing_style_select" name="processing_style_select" data-allow-custom="1">
+                                <option value="Photorealistic">Photorealistic</option>
+                                <option value="Cinematic">Cinematic</option>
+                                <option value="Illustration">Illustration</option>
+                                <option value="3D Render">3D Render</option>
+                                <option value="Watercolor">Watercolor</option>
+                                <option value="Flat Vector">Flat Vector</option>
+                                <option value="Isometric">Isometric</option>
+                                <option value="custom">سفارشی...</option>
+                            </select>
+                            <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                <input type="text" id="processing_style_custom" name="processing_style_custom" placeholder="نوع پردازش سفارشی">
+                            </div>
+                        </div>
+                        <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                            <div class="form-group" style="flex:1 1 200px;">
+                                <label for="stylization_select">میزان استایل/پردازش:</label>
+                                <select id="stylization_select" name="stylization_select" data-allow-custom="1">
+                                    <option value="Very Low">Very Low</option>
+                                    <option value="Low">Low</option>
+                                    <option value="Medium" selected>Medium</option>
+                                    <option value="High">High</option>
+                                    <option value="Very High">Very High</option>
+                                    <option value="custom">سفارشی...</option>
+                                </select>
+                                <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                    <input type="text" id="stylization_custom" name="stylization_custom" placeholder="میزان پردازش سفارشی">
+                                </div>
+                            </div>
+                            <div class="form-group" style="flex:1 1 200px;">
+                                <label for="color_tone_select">تونالیته رنگ:</label>
+                                <select id="color_tone_select" name="color_tone_select" data-allow-custom="1">
+                                    <option value="Neutral">Neutral</option>
+                                    <option value="Vibrant">Vibrant</option>
+                                    <option value="Pastel">Pastel</option>
+                                    <option value="Warm">Warm</option>
+                                    <option value="Cool">Cool</option>
+                                    <option value="Monochrome">Monochrome</option>
+                                    <option value="Duotone">Duotone</option>
+                                    <option value="custom">سفارشی...</option>
+                                </select>
+                                <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                    <input type="text" id="color_tone_custom" name="color_tone_custom" placeholder="تونالیته سفارشی">
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                function initCustomSelectHandlers(container){
+                    const selects = container.querySelectorAll('select[data-allow-custom="1"]');
+                    selects.forEach(sel => {
+                        const wrap = sel.parentElement.querySelector('.custom-input-wrap');
+                        const toggle = () => { if (wrap) wrap.style.display = sel.value === 'custom' ? 'block' : 'none'; };
+                        sel.addEventListener('change', toggle);
+                        toggle();
+                    });
+                }
+
                 function buildImagePromptFromFormData(fd, templateTitle){
                     let parts = [];
                     switch(templateTitle){
                         case 'پرتره استودیویی حرفه‌ای':
-                            parts.push(`پرتره استودیویی رئالیستی از ${fd.get('subject') || 'یک فرد'}، حال‌و‌هوا: ${fd.get('mood') || 'حرفه‌ای'}`);
-                            parts.push(`نورپردازی: ${fd.get('lighting') || 'ریم لایت + نور نرم سافت‌باکس'}`);
-                            parts.push(`دوربین/لنز: ${fd.get('camera') || '85mm f/1.4، فول‌فریم'}`);
-                            parts.push(`پس‌زمینه: ${fd.get('background') || 'تیره و مینیمال'}`);
-                            parts.push(`جزئیات: ${fd.get('details') || 'پوست طبیعی، فوکوس روی چشم‌ها، جزئیات بالا'}`);
+                            parts.push(`پرتره استودیویی رئالیستی از ${fd.get('subject') || 'یک فرد'}، حال‌و‌هوا: ${getChoice(fd,'mood') || 'حرفه‌ای'}`);
+                            parts.push(`نورپردازی: ${getChoice(fd,'lighting') || 'ریم لایت + نور نرم سافت‌باکس'}`);
+                            parts.push(`دوربین/لنز: ${getChoice(fd,'camera') || '85mm f/1.4'}`);
+                            parts.push(`پس‌زمینه: ${getChoice(fd,'background') || 'تیره و مینیمال'}`);
+                            parts.push(`جزئیات: ${getChoice(fd,'details') || 'پوست طبیعی، فوکوس روی چشم‌ها، جزئیات بالا'}`);
                             break;
                         case 'عکس محصول ای‌کامرس (پس‌زمینه سفید)':
                             parts.push(`عکاسی محصول از ${fd.get('product') || 'یک محصول'} روی پس‌زمینه سفید خالص`);
-                            parts.push(`زاویه دید: ${fd.get('angle') || 'سه‌چهارم 45 درجه'}`);
-                            parts.push(`سایه/انعکاس: ${fd.get('shadow') || 'سایه نرم طبیعی، بدون انعکاس'}`);
-                            parts.push(`${fd.get('props') || 'نور یکنواخت، سطح سفید تمیز'}`);
+                            parts.push(`زاویه دید: ${getChoice(fd,'angle') || 'سه‌چهارم 45 درجه'}`);
+                            parts.push(`سایه/انعکاس: ${getChoice(fd,'shadow') || 'سایه نرم طبیعی، بدون انعکاس'}`);
+                            parts.push(`${getChoice(fd,'props') || 'نور یکنواخت، سطح سفید تمیز'}`);
                             parts.push('ترکیب‌بندی تمیز، مناسب فروشگاه اینترنتی، وضوح بالا');
                             break;
                         case 'پوستر تبلیغاتی مینیمال':
                             parts.push(`طراحی پوستر تبلیغاتی مینیمال برای ${fd.get('topic') || 'یک محصول'}`);
                             parts.push(`پیام/تیتر: ${fd.get('message') || 'پیام اصلی کوتاه و واضح'}`);
-                            parts.push(`رنگ‌های برند: ${fd.get('brand_colors') || 'پالت محدود با کنتراست بالا'}`);
+                            parts.push(`پالت رنگ: ${getChoice(fd,'brand_colors') || 'پالت محدود با کنتراست بالا'}`);
                             parts.push(`مخاطب هدف: ${fd.get('audience') || 'عمومی'}`);
                             parts.push('فضای منفی کافی، تایپوگرافی برجسته، بدون شلوغی، ترکیب‌بندی متوازن');
                             break;
                         case 'منظرۀ سینمایی حماسی':
-                            parts.push(`منظرۀ طبیعی سینمایی: ${fd.get('location') || 'منظره طبیعی'}، زمان: ${fd.get('time') || 'غروب'}، هوا: ${fd.get('weather') || 'مه ملایم'}`);
-                            parts.push(`جزئیات سینمایی/کمپوزیشن: ${fd.get('cinematic') || 'عمق میدان کم، نسبت طلایی، نور دراماتیک'}`);
+                            parts.push(`منظرۀ طبیعی سینمایی: ${fd.get('location') || 'منظره طبیعی'}، زمان: ${getChoice(fd,'time') || 'غروب'}، هوا: ${getChoice(fd,'weather') || 'مه ملایم'}`);
+                            parts.push(`جزئیات سینمایی/کمپوزیشن: ${getChoice(fd,'cinematic') || 'عمق میدان کم، نسبت طلایی، نور دراماتیک'}`);
                             parts.push('رنگ‌های سینمایی، کنتراست بالا، حس مقیاس و عمق');
                             break;
                         case 'آیکون فلت مدرن':
                             parts.push(`آیکون فلت مدرن با مفهوم ${fd.get('icon_concept') || 'مفهوم مشخص'}`);
-                            parts.push(`پالت رنگ: ${fd.get('icon_colors') || '۲-۳ رنگ تخت با کنتراست بالا'}`);
-                            parts.push(`${fd.get('icon_rules') || 'خطوط ساده، بدون نویز، بدون متن، پس‌زمینه تک‌رنگ'}`);
+                            parts.push(`پالت رنگ: ${getChoice(fd,'icon_colors') || '۲-۳ رنگ تخت با کنتراست بالا'}`);
+                            parts.push(`${getChoice(fd,'icon_rules') || 'خطوط ساده، بدون نویز، بدون متن، پس‌زمینه تک‌رنگ'}`);
                             parts.push('سبک فلت، ساده، خوانا در اندازه کوچک');
                             break;
                         case 'تصویر شاخص خبر/مقاله (حرفه‌ای)':
                             parts.push(`کاور حرفه‌ای بدون متن برای ${fd.get('headline_topic') || 'خبر/مقاله'}`);
-                            parts.push(`حوزه: ${fd.get('domain') || 'عمومی'}`);
-                            parts.push(`استایل رنگ: ${fd.get('color_style') || 'رنگ‌های برند یا مونوکروم حرفه‌ای'}`);
-                            parts.push(`حال‌و‌هوا: ${fd.get('visual_style') || 'مدرن، خبری، تمیز، بدون متن'}`);
+                            parts.push(`حوزه: ${getChoice(fd,'domain') || 'عمومی'}`);
+                            parts.push(`استایل رنگ: ${getChoice(fd,'color_style') || 'رنگ‌های برند یا مونوکروم حرفه‌ای'}`);
+                            parts.push(`حال‌و‌هوا: ${getChoice(fd,'visual_style') || 'مدرن، خبری، تمیز، بدون متن'}`);
                             parts.push('ترکیب‌بندی متوازن، کنتراست مناسب، تمرکز سوژه واضح، بدون نویز');
                             break;
                         case 'اسکرین‌شات حرفه‌ای (فریم دستگاه/مرورگر)':
@@ -2065,13 +2329,20 @@ function smart_admin_page() {
                             parts.push('قاب آدرس‌بار/نوار ابزار شبیه‌سازی‌شده، سایه نرم، پس‌زمینه تمیز');
                             break;
                         case 'تصویر محصول حرفه‌ای (ویرایش با مرجع کتابخانه)':
-                            parts.push(`ویرایش تصویر محصول با حفظ ظاهر واقعی: ${fd.get('product_fix') || 'حذف پس‌زمینه به سفید خالص، نور یکنواخت، سایه نرم'}`);
+                            parts.push(`ویرایش تصویر محصول با حفظ ظاهر واقعی: ${getChoice(fd,'product_fix') || 'حذف پس‌زمینه به سفید خالص، نور یکنواخت، سایه نرم'}`);
                             if (fd.get('product_context')) parts.push(`سناریو: ${fd.get('product_context')}`);
                             parts.push('کیفیت بالا، مناسب ای‌کامرس، جزئیات واضح');
                             break;
                         default:
                             parts.push('تصویر با کیفیت بالا و ترکیب‌بندی دقیق');
                     }
+                    // مشترک: نوع پردازش و رنگ
+                    const processing = getChoice(fd,'processing_style');
+                    const stylization = getChoice(fd,'stylization');
+                    const tone = getChoice(fd,'color_tone');
+                    if (processing) parts.push(`Processing style: ${processing}`);
+                    if (stylization) parts.push(`Stylization: ${stylization}`);
+                    if (tone) parts.push(`Color tone: ${tone}`);
                     return parts.filter(Boolean).join(' | ');
                 }
 
