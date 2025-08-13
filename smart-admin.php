@@ -131,6 +131,27 @@ function smart_admin_register_settings() {
     register_setting('smart_admin_settings', 'smart_admin_api_key');
     register_setting('smart_admin_settings', 'smart_admin_model');
 	register_setting('smart_admin_settings', 'smart_admin_image_model');
+    // تنظیمات قالب‌بندی محتوا
+    register_setting('smart_admin_settings', 'smart_admin_enforce_formatting', array(
+        'type' => 'boolean',
+        'default' => 1,
+        'sanitize_callback' => function($v){ return $v ? 1 : 0; }
+    ));
+    register_setting('smart_admin_settings', 'smart_admin_allow_intro', array(
+        'type' => 'boolean',
+        'default' => 0,
+        'sanitize_callback' => function($v){ return $v ? 1 : 0; }
+    ));
+    register_setting('smart_admin_settings', 'smart_admin_allow_conclusion', array(
+        'type' => 'boolean',
+        'default' => 0,
+        'sanitize_callback' => function($v){ return $v ? 1 : 0; }
+    ));
+    register_setting('smart_admin_settings', 'smart_admin_allow_faq', array(
+        'type' => 'boolean',
+        'default' => 0,
+        'sanitize_callback' => function($v){ return $v ? 1 : 0; }
+    ));
 }
 add_action('admin_init', 'smart_admin_register_settings');
 
@@ -830,7 +851,17 @@ function smart_admin_page() {
             }
         }
         $prompt = smart_admin_enforce_human_prompt_constraints($prompt);
-        $prompt = smart_admin_append_formatting_constraints($prompt);
+        if (get_option('smart_admin_enforce_formatting', 1)) {
+            $prompt = smart_admin_append_formatting_constraints($prompt);
+            // افزودن محدودیت‌های روشن/خاموش
+            $extra_rules = [];
+            if (!get_option('smart_admin_allow_intro', 0)) $extra_rules[] = 'از بخش مقدمه استفاده نکن.';
+            if (!get_option('smart_admin_allow_conclusion', 0)) $extra_rules[] = 'از بخش نتیجه‌گیری یا جمع‌بندی استفاده نکن.';
+            if (!get_option('smart_admin_allow_faq', 0)) $extra_rules[] = 'از بخش پرسش‌های متداول (FAQ) استفاده نکن.';
+            if (!empty($extra_rules)) {
+                $prompt .= "\n" . implode("\n", array_map(function($s){ return '- ' . $s; }, $extra_rules));
+            }
+        }
         
         // ارسال درخواست به API
         $response = send_to_gapgpt_api($prompt, $model, $api_key);
@@ -850,12 +881,22 @@ function smart_admin_page() {
                         '/As an AI language model[^\.\n]*[\.\n]/i'
                     );
                     foreach ($patterns as $pat) { $c = preg_replace($pat, '', $c); }
-                    // استانداردسازی تیترها و حذف علائم تزئینی تکراری مانند ::
-                    $c = str_replace('::', ' - ', $c);
-                    // حذف تیترهای ناخواسته (مقدمه/نتیجه‌گیری/جمع‌بندی/FAQ) در H2/H3
-                    $c = preg_replace('/<h[23][^>]*>\s*(مقدمه|نتیجه[‌ ]?گیری|جمع[‌ ]?بندی|FAQ)\s*<\/h[23]>\s*/iu', '', $c);
-                    // حذف پیشوند "عنوان:" در ابتدای خطوط
-                    $c = preg_replace('/(^|\n)\s*عنوان\s*:\s*/u', "$1", $c);
+                    if (get_option('smart_admin_enforce_formatting', 1)) {
+                        // استانداردسازی تیترها و حذف علائم تزئینی
+                        $c = str_replace('::', ' - ', $c);
+                        // حذف تیترهای ناخواسته بر اساس تنظیمات
+                        if (!get_option('smart_admin_allow_intro', 0)) {
+                            $c = preg_replace('/<h[23][^>]*>\s*مقدمه\s*<\/h[23]>\s*[\s\S]*?(?=<h2|<h3|$)/iu', '', $c, 1);
+                        }
+                        if (!get_option('smart_admin_allow_conclusion', 0)) {
+                            $c = preg_replace('/<h[23][^>]*>\s*(نتیجه[‌ ]?گیری|جمع[‌ ]?بندی)\s*<\/h[23]>\s*[\s\S]*$/iu', '', $c, 1);
+                        }
+                        if (!get_option('smart_admin_allow_faq', 0)) {
+                            $c = preg_replace('/<h[23][^>]*>\s*FAQ\s*<\/h[23]>\s*[\s\S]*$/iu', '', $c, 1);
+                        }
+                        // حذف پیشوند "عنوان:" در ابتدای خطوط
+                        $c = preg_replace('/(^|\n)\s*عنوان\s*:\s*/u', "$1", $c);
+                    }
                     return $c;
                 }
             }
@@ -3155,6 +3196,29 @@ function smart_admin_page() {
                         </optgroup>
                     </select>
                 </div>
+
+                <fieldset class="form-group" style="border:1px solid #e5e5e5;padding:12px;border-radius:8px;margin-top:14px;">
+                    <legend style="padding:0 8px;">قوانین قالب‌بندی محتوا</legend>
+                    <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                        <input type="checkbox" name="smart_admin_enforce_formatting" value="1" <?php checked(get_option('smart_admin_enforce_formatting', 1), 1); ?>>
+                        <span>اجبار قالب‌بندی استاندارد (HTML با h2/h3 و strong، بدون Markdown)</span>
+                    </label>
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                        <label style="display:flex;gap:8px;align-items:center;">
+                            <input type="checkbox" name="smart_admin_allow_intro" value="1" <?php checked(get_option('smart_admin_allow_intro', 0), 1); ?>>
+                            <span>اجازه «مقدمه»</span>
+                        </label>
+                        <label style="display:flex;gap:8px;align-items:center;">
+                            <input type="checkbox" name="smart_admin_allow_conclusion" value="1" <?php checked(get_option('smart_admin_allow_conclusion', 0), 1); ?>>
+                            <span>اجازه «نتیجه‌گیری/جمع‌بندی»</span>
+                        </label>
+                        <label style="display:flex;gap:8px;align-items:center;">
+                            <input type="checkbox" name="smart_admin_allow_faq" value="1" <?php checked(get_option('smart_admin_allow_faq', 0), 1); ?>>
+                            <span>اجازه «FAQ»</span>
+                        </label>
+                    </div>
+                    <p class="description">در صورت غیرفعال بودن هرکدام، آن بخش‌ها از خروجی حذف خواهند شد.</p>
+                </fieldset>
 
 				<div class="form-group">
 					<label for="smart_admin_image_model">مدل پیش‌فرض ساخت تصویر (GapGPT):</label>
