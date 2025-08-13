@@ -787,7 +787,10 @@ function smart_admin_page() {
 		$image_result = smart_admin_generate_image($image_prompt, $image_model, $api_key, array(
 			'n' => $image_n,
 			'size' => $image_size,
-			'quality' => $image_quality
+			'quality' => $image_quality,
+			// پارامترهای اختیاری image-to-image
+			'reference_image_id' => isset($_POST['smart_admin_reference_image_id']) ? sanitize_text_field($_POST['smart_admin_reference_image_id']) : '',
+			'reference_image_url' => isset($_POST['smart_admin_reference_image_url']) ? esc_url_raw($_POST['smart_admin_reference_image_url']) : ''
 		));
 
 		if (!$nonce_ok) {
@@ -1542,6 +1545,7 @@ function smart_admin_page() {
         </div>
         
         <div id="images" class="tab-content">
+            <?php if (function_exists('wp_enqueue_media')) { wp_enqueue_media(); } ?>
             <h3>ساخت تصویر با مدل‌های GapGPT و دیگر ارائه‌دهندگان</h3>
             <form method="post" class="prompt-form">
                 <?php wp_nonce_field('smart_admin_image_action', 'smart_admin_image_nonce'); ?>
@@ -1596,6 +1600,14 @@ function smart_admin_page() {
                     <input type="number" id="smart_admin_image_n" name="smart_admin_image_n" min="1" max="4" value="1">
                 </div>
 
+                <!-- ارجاع تصویر مرجع (برای image-to-image) -->
+                <input type="hidden" id="smart_admin_reference_image_id" name="smart_admin_reference_image_id" value="">
+                <input type="hidden" id="smart_admin_reference_image_url" name="smart_admin_reference_image_url" value="">
+                <div id="reference-image-preview" style="display:none;margin:12px 0;">
+                    <div style="font-size:12px;color:#555;margin-bottom:6px;">تصویر مرجع انتخاب‌شده:</div>
+                    <img id="reference-image-thumb" src="" alt="reference" style="max-width:220px;height:auto;border:1px solid #e5e5e5;border-radius:6px;">
+                </div>
+
                 <button type="submit" class="submit-button">تولید تصویر</button>
             </form>
 
@@ -1631,6 +1643,21 @@ function smart_admin_page() {
                             'title' => 'آیکون فلت مدرن',
                             'model' => get_option('smart_admin_image_model', 'dall-e-3'),
                             'description' => 'آیکون ساده و فلت با رنگ‌های محدود، کنتراست خوب و خوانایی در اندازه کوچک'
+                        ),
+                        array(
+                            'title' => 'تصویر شاخص خبر/مقاله (حرفه‌ای)',
+                            'model' => get_option('smart_admin_image_model', 'gapgpt/flux.1-schnell'),
+                            'description' => 'کاور حرفه‌ای بدون متن برای خبر یا مقاله؛ با سبک بصری منسجم و موضوع‌بندی'
+                        ),
+                        array(
+                            'title' => 'اسکرین‌شات حرفه‌ای (فریم دستگاه/مرورگر)',
+                            'model' => get_option('smart_admin_image_model', 'gapgpt/flux.1-schnell'),
+                            'description' => 'تصویر سبک اسکرین‌شات با قاب دسکتاپ/موبایل، آدرس‌بار و UI شبیه‌سازی‌شده'
+                        ),
+                        array(
+                            'title' => 'تصویر محصول حرفه‌ای (ویرایش با مرجع کتابخانه)',
+                            'model' => get_option('smart_admin_image_model', 'gapgpt/flux.1-dev'),
+                            'description' => 'بهبود/تمیزکاری تصویر محصول با انتخاب تصویر مرجع از کتابخانه وردپرس (image-to-image)'
                         )
                     );
                     foreach ($default_image_templates as $index => $tpl):
@@ -1758,12 +1785,25 @@ function smart_admin_page() {
                             const sizeSelect = mainForm.querySelector('#smart_admin_image_size');
                             const qualitySelect = mainForm.querySelector('#smart_admin_image_quality');
                             const nInput = mainForm.querySelector('#smart_admin_image_n');
+                            const refIdInput = mainForm.querySelector('#smart_admin_reference_image_id');
+                            const refUrlInput = mainForm.querySelector('#smart_admin_reference_image_url');
 
                             if (promptField) promptField.value = prompt;
                             if (modelSelect) modelSelect.value = document.getElementById('image-template-model-select').value || modelSelect.value;
                             if (sizeSelect) sizeSelect.value = document.getElementById('image-template-size').value || sizeSelect.value;
                             if (qualitySelect) qualitySelect.value = document.getElementById('image-template-quality').value || qualitySelect.value;
                             if (nInput) nInput.value = document.getElementById('image-template-n').value || nInput.value;
+
+                            // انتقال تصویر مرجع از مودال (در صورت وجود)
+                            const modalRefId = document.getElementById('image-template-reference-image-id');
+                            const modalRefUrl = document.getElementById('image-template-reference-image-url');
+                            if (modalRefId && modalRefId.value && refIdInput) refIdInput.value = modalRefId.value;
+                            if (modalRefUrl && modalRefUrl.value && refUrlInput) {
+                                refUrlInput.value = modalRefUrl.value;
+                                const preview = document.getElementById('reference-image-preview');
+                                const img = document.getElementById('reference-image-thumb');
+                                if (preview && img) { img.src = modalRefUrl.value; preview.style.display = 'block'; }
+                            }
 
                             // ارسال خودکار فرم اصلی
                             document.getElementById('image-template-form-modal').style.display = 'none';
@@ -1896,6 +1936,80 @@ function smart_admin_page() {
                                     <input type="text" id="icon_rules" name="icon_rules" placeholder="مثال: خطوط ساده، بدون نویز، بدون متن، پس‌زمینه شفاف یا تک‌رنگ">
                                 </div>
                             `;
+                        case 'تصویر شاخص خبر/مقاله (حرفه‌ای)':
+                            return `
+                                <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                                    <div class="form-group" style="flex:1 1 260px;">
+                                        <label for="headline_topic">موضوع خبر/مقاله:</label>
+                                        <input type="text" id="headline_topic" name="headline_topic" placeholder="مثال: رشد بازار انرژی های تجدیدپذیر">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 200px;">
+                                        <label for="domain">حوزه (برای هماهنگی سبک):</label>
+                                        <input type="text" id="domain" name="domain" placeholder="مثال: فناوری، اقتصادی، گردشگری، سلامت">
+                                    </div>
+                                </div>
+                                <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                                    <div class="form-group" style="flex:1 1 200px;">
+                                        <label for="color_style">استایل رنگ:</label>
+                                        <input type="text" id="color_style" name="color_style" placeholder="مثال: آبی تیره + فیروزه ای، یا مونوکروماتیک خاکستری">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 200px;">
+                                        <label for="visual_style">حال‌و‌هوای بصری:</label>
+                                        <input type="text" id="visual_style" name="visual_style" placeholder="مثال: حرفه‌ای، خبری، مدرن، بدون متن">
+                                    </div>
+                                </div>
+                            `;
+                        case 'اسکرین‌شات حرفه‌ای (فریم دستگاه/مرورگر)':
+                            return `
+                                <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                                    <div class="form-group" style="flex:1 1 220px;">
+                                        <label for="screen_subject">موضوع صفحه/اپ:</label>
+                                        <input type="text" id="screen_subject" name="screen_subject" placeholder="مثال: داشبورد تحلیل فروش">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 180px;">
+                                        <label for="device_frame">نوع قاب:</label>
+                                        <select id="device_frame" name="device_frame">
+                                            <option value="desktop">Desktop</option>
+                                            <option value="laptop">Laptop</option>
+                                            <option value="tablet">Tablet</option>
+                                            <option value="mobile">Mobile</option>
+                                            <option value="browser">Browser Frame</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 180px;">
+                                        <label for="theme_mode">تم:</label>
+                                        <select id="theme_mode" name="theme_mode">
+                                            <option value="light">روشن</option>
+                                            <option value="dark">تیره</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="ui_details">جزئیات UI که باید دیده شود:</label>
+                                    <input type="text" id="ui_details" name="ui_details" placeholder="مثال: نمودار خطی، کارت متریک، سایدبار مینیمال، بدون متن واقعی">
+                                </div>
+                            `;
+                        case 'تصویر محصول حرفه‌ای (ویرایش با مرجع کتابخانه)':
+                            return `
+                                <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                                    <div class="form-group" style="flex:1 1 240px;">
+                                        <label for="product_fix">اصلاحات مورد نظر:</label>
+                                        <input type="text" id="product_fix" name="product_fix" placeholder="مثال: حذف پس‌زمینه، سفید خالص، سایه نرم، روشنایی متعادل">
+                                    </div>
+                                    <div class="form-group" style="flex:1 1 220px;">
+                                        <label for="product_context">سناریوی خروجی (اختیاری):</label>
+                                        <input type="text" id="product_context" name="product_context" placeholder="مثال: چیدمان ویترینی مینیمال">
+                                    </div>
+                                </div>
+                                <input type="hidden" id="image-template-reference-image-id" value="">
+                                <input type="hidden" id="image-template-reference-image-url" value="">
+                                <div class="form-group">
+                                    <button type="button" class="button" id="select-reference-image">انتخاب تصویر از کتابخانه وردپرس</button>
+                                    <div id="image-template-reference-preview" style="display:none;margin-top:8px;">
+                                        <img id="image-template-reference-thumb" src="" alt="ref" style="max-width:220px;height:auto;border:1px solid #e5e5e5;border-radius:6px;">
+                                    </div>
+                                </div>
+                            `;
                         default:
                             return '';
                     }
@@ -1936,11 +2050,50 @@ function smart_admin_page() {
                             parts.push(`${fd.get('icon_rules') || 'خطوط ساده، بدون نویز، بدون متن، پس‌زمینه تک‌رنگ'}`);
                             parts.push('سبک فلت، ساده، خوانا در اندازه کوچک');
                             break;
+                        case 'تصویر شاخص خبر/مقاله (حرفه‌ای)':
+                            parts.push(`کاور حرفه‌ای بدون متن برای ${fd.get('headline_topic') || 'خبر/مقاله'}`);
+                            parts.push(`حوزه: ${fd.get('domain') || 'عمومی'}`);
+                            parts.push(`استایل رنگ: ${fd.get('color_style') || 'رنگ‌های برند یا مونوکروم حرفه‌ای'}`);
+                            parts.push(`حال‌و‌هوا: ${fd.get('visual_style') || 'مدرن، خبری، تمیز، بدون متن'}`);
+                            parts.push('ترکیب‌بندی متوازن، کنتراست مناسب، تمرکز سوژه واضح، بدون نویز');
+                            break;
+                        case 'اسکرین‌شات حرفه‌ای (فریم دستگاه/مرورگر)':
+                            parts.push(`تصویر سبک اسکرین‌شات از ${fd.get('screen_subject') || 'یک اپ/سایت'}`);
+                            parts.push(`قاب دستگاه: ${fd.get('device_frame') || 'browser'}`);
+                            parts.push(`تم: ${fd.get('theme_mode') || 'light'}`);
+                            parts.push(`${fd.get('ui_details') || 'نمودار/کارت/سایدبار، بدون متن واقعی، آیکون‌های عمومی'}`);
+                            parts.push('قاب آدرس‌بار/نوار ابزار شبیه‌سازی‌شده، سایه نرم، پس‌زمینه تمیز');
+                            break;
+                        case 'تصویر محصول حرفه‌ای (ویرایش با مرجع کتابخانه)':
+                            parts.push(`ویرایش تصویر محصول با حفظ ظاهر واقعی: ${fd.get('product_fix') || 'حذف پس‌زمینه به سفید خالص، نور یکنواخت، سایه نرم'}`);
+                            if (fd.get('product_context')) parts.push(`سناریو: ${fd.get('product_context')}`);
+                            parts.push('کیفیت بالا، مناسب ای‌کامرس، جزئیات واضح');
+                            break;
                         default:
                             parts.push('تصویر با کیفیت بالا و ترکیب‌بندی دقیق');
                     }
                     return parts.filter(Boolean).join(' | ');
                 }
+
+                // انتخاب تصویر از کتابخانه وردپرس (برای image-to-image)
+                document.addEventListener('click', function(e){
+                    if (e.target && e.target.id === 'select-reference-image') {
+                        e.preventDefault();
+                        if (typeof wp === 'undefined' || !wp.media) { alert('کتابخانه رسانه وردپرس در دسترس نیست.'); return; }
+                        const frame = wp.media({ title: 'انتخاب تصویر مرجع', multiple: false, library: { type: 'image' } });
+                        frame.on('select', function(){
+                            const attachment = frame.state().get('selection').first().toJSON();
+                            const idEl = document.getElementById('image-template-reference-image-id');
+                            const urlEl = document.getElementById('image-template-reference-image-url');
+                            if (idEl) idEl.value = attachment.id;
+                            if (urlEl) urlEl.value = attachment.url;
+                            const prev = document.getElementById('image-template-reference-preview');
+                            const img = document.getElementById('image-template-reference-thumb');
+                            if (prev && img) { img.src = attachment.url; prev.style.display = 'block'; }
+                        });
+                        frame.open();
+                    }
+                });
             })();
             </script>
 
@@ -3528,6 +3681,8 @@ function smart_admin_generate_image($prompt, $model, $api_key, $options = array(
     $size = isset($options['size']) ? $options['size'] : '1024x1024';
     $quality = isset($options['quality']) ? $options['quality'] : 'standard';
     $response_format = isset($options['response_format']) ? $options['response_format'] : 'url';
+    $reference_image_url = isset($options['reference_image_url']) ? $options['reference_image_url'] : '';
+    $reference_image_id = isset($options['reference_image_id']) ? $options['reference_image_id'] : '';
 
     $body = array(
         'model' => $model,
@@ -3537,6 +3692,14 @@ function smart_admin_generate_image($prompt, $model, $api_key, $options = array(
         'quality' => $quality,
         'response_format' => $response_format
     );
+
+    // اضافه کردن تصویر مرجع در صورت وجود (image-to-image)
+    if (!empty($reference_image_url)) {
+        $body['reference_image_url'] = $reference_image_url;
+    }
+    if (!empty($reference_image_id)) {
+        $body['reference_image_id'] = $reference_image_id;
+    }
 
     smart_admin_log('Request URL: ' . $url);
     smart_admin_log('Request Body: ' . json_encode($body, JSON_UNESCAPED_UNICODE));
