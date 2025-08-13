@@ -813,19 +813,40 @@ function smart_admin_page() {
             $prompt = sanitize_textarea_field($_POST['smart_admin_prompt']);
         }
 
-
-        
-        // اضافه کردن لحن انسانی به پرامپت اگر انتخاب شده باشد
-        if (isset($_POST['use_human_tone']) && $_POST['use_human_tone'] == '1') {
+        // اعمال اجباری لحن انسانی و قیود ضد-تشخیص + حذف Markdown های ناخواسته از پرامپت
+        if (function_exists('optimize_prompt_for_natural_content')) {
             $prompt = optimize_prompt_for_natural_content($prompt);
         }
+        if (!function_exists('smart_admin_enforce_human_prompt_constraints')) {
+            function smart_admin_enforce_human_prompt_constraints($p) {
+                $suffix = "\n\nدستورالعمل‌های نگارش (اجباری):\n- متن ۱۰۰٪ انسانی، طبیعی و بومی فارسی باشد؛ از عبارات ماشینی یا کلیشه‌ای پرهیز کن.\n- از هرگونه نشانه‌گذاری مارک‌داون غیرضروری مثل ** و __ استفاده نکن.\n- طول و ساختار جملات را متنوع کن؛ از کلمات و ساختارهای روزمره استفاده کن.\n- هیچ‌گاه نگویید 'به عنوان یک مدل هوش مصنوعی' یا مشابه آن.\n- خروجی نباید توسط ابزارهای تشخیص AI به‌عنوان محتوای ماشینی قابل تشخیص باشد.\n- لحن محاوره‌ای-حرفه‌ای، طبیعی، گرم و بدون اغراق.\n- عنوان‌ها و متن را مستقیم بنویس، بدون پیشوندهای تکراری یا برچسب‌های ساختگی.";
+                return $p . $suffix;
+            }
+        }
+        $prompt = smart_admin_enforce_human_prompt_constraints($prompt);
         
         // ارسال درخواست به API
         $response = send_to_gapgpt_api($prompt, $model, $api_key);
         
-        // بهبود خروجی هوش مصنوعی با لحن انسانی
-        if (isset($response['content']) && !empty($response['content']) && isset($_POST['use_human_tone']) && $_POST['use_human_tone'] == '1') {
-            $response['content'] = improve_ai_output_with_human_tone($response['content']);
+        // بهبود خروجی با لحن انسانی و پاک‌سازی نشانه‌های مارک‌داون
+        if (isset($response['content']) && !empty($response['content'])) {
+            if (function_exists('improve_ai_output_with_human_tone')) {
+                $response['content'] = improve_ai_output_with_human_tone($response['content']);
+            }
+            if (!function_exists('smart_admin_cleanup_generated_content')) {
+                function smart_admin_cleanup_generated_content($c) {
+                    // حذف ** و __ و الگوهای بولد مارک‌داون
+                    $c = str_replace(array('**', '__'), '', $c);
+                    // حذف جمله‌های رایج معرفی AI (فارسی و انگلیسی)
+                    $patterns = array(
+                        '/به عنوان یک مدل هوش مصنوعی[^\.\n]*[\.\n]/u',
+                        '/As an AI language model[^\.\n]*[\.\n]/i'
+                    );
+                    foreach ($patterns as $pat) { $c = preg_replace($pat, '', $c); }
+                    return $c;
+                }
+            }
+            $response['content'] = smart_admin_cleanup_generated_content($response['content']);
         }
         
         // ذخیره پرامپت در تنظیمات (اگر قالب پیش‌فرض نباشد)
