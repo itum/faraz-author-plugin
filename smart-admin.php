@@ -823,7 +823,14 @@ function smart_admin_page() {
                 return $p . $suffix;
             }
         }
+        if (!function_exists('smart_admin_append_formatting_constraints')) {
+            function smart_admin_append_formatting_constraints($p) {
+                $rules = "\n\nقوانین قالب‌بندی خروجی (اجباری):\n- خروجی را صرفاً به صورت HTML تمیز بنویس (نه Markdown).\n- از تگ‌های <h2> برای تیترهای اصلی و <h3> برای زیربخش‌ها استفاده کن.\n- برای بولد داخل پاراگراف‌ها از <strong> استفاده کن (نه **).\n- از نوشتن بخش‌های 'مقدمه' یا 'نتیجه‌گیری/جمع‌بندی/FAQ' خودداری کن.\n- عنوان و تیترها باید استاندارد و کوتاه باشند؛ از نشانه‌هایی مانند ::، ❖، —، «» و ... استفاده نکن.\n- هیچ پیشوندی مانند 'عنوان:' یا 'مقدمه:' در متن نیاور.\n- فقط محتوای بدنه مقاله را برگردان (بدون تگ <html> و <body>).";
+                return $p . $rules;
+            }
+        }
         $prompt = smart_admin_enforce_human_prompt_constraints($prompt);
+        $prompt = smart_admin_append_formatting_constraints($prompt);
         
         // ارسال درخواست به API
         $response = send_to_gapgpt_api($prompt, $model, $api_key);
@@ -843,6 +850,12 @@ function smart_admin_page() {
                         '/As an AI language model[^\.\n]*[\.\n]/i'
                     );
                     foreach ($patterns as $pat) { $c = preg_replace($pat, '', $c); }
+                    // استانداردسازی تیترها و حذف علائم تزئینی تکراری مانند ::
+                    $c = str_replace('::', ' - ', $c);
+                    // حذف تیترهای ناخواسته (مقدمه/نتیجه‌گیری/جمع‌بندی/FAQ) در H2/H3
+                    $c = preg_replace('/<h[23][^>]*>\s*(مقدمه|نتیجه[‌ ]?گیری|جمع[‌ ]?بندی|FAQ)\s*<\/h[23]>\s*/iu', '', $c);
+                    // حذف پیشوند "عنوان:" در ابتدای خطوط
+                    $c = preg_replace('/(^|\n)\s*عنوان\s*:\s*/u', "$1", $c);
                     return $c;
                 }
             }
