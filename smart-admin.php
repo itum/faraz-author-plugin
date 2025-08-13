@@ -765,6 +765,36 @@ function smart_admin_page() {
         smart_admin_log('POST received with keys: ' . $keys);
     }
 
+	// هندل مستقل فرم ساخت تصویر (نباید وابسته به فرم پرامپت باشد)
+	if (isset($_POST['smart_admin_image_nonce'])) {
+		smart_admin_log('Image form submitted');
+		$nonce_ok = isset($_POST['smart_admin_image_nonce']) && wp_verify_nonce($_POST['smart_admin_image_nonce'], 'smart_admin_image_action');
+		if (!$nonce_ok) {
+			smart_admin_log('Image form nonce invalid or missing');
+		}
+		$image_model = isset($_POST['smart_admin_image_model']) && $_POST['smart_admin_image_model'] !== ''
+			? sanitize_text_field($_POST['smart_admin_image_model'])
+			: get_option('smart_admin_image_model', 'gapgpt/flux.1-schnell');
+		$api_key = get_option('smart_admin_api_key');
+		$image_prompt = isset($_POST['smart_admin_image_prompt']) ? sanitize_textarea_field($_POST['smart_admin_image_prompt']) : '';
+		$image_size = isset($_POST['smart_admin_image_size']) ? sanitize_text_field($_POST['smart_admin_image_size']) : '1024x1024';
+		$image_quality = isset($_POST['smart_admin_image_quality']) ? sanitize_text_field($_POST['smart_admin_image_quality']) : 'standard';
+		$image_n = isset($_POST['smart_admin_image_n']) ? max(1, min(4, intval($_POST['smart_admin_image_n']))) : 1;
+
+		smart_admin_log('Selected image model: ' . $image_model);
+		smart_admin_log('Selected size: ' . $image_size . ' | quality: ' . $image_quality . ' | n: ' . $image_n);
+
+		$image_result = smart_admin_generate_image($image_prompt, $image_model, $api_key, array(
+			'n' => $image_n,
+			'size' => $image_size,
+			'quality' => $image_quality
+		));
+
+		if (!$nonce_ok) {
+			$image_result = array('error' => 'اعتبارسنجی امنیتی نامعتبر است (Nonce). صفحه را رفرش کنید و دوباره تلاش کنید.');
+		}
+	}
+
     // ذخیره پرامپت و درخواست به API
     if (isset($_POST['smart_admin_prompt']) || (isset($_POST['is_template']) && $_POST['is_template'] == '1')) {
         // افزودن نانس برای امنیت
@@ -780,35 +810,7 @@ function smart_admin_page() {
             $prompt = sanitize_textarea_field($_POST['smart_admin_prompt']);
         }
 
-	// ساخت تصویر مستقل از تب «ساخت تصویر»
-    if (isset($_POST['smart_admin_image_prompt'])) {
-        smart_admin_log('Image form submitted');
-        $nonce_ok = isset($_POST['smart_admin_image_nonce']) && wp_verify_nonce($_POST['smart_admin_image_nonce'], 'smart_admin_image_action');
-        if (!$nonce_ok) {
-            smart_admin_log('Image form nonce invalid or missing');
-        }
-		$image_model = isset($_POST['smart_admin_image_model']) && $_POST['smart_admin_image_model'] !== ''
-			? sanitize_text_field($_POST['smart_admin_image_model'])
-			: get_option('smart_admin_image_model', 'gapgpt/flux.1-schnell');
-		$api_key = get_option('smart_admin_api_key');
-		$image_prompt = sanitize_textarea_field($_POST['smart_admin_image_prompt']);
-		$image_size = isset($_POST['smart_admin_image_size']) ? sanitize_text_field($_POST['smart_admin_image_size']) : '1024x1024';
-		$image_quality = isset($_POST['smart_admin_image_quality']) ? sanitize_text_field($_POST['smart_admin_image_quality']) : 'standard';
-		$image_n = isset($_POST['smart_admin_image_n']) ? max(1, min(4, intval($_POST['smart_admin_image_n']))) : 1;
 
-        smart_admin_log('Selected image model: ' . $image_model);
-        smart_admin_log('Selected size: ' . $image_size . ' | quality: ' . $image_quality . ' | n: ' . $image_n);
-
-		$image_result = smart_admin_generate_image($image_prompt, $image_model, $api_key, array(
-			'n' => $image_n,
-			'size' => $image_size,
-			'quality' => $image_quality
-		));
-
-        if (!$nonce_ok) {
-            $image_result = array('error' => 'اعتبارسنجی امنیتی نامعتبر است (Nonce). صفحه را رفرش کنید و دوباره تلاش کنید.');
-        }
-	}
         
         // اضافه کردن لحن انسانی به پرامپت اگر انتخاب شده باشد
         if (isset($_POST['use_human_tone']) && $_POST['use_human_tone'] == '1') {
