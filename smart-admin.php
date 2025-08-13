@@ -1732,6 +1732,25 @@ function smart_admin_page() {
                             </div>
                         </div>
 
+                        <!-- انتخاب حوزه محتوا (پروفایل) -->
+                        <div class="form-group">
+                            <label for="global-domain-select">حوزه محتوا (برای پیشنهاد گزینه‌ها):</label>
+                            <select id="global-domain-select" name="global_domain_select" data-allow-custom="1">
+                                <option value="عمومی" selected>عمومی</option>
+                                <option value="فناوری">فناوری</option>
+                                <option value="اقتصادی/کسب‌وکار">اقتصادی/کسب‌وکار</option>
+                                <option value="گردشگری">گردشگری</option>
+                                <option value="خوراکی و آشپزی">خوراکی و آشپزی</option>
+                                <option value="آب و انرژی">آب و انرژی</option>
+                                <option value="نفت و گاز">نفت و گاز</option>
+                                <option value="ایمنی و آتشنشانی">ایمنی و آتشنشانی</option>
+                                <option value="custom">سفارشی...</option>
+                            </select>
+                            <div class="custom-input-wrap" style="display:none;margin-top:6px;">
+                                <input type="text" id="global-domain-custom" name="global_domain_custom" placeholder="حوزه سفارشی را وارد کنید">
+                            </div>
+                        </div>
+
                         <div id="image-template-fields"></div>
 
                         <button type="submit" class="submit-button" id="generate-image-template-btn">
@@ -1744,6 +1763,50 @@ function smart_admin_page() {
 
             <script>
             (function(){
+                // پروفایل‌های حوزه برای پیشنهاد گزینه‌های پیش‌فرض
+                const DOMAIN_PROFILES = {
+                    'عمومی': {
+                        mood: ['حرفه‌ای','دوستانه','مینیمال'],
+                        colorPalettes: ['Neutral','Vibrant','Pastel','Monochrome'],
+                        processing: ['Photorealistic','Cinematic','Illustration']
+                    },
+                    'فناوری': {
+                        mood: ['حرفه‌ای','خنثی','های-تک'],
+                        colorPalettes: ['آبی سازمانی + فیروزه‌ای','Monochrome','Duotone'],
+                        processing: ['Photorealistic','Flat Vector','Isometric']
+                    },
+                    'اقتصادی/کسب‌وکار': {
+                        mood: ['حرفه‌ای','رسمی','اعتمادساز'],
+                        colorPalettes: ['Monochrome','آبی سازمانی + فیروزه‌ای','Neutral'],
+                        processing: ['Photorealistic','Cinematic','Flat Vector']
+                    },
+                    'گردشگری': {
+                        mood: ['شاد','الهام‌بخش','ماجراجویانه'],
+                        colorPalettes: ['Vibrant','Warm','Pastel'],
+                        processing: ['Photorealistic','Cinematic','Illustration']
+                    },
+                    'خوراکی و آشپزی': {
+                        mood: ['گرم و صمیمی','خانوادگی','هیجان‌انگیز'],
+                        colorPalettes: ['Warm','Vibrant','Pastel'],
+                        processing: ['Photorealistic','Cinematic']
+                    },
+                    'آب و انرژی': {
+                        mood: ['پایدار','حرفه‌ای','امیدبخش'],
+                        colorPalettes: ['سبز + آبی خنثی','Neutral','Monochrome'],
+                        processing: ['Photorealistic','Illustration']
+                    },
+                    'نفت و گاز': {
+                        mood: ['صنعتی','جدی','حرفه‌ای'],
+                        colorPalettes: ['Monochrome','Warm','Neutral'],
+                        processing: ['Photorealistic','Cinematic']
+                    },
+                    'ایمنی و آتشنشانی': {
+                        mood: ['هشداردهنده','حرفه‌ای','آموزشی'],
+                        colorPalettes: ['قرمز/نارنجی + خاکستری','High-contrast','Monochrome'],
+                        processing: ['Photorealistic','Illustration']
+                    }
+                };
+
                 const imageTemplateButtons = document.querySelectorAll('.use-image-template-btn');
                 imageTemplateButtons.forEach(btn => {
                     btn.addEventListener('click', function(){
@@ -1773,6 +1836,18 @@ function smart_admin_page() {
                     imageTemplateForm.addEventListener('submit', function(e){
                         e.preventDefault();
                         const formData = new FormData(imageTemplateForm);
+                        // تزریق حوزه انتخاب شده به فیلدهای خاص قالب‌های مرتبط
+                        const globalDomain = document.getElementById('global-domain-select')?.value;
+                        if (globalDomain && globalDomain !== 'custom') {
+                            const domainSelect = document.getElementById('domain_select');
+                            if (domainSelect && !domainSelect.value) domainSelect.value = globalDomain;
+                        } else if (globalDomain === 'custom') {
+                            const custom = document.getElementById('global-domain-custom')?.value || '';
+                            const domainCustom = document.getElementById('domain_custom');
+                            const domainSel = document.getElementById('domain_select');
+                            if (domainCustom) domainCustom.value = custom;
+                            if (domainSel) domainSel.value = 'custom';
+                        }
                         const templateTitle = document.getElementById('image-template-form-title').textContent;
                         const prompt = buildImagePromptFromFormData(formData, templateTitle);
 
@@ -2277,6 +2352,43 @@ function smart_admin_page() {
                         sel.addEventListener('change', toggle);
                         toggle();
                     });
+                    // واکنش به تغییر حوزه کلی و پیشنهاد مقادیر
+                    const globalDomain = document.getElementById('global-domain-select');
+                    if (globalDomain) {
+                        const applyProfile = () => {
+                            const profileKey = globalDomain.value === 'custom' ? 'عمومی' : globalDomain.value;
+                            const profile = DOMAIN_PROFILES[profileKey] || DOMAIN_PROFILES['عمومی'];
+                            // حال‌وهوا
+                            const moodSel = container.querySelector('#mood_select');
+                            if (moodSel && profile.mood) {
+                                // اگر گزینه موجود بود، مقدار اول پروفایل را بگذار
+                                for (const opt of moodSel.options) {
+                                    if (profile.mood.includes(opt.value)) { moodSel.value = opt.value; break; }
+                                }
+                            }
+                            // پالت رنگ در پوستر/آیکون/خبر
+                            const posterPalette = container.querySelector('#brand_colors_select');
+                            const iconPalette = container.querySelector('#icon_colors_select');
+                            const colorStyle = container.querySelector('#color_style_select');
+                            const candidates = [posterPalette, iconPalette, colorStyle];
+                            candidates.forEach(sel => {
+                                if (sel && profile.colorPalettes) {
+                                    for (const opt of sel.options) {
+                                        if (profile.colorPalettes.includes(opt.value)) { sel.value = opt.value; break; }
+                                    }
+                                }
+                            });
+                            // نوع پردازش مشترک
+                            const processingSel = container.querySelector('#processing_style_select');
+                            if (processingSel && profile.processing) {
+                                for (const opt of processingSel.options) {
+                                    if (profile.processing.includes(opt.value)) { processingSel.value = opt.value; break; }
+                                }
+                            }
+                        };
+                        globalDomain.addEventListener('change', applyProfile);
+                        applyProfile();
+                    }
                 }
 
                 function buildImagePromptFromFormData(fd, templateTitle){
