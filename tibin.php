@@ -22,7 +22,8 @@ function handleRequest() {
         return $response;
     } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $requestBody = json_decode(file_get_contents('php://input'), true);
-        $PhpResponse = SendToPhp($requestBody, $bot);
+        // Forward update to the actual WordPress REST handler URL received via query string
+        $PhpResponse = SendToPhp($requestBody, $bot, $url_p);
         $TelegramResponse = SendToTelegram($PhpResponse);
         return $TelegramResponse;
     }
@@ -76,12 +77,15 @@ function SendToTelegram($PhpResponse) {
     return new Response('Message processed', 200);
 }
 
-function SendToPhp($requestBody, $bot) {
-    $PhpUrl = "https://tibin.ir/wp-json/faraz/v1/handle";
+function SendToPhp($requestBody, $bot, $PhpUrl) {
+    // Fallback safety: if no URL provided, do nothing meaningful
+    if (!$PhpUrl) {
+        return ['message' => 'Missing PHP URL', 'chatid' => $requestBody['message']['chat']['id'] ?? null, 'bot' => $bot, 'isphoto' => 'false'];
+    }
 
     $options = [
         'http' => [
-            'header'  => "Content-Type: text/plain\r\n",
+            'header'  => "Content-Type: application/json\r\n",
             'method'  => 'POST',
             'content' => json_encode($requestBody),
         ],

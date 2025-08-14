@@ -494,6 +494,12 @@ function telegram_bot_save_token()
         $host_type = sanitize_text_field($_POST['telegram_host_type']);
         $proxy_url = sanitize_text_field($_POST['telegram_proxy_url']);
         $webhook_proxy = sanitize_text_field($_POST['telegram_webhook_proxy']);
+
+        // اگر هاست خارجی انتخاب شده باشد، مقادیر پروکسی را برای جداسازی کامل خالی می‌کنیم
+        if ($host_type === 'foreign') {
+            $proxy_url = '';
+            $webhook_proxy = '';
+        }
         
         update_option('telegram_bot_Chat_id', $chat_id);
         update_option('telegram_bot_info', $botinfo);
@@ -518,6 +524,13 @@ function telegram_bot_set_webhook($token, $url_p, $host_type = 'foreign')
 {
     $admin_login = false;
     update_option('admin_login_p', $admin_login);
+    
+    // جلوگیری از حذف ناخواسته وب‌هوک: اگر URL خالی باشد هرگز درخواست setWebhook ارسال نکن
+    $token = trim((string)$token);
+    $url_p = trim((string)$url_p);
+    if ($token === '' || $url_p === '') {
+        return false;
+    }
     
     if ($host_type === 'iranian') {
         // برای هاست ایرانی از میانجی وب‌هوک استفاده می‌کنیم
@@ -608,8 +621,13 @@ function test_webhook_endpoint() {
 }
 function handle_request()
 {
-    // Log all incoming requests
-    $update_raw = file_get_contents('php://input');
+	// Log all incoming requests (حداقلی حتی بدون حالت دیباگ)
+	$log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
+	$update_raw = file_get_contents('php://input');
+	file_put_contents($log_file, "=== NEW REQUEST (minimal log) ===\n", FILE_APPEND);
+	file_put_contents($log_file, "Time: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
+	file_put_contents($log_file, "Request method: " . ($_SERVER['REQUEST_METHOD'] ?? 'UNKNOWN') . "\n", FILE_APPEND);
+	file_put_contents($log_file, "Raw update: " . $update_raw . "\n", FILE_APPEND);
     
     if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
         if (function_exists('smart_admin_debug_log')) {
@@ -632,8 +650,9 @@ function handle_request()
         }
     }
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+	if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $update = json_decode($update_raw, true);
+		file_put_contents($log_file, "Decoded keys: " . implode(', ', array_keys((array)$update)) . "\n", FILE_APPEND);
 
         // Log decoded update
         if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
@@ -804,9 +823,9 @@ function handle_request()
             file_put_contents($log_file, "No message or callback_query found in update\n", FILE_APPEND);
             file_put_contents($log_file, "Available keys in update: " . implode(', ', array_keys($update)) . "\n", FILE_APPEND);
         }
-    } else {
-        file_put_contents($log_file, "Request method is not POST\n", FILE_APPEND);
-    }
+		} else {
+			file_put_contents($log_file, "Request method is not POST\n", FILE_APPEND);
+		}
     
     // اگر callback_query در update نبود، بررسی کنیم که آیا در جای دیگری است
     if (isset($_POST['callback_query'])) {
@@ -815,6 +834,7 @@ function handle_request()
     }
     
     file_put_contents($log_file, "=== END REQUEST ===\n\n", FILE_APPEND);
+		return array('ok' => true);
 }
 
 // تابع جدید برای پاسخ به callback_query
