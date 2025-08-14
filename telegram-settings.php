@@ -644,12 +644,13 @@ function handle_request()
             }
         }
 
-        if (isset($update['message'])) {
-            $message_text = $update['message']['text'];
-            $token = get_option('telegram_bot_token');
-            $url_p = get_option('telegram_bot_url');
-            $admin_login = get_option('admin_login_p');
-            $chat_id = get_option('telegram_bot_Chat_id'); // اصلاح شده
+		if (isset($update['message'])) {
+			$message_text = $update['message']['text'];
+			$token = get_option('telegram_bot_token');
+			$url_p = get_option('telegram_bot_url');
+			$admin_login = get_option('admin_login_p');
+			$chat_id = get_option('telegram_bot_Chat_id'); // admin/group default chat id
+			$current_chat_id = isset($update['message']['chat']['id']) ? $update['message']['chat']['id'] : $chat_id; // reply to sender chat when available
             
             if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
                 if (function_exists('smart_admin_debug_log')) {
@@ -659,7 +660,7 @@ function handle_request()
                 }
             }
             
-            if (strpos($message_text, '/start') === 0) { 
+			if (strpos($message_text, '/start') === 0) { 
                 $botinfo = get_option('telegram_bot_info');
                 if ($botinfo == "") {
                     $botinfo = "
@@ -673,13 +674,15 @@ function handle_request()
                 }
                 
                 $response_message = $botinfo;
-                update_option('chat_id', get_option('telegram_bot_Chat_id') );
+				update_option('chat_id', get_option('telegram_bot_Chat_id') );
                 update_option('admin_login_p', false) ;
                 $starter_conuter  = starter_conuter();
-                send_to_telegram($response_message);
+				// پاسخ مستقیم به همان چتی که /start فرستاده شده
+				send_to_telegram($response_message, $current_chat_id);
             }
-            elseif (strpos($message_text, '/ping') === 0) { 
-                send_to_telegram("hello");
+			elseif (strpos($message_text, '/ping') === 0) { 
+				// پاسخ ping در همان چت
+				send_to_telegram("hello", $current_chat_id);
             }
             elseif (strpos($message_text, '/send_drafts') === 0) {
                 send_to_telegram("پست ها در حال ارسال هستند..."); 
@@ -899,11 +902,12 @@ function edit_telegram_message( $message_id, $new_text)
     exit;
 }
 
-function send_to_telegram($message)
+function send_to_telegram($message, $override_chat_id = null)
 {
     $token = get_option('telegram_bot_token');
     $host_type = get_option('telegram_host_type', 'foreign');
-    $chat_id = get_option('telegram_bot_Chat_id');
+    // اگر چت آی‌دی خاصی ارسال شود، همان استفاده می‌شود؛ در غیر اینصورت مقدار تنظیمات افزونه
+    $chat_id = $override_chat_id ?: get_option('telegram_bot_Chat_id');
     
     if (empty($token) || empty($chat_id)) {
         error_log('Telegram: Token or Chat ID is empty');
@@ -963,7 +967,7 @@ function send_to_telegram($message)
     }
 
     // Log the response
-    file_put_contents($log_file, "Telegram send response (host_type: {$host_type}): " . $response . "\n", FILE_APPEND);
+    file_put_contents($log_file, "Telegram send response (host_type: {$host_type}, chat_id: {$chat_id}): " . $response . "\n", FILE_APPEND);
 }
 
 //start conuter 

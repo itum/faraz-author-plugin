@@ -159,6 +159,7 @@ function stp_check_for_new_rss_items() {
     include_once(ABSPATH . WPINC . '/feed.php');
   
     try {
+        $debug_test_sent = false; // برای جلوگیری از ارسال زیاد پیام تست
         foreach ($entries as $entry) {
             file_put_contents($log_file, "Processing RSS feed: " . $entry['url'] . "\n", FILE_APPEND);
             $rss = fetch_feed($entry['url']);
@@ -169,6 +170,11 @@ function stp_check_for_new_rss_items() {
                 $max_items = $rss->get_item_quantity(4);
                 $rss_items = $rss->get_items(0, $max_items);
                 file_put_contents($log_file, "Found " . count($rss_items) . " RSS items\n", FILE_APPEND);
+                // ارسال پیام تست به تلگرام برای اطمینان از گردش کار (فقط در حالت دیباگ یا فعال بودن گزینه)
+                if (!$debug_test_sent && ((function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) || get_option('telegram_rss_debug', false))) {
+                    send_to_telegram("🧪 RSS Debug: " . $entry['url'] . " | items: " . count($rss_items));
+                    $debug_test_sent = true;
+                }
                 
                 foreach ($rss_items as $item) { 
                     $date = strtotime($item->get_date('Y-m-d H:i:s'));
@@ -252,6 +258,10 @@ function stp_check_for_new_rss_items() {
                         $message = "$title \n\n$excerpt \n\nدسته بندی : $cat \n\nنام سایت : $source \n\n  $datej ";
                         file_put_contents($log_file, "Sending to Telegram for post ID: " . $post_id . "\n", FILE_APPEND);
                         send_telegram_photo_with_caption($thumbnail_url, $message, $post_id);
+                        // پیام تست کوتاه به ادمین برای تایید جریان کار
+                        if ((function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) || get_option('telegram_rss_debug', false)) {
+                            send_to_telegram("✅ Test: ارسال RSS برای پست #$post_id انجام شد: $title");
+                        }
                     } else {
                         file_put_contents($log_file, "Cannot send to Telegram - missing post_id or thumbnail_url\n", FILE_APPEND);
                     }
