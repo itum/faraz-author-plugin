@@ -2,6 +2,14 @@
  * استایل‌های بهینه‌ساز خودکار SEO و Image Optimizer
  */
 
+h1, h2, h3, h4, h5, h6 {
+    font-weight: bold;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    line-height: 1.3;
+    color: #23282d;
+}
+
 /* دکمه بهینه‌ساز SEO */
 #smart-admin-seo-optimizer-button {
     background-color: #4caf50;
