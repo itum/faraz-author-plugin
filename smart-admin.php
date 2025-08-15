@@ -4615,6 +4615,38 @@ function send_to_gapgpt_api($prompt, $model, $api_key) {
         
         // تبدیل Markdown به HTML برای نمایش بهتر
         $content = smart_admin_convert_markdown_to_html($content);
+
+        // اگر مدل به دلیل قوانین از پاسخ‌گویی امتناع کرد، یک بار با دستورالعمل ساده‌تر تلاش مجدد می‌کنیم
+        $refusal_detected = false;
+        $plain_text_content = strip_tags($content);
+        $refusal_patterns = '/(متاسفم|متأسفم|نمی[\s‌]*توانم|نمیتوانم|قادر نیستم|ممکن نیست|نمی شود|سیاست|قوانین|I\\s*can\'t|I cannot|I\\s*won\'t|cannot comply|policy)/iu';
+        if (preg_match($refusal_patterns, $plain_text_content)) {
+            $refusal_detected = true;
+            smart_admin_log('Refusal detected in AI response. Retrying with simplified HTML-focused prompt.');
+        }
+
+        if ($refusal_detected) {
+            $retry_instructions = "\n\nفقط بدنه مقاله را به صورت HTML تمیز تولید کن. هیچ عذرخواهی یا توضیح درباره قوانین ننویس. از <h2> و <h3> برای تیترها، از <ul><li> برای بولت‌پوینت‌ها و از <strong> برای تأکید استفاده کن. خروجی صرفاً محتوای HTML باشد (بدون <html> یا <body>).";
+            $retry_body = array(
+                'model' => $model,
+                'messages' => array(
+                    array(
+                        'role' => 'user',
+                        'content' => $prompt . $retry_instructions
+                    )
+                )
+            );
+            $retry_args = $args;
+            $retry_args['body'] = json_encode($retry_body);
+
+            $retry_response = wp_remote_post($url, $retry_args);
+            if (!is_wp_error($retry_response) && wp_remote_retrieve_response_code($retry_response) === 200) {
+                $retry_response_body = json_decode(wp_remote_retrieve_body($retry_response), true);
+                if (isset($retry_response_body['choices'][0]['message']['content'])) {
+                    $content = smart_admin_convert_markdown_to_html($retry_response_body['choices'][0]['message']['content']);
+                }
+            }
+        }
         
         // استخراج کلمات کلیدی از محتوا
         $keywords = array();
