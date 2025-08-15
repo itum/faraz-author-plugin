@@ -150,6 +150,14 @@ function telegram_bot_settings_page()
             </div>
 
             <div class="form-group">
+                <label for="faraz_telegram_admin_ids">شناسه عددی ادمین‌ها (با , یا فاصله جدا کنید):</label>
+                <input type="text" id="faraz_telegram_admin_ids" name="faraz_telegram_admin_ids"
+                       value="<?php echo esc_attr(get_option('faraz_telegram_admin_ids', '80266430')); ?>"
+                       placeholder="مثال: 80266430, 123456789, 987654321">
+                <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">آی‌دی عددی کاربرانی که اجازه ارسال پست از طریق ربات دارند. می‌توانید چند آی‌دی وارد کنید.</small>
+            </div>
+
+            <div class="form-group">
                 <label for="telegram_bot_token">توکن ربات تلگرام:</label>
                 <input type="text" id="telegram_bot_token" name="telegram_bot_token" 
                        value="<?php echo esc_attr(get_option('telegram_bot_token')); ?>" 
@@ -494,6 +502,7 @@ function telegram_bot_save_token()
         $host_type = sanitize_text_field($_POST['telegram_host_type']);
         $proxy_url = sanitize_text_field($_POST['telegram_proxy_url']);
         $webhook_proxy = sanitize_text_field($_POST['telegram_webhook_proxy']);
+        $admin_ids = isset($_POST['faraz_telegram_admin_ids']) ? sanitize_text_field($_POST['faraz_telegram_admin_ids']) : '';
 
         // اگر هاست خارجی انتخاب شده باشد، مقادیر پروکسی را برای جداسازی کامل خالی می‌کنیم
         if ($host_type === 'foreign') {
@@ -508,6 +517,7 @@ function telegram_bot_save_token()
         update_option('telegram_host_type', $host_type);
         update_option('telegram_proxy_url', $proxy_url);
         update_option('telegram_webhook_proxy', $webhook_proxy);
+        update_option('faraz_telegram_admin_ids', $admin_ids);
         
         // تنظیم وب‌هوک و نمایش نتیجه
         $webhook_result = telegram_bot_set_webhook($token, $url_p, $host_type);
@@ -619,6 +629,136 @@ function test_webhook_endpoint() {
         'time' => date('Y-m-d H:i:s')
     );
 }
+// استخراج عنوان و متن از ورودی کاربر با پشتیبانی از «;» و «؛»
+function faraz_parse_title_and_content_from_text($text) {
+    $text = trim((string)$text);
+    // یکسان‌سازی جداکننده‌ها
+    $normalized = str_replace(['؛'], [';'], $text);
+
+    $title = '';
+    $content = '';
+    if (strpos($normalized, ';') !== false) {
+        list($title, $content) = array_map('trim', explode(';', $normalized, 2));
+    } else {
+        // fallback: اولین خط را عنوان درنظر بگیریم
+        $parts = preg_split("/\r?\n/", $text, 2);
+        $title = trim($parts[0]);
+        $content = isset($parts[1]) ? trim($parts[1]) : $text;
+    }
+
+    // حذف علائم انتهایی از عنوان
+    $title = trim($title, " \t\n\r\0\x0B:؛،-");
+
+    // اگر ابتدای متن تکرار عنوان بود، حذفش کنیم
+    $pattern = '/^\s*' . preg_quote($title, '/') . '\s*[:؛،\-–—]*\s*/u';
+    $content = preg_replace($pattern, '', $content, 1);
+
+    return array($title, $content);
+}
+// نرمال‌سازی ارقام فارسی/عربی به انگلیسی
+function faraz_normalize_digits($text) {
+    $persian = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+    $english = ['0','1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6','7','8','9'];
+    return str_replace($persian, $english, (string)$text);
+}
+
+// بررسی اینکه user_id در لیست ادمین‌ها هست یا خیر
+function faraz_is_telegram_admin($user_id) {
+    $user_id = faraz_normalize_digits($user_id);
+    $allowed_admins_option = (string) get_option('faraz_telegram_admin_ids', '');
+    $allowed_admins_option = faraz_normalize_digits($allowed_admins_option);
+    // جداکننده: ویرگول انگلیسی/فاصله/خط جدید/ویرگول فارسی
+    $parts = preg_split('/[\s,،]+/', $allowed_admins_option);
+    $parts = array_filter(array_map('trim', (array)$parts));
+    // هم به صورت رشته هم عدد بررسی می‌کنیم
+    foreach ($parts as $part) {
+        if ($part === '') continue;
+        if ((string)$part === (string)$user_id) return true;
+        if (ctype_digit($part) && (int)$part === (int)$user_id) return true;
+    }
+    return false;
+}
+/**
+ * دانلود فایل تلگرام و ذخیره در رسانه وردپرس و برگرداندن URL نهایی
+ */
+function faraz_download_telegram_file_to_wp_media($file_id) {
+    $token = get_option('telegram_bot_token');
+    if (empty($token) || empty($file_id)) return '';
+
+    // گام ۱: دریافت مسیر فایل از تلگرام
+    $get_file_url = "https://api.telegram.org/bot{$token}/getFile?file_id=" . urlencode($file_id);
+    $response = wp_remote_get($get_file_url, array('timeout' => 30, 'sslverify' => false));
+    if (is_wp_error($response)) return '';
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+    if (!isset($body['ok']) || !$body['ok'] || empty($body['result']['file_path'])) return '';
+
+    $file_path = $body['result']['file_path'];
+    $download_url = "https://api.telegram.org/file/bot{$token}/" . $file_path;
+
+    // گام ۲: دانلود باینری و ذخیره موقت
+    // نیاز به فایل‌های کتابخانه رسانه
+    if (!function_exists('download_url')) {
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+    }
+    if (!function_exists('media_handle_sideload')) {
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+    }
+    if (!function_exists('wp_read_image_metadata')) {
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+    }
+
+    $tmp = download_url($download_url, 30);
+    if (is_wp_error($tmp)) return '';
+
+    // تعیین نام فایل
+    $filename = basename($file_path);
+    $file_array = array(
+        'name'     => $filename,
+        'tmp_name' => $tmp,
+    );
+
+    // وارد کردن به کتابخانه رسانه
+    $attachment_id = media_handle_sideload($file_array, 0);
+    if (is_wp_error($attachment_id)) {
+        @unlink($tmp);
+        return '';
+    }
+
+    $url = wp_get_attachment_url($attachment_id);
+    return $url ? $url : '';
+}
+
+/**
+ * درصورت نیاز الصاق تصویر خارجی به عنوان تصویر شاخص پست
+ */
+function faraz_attach_external_image_as_featured($post_id, $image_url) {
+    if (empty($image_url)) return false;
+    if (!function_exists('download_url')) {
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+    }
+    if (!function_exists('media_handle_sideload')) {
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+    }
+    if (!function_exists('wp_read_image_metadata')) {
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+    }
+
+    $tmp = download_url($image_url, 30);
+    if (is_wp_error($tmp)) return false;
+
+    $file_array = array(
+        'name'     => basename(parse_url($image_url, PHP_URL_PATH)),
+        'tmp_name' => $tmp,
+    );
+
+    $attachment_id = media_handle_sideload($file_array, $post_id);
+    if (is_wp_error($attachment_id)) {
+        @unlink($tmp);
+        return false;
+    }
+    set_post_thumbnail($post_id, $attachment_id);
+    return true;
+}
 function handle_request()
 {
 	// Log all incoming requests (حداقلی حتی بدون حالت دیباگ)
@@ -664,18 +804,23 @@ function handle_request()
         }
 
 		if (isset($update['message'])) {
-			$message_text = $update['message']['text'];
+            $message_text = isset($update['message']['text']) ? $update['message']['text'] : '';
 			$token = get_option('telegram_bot_token');
 			$url_p = get_option('telegram_bot_url');
 			$admin_login = get_option('admin_login_p');
 			$chat_id = get_option('telegram_bot_Chat_id'); // admin/group default chat id
 			$current_chat_id = isset($update['message']['chat']['id']) ? $update['message']['chat']['id'] : $chat_id; // reply to sender chat when available
+            $sender_user_id = isset($update['message']['from']['id']) ? (string)$update['message']['from']['id'] : '';
+            $allowed_admins_option = (string) get_option('faraz_telegram_admin_ids', '');
+            $allowed_admins = array_filter(array_map('trim', preg_split('/[\s,،]+/', faraz_normalize_digits($allowed_admins_option))));
             
             if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
                 if (function_exists('smart_admin_debug_log')) {
                     smart_admin_debug_log("Processing message: $message_text", "INFO");
+                    smart_admin_debug_log("Sender: $sender_user_id | Admins: " . implode(',', $allowed_admins), "INFO");
                 } else {
                     file_put_contents($log_file, "Processing message: $message_text\n", FILE_APPEND);
+                    file_put_contents($log_file, "Sender: $sender_user_id | Admins: " . implode(',', $allowed_admins) . "\n", FILE_APPEND);
                 }
             }
             
@@ -710,16 +855,76 @@ function handle_request()
             elseif(strpos($message_text, '/publish_all_drafts') === 0) {
                 // کد منتشر کردن همه پست‌ها
             }
-            elseif (strpos($message_text, $token) === 0) {
-                $admin_login = true ;
-                update_option('admin_login_p', $admin_login);
-                send_to_telegram("به عنوان ادمین وارد شدید! ");
+            elseif (!empty($update['message']['photo']) || ((!empty($message_text)) && (strpos(str_replace('؛',';',$message_text), ';') !== false))) {
+                $is_admin = faraz_is_telegram_admin($sender_user_id);
+                if (!$is_admin) {
+                    send_to_telegram('⛔ شما ادمین نیستید و امکان ارسال پست را ندارید.', $current_chat_id);
+                } else {
+                    // حالت ارسال عکس + کپشن یا متن با الگوی عنوان;متن
+                    $post_title = '';
+                    $post_content = '';
+                    $featured_image_url = '';
+
+                    if (!empty($update['message']['photo'])) {
+                        // کپشن اجباری برای جداسازی عنوان;متن
+                        $caption_text = isset($update['message']['caption']) ? $update['message']['caption'] : '';
+                        list($post_title, $post_content) = faraz_parse_title_and_content_from_text($caption_text);
+                        // گرفتن فایل بزرگتر عکس
+                        $photos = $update['message']['photo'];
+                        $largest = end($photos);
+                        $file_id = $largest['file_id'];
+                        $featured_image_url = faraz_download_telegram_file_to_wp_media($file_id);
+                    } else {
+                        // پیام متنی با عنوان;متن
+                        list($post_title, $post_content) = faraz_parse_title_and_content_from_text($message_text);
+                    }
+
+                    if (empty($post_title)) {
+                        // اگر کپشن خالی یا جداکننده نداشت، یک عنوان کوتاه از متن بسازیم
+                        $post_title = wp_trim_words(wp_strip_all_tags($post_content), 12, '');
+                        if (empty($post_title)) { $post_title = 'بدون عنوان'; }
+                    }
+
+                    // ایجاد پیش‌نویس سفارشی (وضعیت faraz برای چرخه بازبینی)
+                    $post_id = wp_insert_post([
+                        'post_title'   => $post_title,
+                        'post_content' => $post_content,
+                        'post_status'  => 'faraz',
+                        'post_type'    => 'post',
+                        'post_author'  => 1,
+                    ]);
+
+                    if (!is_wp_error($post_id)) {
+                        if (!empty($featured_image_url)) {
+                            // مستقیماً تصویر را به‌عنوان تصویر شاخص قرار بده؛
+                            // از تابع داخلی خودمان استفاده می‌کنیم تا وابسته به تنظیمات Unsplash نباشد
+                            $attached = faraz_attach_external_image_as_featured($post_id, $featured_image_url);
+                            if ($attached) {
+                                update_post_meta($post_id, '_faraz_featured_source_url', esc_url_raw($featured_image_url));
+                            }
+                        }
+                        // پیش‌نمایش برای ادمین ارسال شود
+                        send_post_to_telegram($post_id, $current_chat_id);
+                        send_to_telegram("اگر تصویر یا فایل دیگری برای اضافه‌کردن داری ارسال کن (اختیاری). برای رد کردن، چیزی نفرست.", $current_chat_id);
+                    } else {
+                        send_to_telegram('خطا در ایجاد پست: ' . $post_id->get_error_message(), $current_chat_id);
+                    }
+                }
+            }
+            elseif (strpos($message_text, '/id') === 0 || strpos($message_text, '/whoami') === 0) {
+                $username = isset($update['message']['from']['username']) ? '@' . $update['message']['from']['username'] : '—';
+                $first = isset($update['message']['from']['first_name']) ? $update['message']['from']['first_name'] : '';
+                $last  = isset($update['message']['from']['last_name']) ? $update['message']['from']['last_name'] : '';
+                $is_admin = faraz_is_telegram_admin($sender_user_id) ? 'بله' : 'خیر';
+                $info = "👤 اطلاعات شما\nID: {$sender_user_id}\nUsername: {$username}\nName: {$first} {$last}\nادمین: {$is_admin}";
+                send_to_telegram($info, $current_chat_id);
             }
         }
         elseif (isset($update['callback_query'])) {
             $callback_query = $update['callback_query'];
             $callback_data = $callback_query['data'];
-            $chat_id = $callback_query['from']['id']; // اصلاح شده - از from استفاده می‌کنیم
+            // چت مقصد همان چتی است که دکمه در آن کلیک شده (گروه/کانال/خصوصی)
+            $chat_id = isset($callback_query['message']['chat']['id']) ? $callback_query['message']['chat']['id'] : $callback_query['from']['id'];
             $message_id = $callback_query['message']['message_id'];
 
             // Log callback query data
@@ -776,9 +981,9 @@ function handle_request()
                     // ارسال پیام تایید به ادمین
                     $confirmation_message = $post_title . " با موفقیت منتشر شد!";
                     file_put_contents($log_file, "Sending confirmation to admin: $confirmation_message\n", FILE_APPEND);
-                    send_to_telegram($confirmation_message);
+                    send_to_telegram($confirmation_message, $chat_id);
                 } else {
-                    send_to_telegram("پست در حالت فراز نیست و قابل انتشار نیست!");
+                    send_to_telegram("پست در حالت فراز نیست و قابل انتشار نیست!", $chat_id);
                 }
             }
             elseif (strpos($callback_data, 'delete_post_') === 0) {
@@ -793,9 +998,9 @@ function handle_request()
                 if($post_status === 'faraz'){
                     delete_post($post_id);
                     $post_title = get_the_title($post_id);
-                    send_to_telegram($post_title . " با موفقیت حذف شد!" );
+                    send_to_telegram($post_title . " با موفقیت حذف شد!", $chat_id );
                 } else {
-                    send_to_telegram("پست در حالت فراز نیست و قابل حذف نیست!");
+                    send_to_telegram("پست در حالت فراز نیست و قابل حذف نیست!", $chat_id);
                 }
             }
             elseif (strpos($callback_data, 'edited_post_') === 0) {
@@ -805,17 +1010,121 @@ function handle_request()
                 // اضافه کردن debug
                 debug_callback_query($callback_data, $post_id);
                 
-                send_post_to_telegram($post_id , $update['callback_query']['from']['id']);
+                send_post_to_telegram($post_id , $chat_id);
             }
             elseif (strpos($callback_data, 'show_post_') === 0) {
                 $post_id = str_replace('show_post_', '', $callback_data);
-                $user_id = $callback_query['from']['id'];
-                file_put_contents($log_file, "Processing show_post for post ID: $post_id to user: $user_id\n", FILE_APPEND);
+                file_put_contents($log_file, "Processing show_post for post ID: $post_id to chat: $chat_id\n", FILE_APPEND);
                 
                 // اضافه کردن debug
                 debug_callback_query($callback_data, $post_id);
                 
-                send_post_to_telegram($post_id, $user_id);
+                send_post_to_telegram($post_id, $chat_id);
+            }
+            elseif (strpos($callback_data, 'choose_cat_') === 0) {
+                $post_id = (int) str_replace('choose_cat_', '', $callback_data);
+                $cats = get_categories(array('hide_empty' => false));
+                $rows = array();
+                $row = array();
+                foreach ($cats as $index => $cat) {
+                    // ضمیمه کردن message_id فعلی برای ویرایش پیام اصلی پس از انتخاب
+                    $row[] = ['text' => $cat->name, 'callback_data' => 'set_cat_' . $post_id . '_' . $cat->term_id . '_' . $message_id];
+                    if (count($row) === 2) { $rows[] = $row; $row = array(); }
+                    if (count($rows) >= 6) break; // جلوگیری از دکمه‌های بیش از حد
+                }
+                if (!empty($row)) $rows[] = $row;
+                $rows[] = [ ['text' => 'لغو', 'callback_data' => 'cancel_cat_' . $post_id] ];
+
+                // ارسال پیام انتخاب دسته‌بندی
+                $token = get_option('telegram_bot_token');
+                $host_type = get_option('telegram_host_type', 'foreign');
+                $text = 'لطفاً یک دسته‌بندی برای این پست انتخاب کنید:';
+                if ($host_type === 'iranian') {
+                    $proxy_url = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+                    $data = array(
+                        'chatid' => $chat_id,
+                        'bot' => $token,
+                        'message' => $text,
+                        'reply_markup' => json_encode(['inline_keyboard' => $rows]),
+                        'isphoto' => 'false'
+                    );
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, $proxy_url);
+                    curl_setopt($ch, CURLOPT_POST, true);
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+                    curl_exec($ch);
+                    curl_close($ch);
+                } else {
+                    $url = "https://api.telegram.org/bot{$token}/sendMessage";
+                    wp_remote_post($url, array(
+                        'body' => array(
+                            'chat_id' => $chat_id,
+                            'text' => $text,
+                            'reply_markup' => json_encode(['inline_keyboard' => $rows])
+                        ),
+                        'timeout' => 30,
+                        'sslverify' => false
+                    ));
+                }
+            }
+            elseif (strpos($callback_data, 'set_cat_') === 0) {
+                // set_cat_{postId}_{termId}
+                $parts = explode('_', $callback_data);
+                $post_id = isset($parts[2]) ? (int)$parts[2] : 0;
+                $term_id = isset($parts[3]) ? (int)$parts[3] : 0;
+                $origin_message_id = isset($parts[4]) ? (int)$parts[4] : 0; // پیام پیش‌نمایش
+                if ($post_id && $term_id) {
+                    wp_set_post_categories($post_id, array($term_id), false);
+
+                    // ساخت کپشن جدید با نام دسته‌بندی انتخاب‌شده
+                    $post_title = get_the_title($post_id);
+                    $post_excerpt = get_the_excerpt($post_id);
+                    $cats = get_the_category($post_id);
+                    $cat_name = 'بدون دسته‌بندی';
+                    if (!empty($cats)) { $cat_name = esc_html($cats[0]->name); }
+                    $new_caption = $post_title . "\n\n" . $post_excerpt . "\n\nدسته‌بندی:  " . $cat_name;
+
+                    // بازسازی دکمه‌های مدیریتی (بدون دکمه انتخاب دسته‌بندی اضافی)
+                    $keyboard = [
+                        [ ['text' => '👁️ نمایش پست', 'callback_data' => 'show_post_' . $post_id] ],
+                        [ ['text' => '✅ منتشر کردن پست', 'callback_data' => 'publish_post_' . $post_id] ],
+                        [ ['text' => '🗑️ پاک کردن پست', 'callback_data' => 'delete_post_' . $post_id] ]
+                    ];
+
+                    // ویرایش پیام اصلی پیش‌نمایش
+                    if ($origin_message_id) {
+                        $token = get_option('telegram_bot_token');
+                        $url = "https://api.telegram.org/bot{$token}/editMessageCaption";
+                        wp_remote_post($url, array(
+                            'body' => array(
+                                'chat_id' => $chat_id,
+                                'message_id' => $origin_message_id,
+                                'caption' => $new_caption,
+                                'parse_mode' => 'HTML',
+                                'reply_markup' => json_encode(['inline_keyboard' => $keyboard])
+                            ),
+                            'timeout' => 30,
+                            'sslverify' => false
+                        ));
+                    }
+
+                    // حذف پیام انتخاب دسته‌بندی
+                    $token = get_option('telegram_bot_token');
+                    $delete_url = "https://api.telegram.org/bot{$token}/deleteMessage";
+                    wp_remote_post($delete_url, array(
+                        'body' => array(
+                            'chat_id' => $chat_id,
+                            'message_id' => $message_id
+                        ),
+                        'timeout' => 30,
+                        'sslverify' => false
+                    ));
+
+                    // پیام تایید کوتاه
+                    send_to_telegram('✅ دسته‌بندی انتخاب شد.', $chat_id);
+                }
             }
             
             file_put_contents($log_file, "=== END CALLBACK QUERY ===\n", FILE_APPEND);
@@ -1021,24 +1330,37 @@ function send_post_to_telegram($post_id, $chat_id)
         
         if ($post_thumbnail_data && isset($post_thumbnail_data[0])) {
             $post_thumbnail_url = $post_thumbnail_data[0];
-        } else {
-            send_to_telegram('پست مورد نظر تصویر شاخص ندارد.');
-            return;
         }
     }
  
     $post_title = get_the_title($post_id);
     $post_excerpt = get_the_excerpt($post_id);
-    $post_link = get_permalink($post_id);
+    $status = get_post_status($post_id);
+    $post_link = ($status === 'publish') ? get_permalink($post_id) : get_preview_post_link($post_id);
 
     $cats = get_the_category($post_id);
     $cat = !empty($cats) ? esc_html($cats[0]->name) : 'بدون دسته‌بندی';
  
-    $message = "$post_title \n\n$post_excerpt \n\nدسته‌بندی:  $cat \n\nآدرس پست در سایت شما: $post_link";
+    $message = "$post_title \n\n$post_excerpt \n\nدسته‌بندی:  $cat";
 
-    // این تابع برای نمایش و تغییر پست به ادمین ها ارسال می‌شود
-    // در اینجا همیشه باید پارامتر false ارسال شود تا امضا اضافه نشود
+    // اگر تصویر شاخص نداریم، پیام متنی با دکمه‌ها بفرستیم
+    if (!empty($post_thumbnail_url)) {
     send_telegram_photo_with_caption($post_thumbnail_url, $message, $post_id, 'edit', $chat_id);
+    } else {
+        send_telegram_text_with_buttons($message, $post_id, 'edit', $chat_id);
+    }
+    $preview_link = ($status === 'publish') ? get_permalink($post_id) : get_preview_post_link($post_id);
+    // کوتاه‌کننده وردپرس
+    $short = wp_get_shortlink($post_id);
+    if (!empty($short)) $preview_link = $short;
+    if ($preview_link) {
+        send_to_telegram('پیش‌نمایش/نمایش روی سایت: ' . $preview_link, $chat_id);
+    }
+    $edit_link = get_edit_post_link($post_id, '');
+    if ($edit_link) {
+        // برای لینک ویرایش کوتاه‌لینک نداریم، همان لینک پیشخوان کافی است
+        send_to_telegram('ویرایش در پیشخوان: ' . $edit_link, $chat_id);
+    }
 }
 function send_all_draft_posts($chat_id)
 {

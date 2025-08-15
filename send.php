@@ -52,20 +52,18 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
         ];
     } elseif($has === 'edit') {
         $inline_keyboard = [
-            [
-                ['text' => '📝 ویرایش و نمایش پست', 'web_app' => ['url' => "https://tibin.ir/wp-json/bot-rss/v1/post/$post_id?password=opkwfaopfkoan2" ] ]
-            ],
-            [
-                ['text' => '✅ منتشر کردن پست', 'callback_data' => 'publish_post_' . $post_id]
-            ],
-            [
-                ['text' => '🗑️ پاک کردن پست', 'callback_data' => 'delete_post_' . $post_id]
-            ]
+            [ ['text' => '📂 انتخاب دسته‌بندی', 'callback_data' => 'choose_cat_' . $post_id] ],
+            [ ['text' => '👁️ نمایش پست', 'callback_data' => 'show_post_' . $post_id] ],
+            [ ['text' => '✅ منتشر کردن پست', 'callback_data' => 'publish_post_' . $post_id] ],
+            [ ['text' => '🗑️ پاک کردن پست', 'callback_data' => 'delete_post_' . $post_id] ]
         ];
     } else {
         $inline_keyboard = [];
     }
     
+    $http_status = 200;
+    $used_curl = false;
+
     if ($host_type === 'iranian') {
         // استفاده از پروکسی برای هاست ایرانی
         $workerUrl = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
@@ -76,7 +74,7 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
             'photo' => $photo_url,
             'caption' => $caption,
             'reply_markup' => json_encode(['inline_keyboard' => $inline_keyboard]),
-            'is_photo' => 'true'
+            'isphoto' => 'truep'
         ];
         
         $ch = curl_init();
@@ -87,6 +85,8 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 
         $response = curl_exec($ch);
+        $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $used_curl = true;
         
     } else {
         // اتصال مستقیم به API تلگرام برای هاست خارجی
@@ -103,20 +103,19 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
             $data['reply_markup'] = json_encode(['inline_keyboard' => $inline_keyboard]);
         }
         
-        $response = wp_remote_post($telegram_api_url, array(
+        $wp_response = wp_remote_post($telegram_api_url, array(
             'body' => $data,
             'timeout' => 30,
             'sslverify' => false
         ));
         
-        if (is_wp_error($response)) {
-            $response = json_encode(['ok' => false, 'error' => $response->get_error_message()]);
+        if (is_wp_error($wp_response)) {
+            $http_status = 0;
+            $response = json_encode(['ok' => false, 'error' => $wp_response->get_error_message()]);
         } else {
-            $response = wp_remote_retrieve_body($response);
+            $http_status = wp_remote_retrieve_response_code($wp_response);
+            $response = wp_remote_retrieve_body($wp_response);
         }
-        
-        // برای سازگاری با کد موجود، curl handle را تعریف می‌کنیم
-        $ch = curl_init();
     }
     // sendErrorToTelegram(json_encode([$response, $data ]));
 
@@ -124,7 +123,6 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
         $errorMessage = 'Error: ' . curl_error($ch);
         sendErrorToTelegram(json_encode([$photo_url , $caption , $post_id ]), $errorChatId, $token); 
     } else {
-        $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         if ($http_status != 200) {
             $errorMessage = 'HTTP Error: ' . $http_status . PHP_EOL . 'Response: ' . $response;
             sendErrorToTelegram($errorMessage, $errorChatId, $token); 
@@ -149,7 +147,68 @@ function send_telegram_photo_with_caption($photo_url, $caption, $post_id , $has 
             }
         }
     }
-    curl_close($ch);
+    if ($used_curl) {
+        curl_close($ch);
+    }
+}
+
+// ارسال پیام متنی با دکمه‌های مدیریتی (برای زمانی که تصویر شاخص نداریم)
+function send_telegram_text_with_buttons($text, $post_id, $has = false, $chat_id = null) {
+    $token = get_option('telegram_bot_token');
+    $host_type = get_option('telegram_host_type', 'foreign');
+    if (is_null($chat_id)) $chat_id = get_option('telegram_bot_Chat_id');
+
+    $inline_keyboard = [];
+    if ($has === false) {
+        $inline_keyboard = [
+            [
+                ['text' => '✅ منتشر کردن', 'callback_data' => 'publish_post_' . $post_id],
+                ['text' => '🗑️ پاک کردن', 'callback_data' => 'delete_post_' . $post_id],
+                ['text' => '👁️ نمایش پست', 'callback_data' => 'show_post_' . $post_id]
+            ]
+        ];
+    } elseif ($has === 'edit') {
+        $inline_keyboard = [
+            [ ['text' => '📂 انتخاب دسته‌بندی', 'callback_data' => 'choose_cat_' . $post_id] ],
+            [ ['text' => '👁️ نمایش پست', 'callback_data' => 'show_post_' . $post_id] ],
+            [ ['text' => '✅ منتشر کردن پست', 'callback_data' => 'publish_post_' . $post_id] ],
+            [ ['text' => '🗑️ پاک کردن پست', 'callback_data' => 'delete_post_' . $post_id] ]
+        ];
+    }
+
+    if ($host_type === 'iranian') {
+        $workerUrl = get_option('telegram_proxy_url', 'https://arz.appwordpresss.ir/all.php');
+        $data = [
+            'chatid' => $chat_id,
+            'bot' => $token,
+            'message' => $text,
+            'reply_markup' => json_encode(['inline_keyboard' => $inline_keyboard]),
+            'isphoto' => 'false'
+        ];
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $workerUrl);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_exec($ch);
+        curl_close($ch);
+    } else {
+        $telegram_api_url = "https://api.telegram.org/bot{$token}/sendMessage";
+        $payload = [
+            'chat_id' => $chat_id,
+            'text' => $text,
+            'parse_mode' => 'HTML'
+        ];
+        if (!empty($inline_keyboard)) {
+            $payload['reply_markup'] = json_encode(['inline_keyboard' => $inline_keyboard]);
+        }
+        wp_remote_post($telegram_api_url, [
+            'body' => $payload,
+            'timeout' => 30,
+            'sslverify' => false
+        ]);
+    }
 }
 
 function sendErrorToTelegram($message, $chatId = 1016239559, $token = null) {
