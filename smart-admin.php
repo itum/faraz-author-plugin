@@ -195,7 +195,6 @@ function build_template_prompt($form_data) {
    - برنامه سفر پیشنهادی (برنامه‌های ۳، ۵ و ۷ روزه)
    - پرسش‌های متداول (حداقل ۸ سوال و پاسخ)
    - نتیجه‌گیری و جمع‌بندی
-
 3. نکات مهم نگارشی:
    - از کلمات کلیدی مرتبط با سفر به $destination به صورت طبیعی استفاده کن
    - از عبارات و اصطلاحات تخصصی گردشگری استفاده کن
@@ -393,7 +392,6 @@ function build_template_prompt($form_data) {
    - جمع‌بندی و تشویق کاربر
    
    توجه: فهرست مطالب را در ابتدای مقاله قرار نده، فقط محتوای اصلی تولید کن.
-
 3. نکات مهم نگارشی:
    - استفاده از زبان ساده، روشن و دستوری (مثلاً: «فایل را باز کنید»، «دکمه را فشار دهید»)
    - استفاده از جملات کوتاه و پاراگراف‌های کم‌حجم
@@ -575,7 +573,6 @@ function build_template_prompt($form_data) {
         $regulatory_compliance = isset($form_data['regulatory_compliance']) ? sanitize_text_field($form_data['regulatory_compliance']) : '';
         
         $prompt = "ایجاد یک مقاله تخصصی جامع و کاربردی در مورد $energy_topic با رعایت اصول سئو و بهینه‌سازی برای رنک مث.
-
 موضوع: $energy_topic
 بخش صنعتی: $energy_sector
 نوع انرژی: $energy_type
@@ -767,7 +764,6 @@ function build_template_prompt($form_data) {
     
     return $prompt;
 }
-
 // صفحه ادمین هوشمند
 function smart_admin_page() {
     // بررسی مجوز دسترسی
@@ -846,7 +842,7 @@ function smart_admin_page() {
         }
         if (!function_exists('smart_admin_append_formatting_constraints')) {
             function smart_admin_append_formatting_constraints($p) {
-                $rules = "\n\nقوانین قالب‌بندی خروجی (اجباری):\n- خروجی را صرفاً به صورت HTML تمیز بنویس (نه Markdown).\n- از تگ‌های <h2> برای تیترهای اصلی و <h3> برای زیربخش‌ها استفاده کن.\n- برای بولد داخل پاراگراف‌ها از <strong> استفاده کن (نه **).\n- از نوشتن بخش‌های 'مقدمه' یا 'نتیجه‌گیری/جمع‌بندی/FAQ' خودداری کن.\n- عنوان و تیترها باید استاندارد و کوتاه باشند؛ از نشانه‌هایی مانند ::، ❖، —، «» و ... استفاده نکن.\n- هیچ پیشوندی مانند 'عنوان:' یا 'مقدمه:' در متن نیاور.\n- فقط محتوای بدنه مقاله را برگردان (بدون تگ <html> و <body>).";
+                $rules = "\n\nقوانین قالب‌بندی خروجی (اجباری):\n- خروجی را صرفاً به صورت HTML تمیز بنویس (نه Markdown).\n- از تگ‌های <h2> برای تیترهای اصلی و <h3> برای زیربخش‌ها استفاده کن.\n- برای بولد داخل پاراگراف‌ها از <strong> استفاده کن (نه **).\n- عنوان‌ها باید با فاصله مناسب و Bold باشند.\n- از نشانه‌های اضافی در عنوان‌ها خودداری کن.\n- هر پاراگراف مهم را با <strong> مشخص کن.\n- از نوشتن بخش‌های 'مقدمه' یا 'نتیجه‌گیری/جمع‌بندی/FAQ' خودداری کن.\n- فقط محتوای بدنه مقاله را برگردان (بدون تگ <html> و <body>).";
                 return $p . $rules;
             }
         }
@@ -952,7 +948,6 @@ function smart_admin_page() {
             }
         }
     }
-    
     // ذخیره پاسخ هوش مصنوعی به عنوان پیش‌نویس در وردپرس
     if (isset($_POST['save_as_draft']) && isset($_POST['ai_response']) && !empty($_POST['ai_response'])) {
         // افزودن نانس برای امنیت
@@ -1150,7 +1145,6 @@ function smart_admin_page() {
         .prompt-card-content {
             margin-bottom: 10px;
         }
-        
         .prompt-card-actions a {
             text-decoration: none;
             color: #3498db;
@@ -1349,7 +1343,6 @@ function smart_admin_page() {
             border-radius: 3px;
             margin-right: 5px;
         }
-        
         .save-draft-form {
             margin-top: 20px;
             background: #f0f8ff;
@@ -1548,7 +1541,6 @@ function smart_admin_page() {
             align-items: center;
             justify-content: center;
         }
-        
         .template-form-content {
             background: white;
             border-radius: 10px;
@@ -1901,7 +1893,6 @@ function smart_admin_page() {
                                 </select>
                             </div>
                         </div>
-
                         <div class="form-row" style="display:flex; gap:12px; flex-wrap:wrap;">
                             <div class="form-group" style="flex:1 1 200px;">
                                 <label for="product_angle">زاویه دید:</label>
@@ -2092,7 +2083,6 @@ function smart_admin_page() {
                         }
                     });
                 }
-
                 function showImageTemplateForm(templateTitle, model){
                     const modal = document.getElementById('image-template-form-modal');
                     const titleEl = document.getElementById('image-template-form-title');
@@ -2245,7 +2235,6 @@ function smart_admin_page() {
                     parts.push('Ultra-clean studio quality, high detail, sharp focus, consistent lighting, e-commerce ready');
                     return parts.join(' | ');
                 }
-
                 function getImageTemplateFields(templateTitle){
                     switch(templateTitle){
                         case 'پرتره استودیویی حرفه‌ای':
@@ -2954,7 +2943,6 @@ function smart_admin_page() {
                 </div>
             <?php endif; ?>
         </div>
-        
         <div id="templates" class="tab-content">
             <h3>قالب‌های آماده برای تولید محتوا</h3>
             <p>از این قالب‌های آماده و بهینه‌سازی شده برای تولید محتوای با کیفیت استفاده کنید. کافیست فیلدهای زیر را پر کنید.</p>
@@ -3149,7 +3137,6 @@ function smart_admin_page() {
                 <?php endif; ?>
             </div>
         </div>
-        
         <div id="settings" class="tab-content">
             <form method="post" action="options.php" class="settings-form">
                 <?php settings_fields('smart_admin_settings'); ?>
@@ -3342,7 +3329,6 @@ function smart_admin_page() {
                     </tbody>
                 </table>
             </div>
-            
             <style>
                 .model-pricing-table {
                     margin-top: 20px;
@@ -3525,7 +3511,6 @@ function smart_admin_page() {
                 this.submit();
             });
         }
-        
         // تابع ساخت پرامپت از فیلدهای فرم
         function buildPromptFromFormData(formData) {
             const mainTopic = formData.get('main_topic') || '';
@@ -3724,7 +3709,6 @@ function smart_admin_page() {
 * **بخش ویژه:** یک یا دو آیتم "افتخاری" یا "کمتر شناخته شده" به انتهای لیست اضافه کن تا مقاله شما منحصر به فرد شود.
 * **جدول مقایسه:** یک جدول مقایسه‌ای ساده در انتهای مقاله ایجاد کن که آیتم‌های اصلی را بر اساس معیارهای کلیدی مقایسه کند.
 * **نتیجه‌گیری:** یک جمع‌بندی کوتاه ارائه بده و شاید انتخاب شخصی خودت را به عنوان "بهترین گزینه کلی" معرفی کن.
-
 **مرحله ۳: نگارش محتوا**
 * **لحن جذاب و پرانرژی:** از لحنی استفاده کن که خواننده را تا انتهای لیست نگه دارد.
 * **توصیفات قانع‌کننده:** برای هر آیتم، به وضوح توضیح بده که چه ارزشی برای کاربر ایجاد می‌کند.
@@ -3916,7 +3900,6 @@ function smart_admin_page() {
                         </div>
                     `;
                     break;
-                
                 case 'مقاله جامع و بنیادی (Pillar Page)':
                     fields = `
                         <div class="form-group">
@@ -4084,15 +4067,14 @@ function smart_admin_page() {
                         </div>
                     `;
                     break;
-                    
                 case 'مقاله تخصصی صنعت آب، انرژی و آب و برق':
                     fields = `
                         <div class="form-group">
-                            <label for="energy_topic">موضوع صنعتی:</label>
+                            <label for="energy_topic"><strong>موضوع صنعتی:</strong></label>
                             <input type="text" id="energy_topic" name="energy_topic" required placeholder="مثال: مدیریت مصرف انرژی در صنایع، انرژی‌های تجدیدپذیر">
                         </div>
                         <div class="form-group">
-                            <label for="energy_sector">بخش صنعتی:</label>
+                            <label for="energy_sector"><strong>بخش صنعتی:</strong></label>
                             <select id="energy_sector" name="energy_sector">
                                 <option value="آب و فاضلاب">آب و فاضلاب</option>
                                 <option value="تولید برق">تولید برق</option>
@@ -4104,7 +4086,7 @@ function smart_admin_page() {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="energy_type">نوع انرژی:</label>
+                            <label for="energy_type"><strong>نوع انرژی:</strong></label>
                             <select id="energy_type" name="energy_type">
                                 <option value="برق">برق</option>
                                 <option value="گاز">گاز</option>
@@ -4116,7 +4098,7 @@ function smart_admin_page() {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="industry_size">اندازه صنعت:</label>
+                            <label for="industry_size"><strong>اندازه صنعت:</strong></label>
                             <select id="industry_size" name="industry_size">
                                 <option value="کوچک">کوچک</option>
                                 <option value="متوسط">متوسط</option>
@@ -4125,7 +4107,7 @@ function smart_admin_page() {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="regulatory_compliance">مقررات و استانداردها:</label>
+                            <label for="regulatory_compliance"><strong>مقررات و استانداردها:</strong></label>
                             <input type="text" id="regulatory_compliance" name="regulatory_compliance" placeholder="مثال: استانداردهای ISO، مقررات محیط زیست">
                         </div>
                     `;
@@ -4134,11 +4116,11 @@ function smart_admin_page() {
                 case 'مقاله تخصصی صنعت نفت، گاز و پتروشیمی':
                     fields = `
                         <div class="form-group">
-                            <label for="oil_topic">موضوع صنعتی:</label>
+                            <label for="oil_topic"><strong>موضوع صنعتی:</strong></label>
                             <input type="text" id="oil_topic" name="oil_topic" required placeholder="مثال: فرآیندهای پالایش نفت خام، اکتشاف گاز">
                         </div>
                         <div class="form-group">
-                            <label for="oil_sector">بخش صنعتی:</label>
+                            <label for="oil_sector"><strong>بخش صنعتی:</strong></label>
                             <select id="oil_sector" name="oil_sector">
                                 <option value="اکتشاف">اکتشاف</option>
                                 <option value="استخراج">استخراج</option>
@@ -4150,7 +4132,7 @@ function smart_admin_page() {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="hydrocarbon_type">نوع هیدروکربن:</label>
+                            <label for="hydrocarbon_type"><strong>نوع هیدروکربن:</strong></label>
                             <select id="hydrocarbon_type" name="hydrocarbon_type">
                                 <option value="نفت خام">نفت خام</option>
                                 <option value="گاز طبیعی">گاز طبیعی</option>
@@ -4160,7 +4142,7 @@ function smart_admin_page() {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="facility_type">نوع تأسیسات:</label>
+                            <label for="facility_type"><strong>نوع تأسیسات:</strong></label>
                             <select id="facility_type" name="facility_type">
                                 <option value="پالایشگاه">پالایشگاه</option>
                                 <option value="پتروشیمی">پتروشیمی</option>
@@ -4170,7 +4152,7 @@ function smart_admin_page() {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="safety_standards">استانداردهای ایمنی:</label>
+                            <label for="safety_standards"><strong>استانداردهای ایمنی:</strong></label>
                             <input type="text" id="safety_standards" name="safety_standards" placeholder="مثال: API، ISO، OSHA">
                         </div>
                     `;
@@ -4179,11 +4161,11 @@ function smart_admin_page() {
                 case 'مقاله تخصصی صنعت آتشنشانی':
                     fields = `
                         <div class="form-group">
-                            <label for="fire_topic">موضوع آتشنشانی:</label>
+                            <label for="fire_topic"><strong>موضوع آتشنشانی:</strong></label>
                             <input type="text" id="fire_topic" name="fire_topic" required placeholder="مثال: تجهیزات پیشرفته آتشنشانی، پروتکل‌های ایمنی">
                         </div>
                         <div class="form-group">
-                            <label for="fire_sector">بخش آتشنشانی:</label>
+                            <label for="fire_sector"><strong>بخش آتشنشانی:</strong></label>
                             <select id="fire_sector" name="fire_sector">
                                 <option value="آتشنشانی شهری">آتشنشانی شهری</option>
                                 <option value="آتشنشانی صنعتی">آتشنشانی صنعتی</option>
@@ -4195,7 +4177,7 @@ function smart_admin_page() {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="fire_type">نوع آتش:</label>
+                            <label for="fire_type"><strong>نوع آتش:</strong></label>
                             <select id="fire_type" name="fire_type">
                                 <option value="کلاس A">کلاس A (مواد جامد)</option>
                                 <option value="کلاس B">کلاس B (مایعات قابل اشتعال)</option>
@@ -4207,7 +4189,7 @@ function smart_admin_page() {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="equipment_type">نوع تجهیزات:</label>
+                            <label for="equipment_type"><strong>نوع تجهیزات:</strong></label>
                             <select id="equipment_type" name="equipment_type">
                                 <option value="تجهیزات اطفاء حریق">تجهیزات اطفاء حریق</option>
                                 <option value="تجهیزات نجات">تجهیزات نجات</option>
@@ -4217,7 +4199,7 @@ function smart_admin_page() {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="safety_protocols">پروتکل‌های ایمنی:</label>
+                            <label for="safety_protocols"><strong>پروتکل‌های ایمنی:</strong></label>
                             <input type="text" id="safety_protocols" name="safety_protocols" placeholder="مثال: NFPA، ISO، استانداردهای ملی">
                         </div>
                     `;
@@ -4226,7 +4208,7 @@ function smart_admin_page() {
                 default:
                     fields = `
                         <div class="form-group">
-                            <label for="main_topic">موضوع اصلی:</label>
+                            <label for="main_topic"><strong>موضوع اصلی:</strong></label>
                             <input type="text" id="main_topic" name="main_topic" required placeholder="موضوع مقاله خود را وارد کنید...">
                         </div>
                     `;
@@ -4264,7 +4246,6 @@ function smart_admin_page() {
                 document.getElementById('smart_admin_prompt').scrollIntoView({ behavior: 'smooth' });
             });
         });
-        
         // نمایش اسپینر در هنگام ارسال درخواست
         const promptForm = document.getElementById('ai-prompt-form');
         const loadingSpinner = document.getElementById('loading-spinner');
@@ -4422,7 +4403,6 @@ function smart_admin_extract_image_keywords($content) {
     
     return array_unique($keywords);
 }
-
 // تابع تولید تصویر با API
 function smart_admin_generate_image($prompt, $model, $api_key, $options = array()) {
     smart_admin_log('Generate image called');
@@ -4582,7 +4562,6 @@ function smart_admin_translate_error_message($error_message) {
     // اگر هیچ ترجمه‌ای پیدا نشد، پیام اصلی را برگردان
     return 'خطا: ' . $error_message;
 }
-
 // تابع ارسال درخواست به API گپ جی‌پی‌تی
 function send_to_gapgpt_api($prompt, $model, $api_key) {
     smart_admin_log('Chat API called - model: ' . $model);
@@ -4755,7 +4734,6 @@ function smart_admin_generate_table_of_contents($content) {
     
     return $content;
 }
-
 // تابع استخراج تیترهای H2 و ایجاد فهرست مطالب برای محتوای HTML
 function smart_admin_generate_html_table_of_contents($content) {
     // استخراج تیترهای H2 از محتوای HTML
@@ -4942,7 +4920,6 @@ function smart_admin_convert_markdown_to_html($content) {
         $table_content .= '</table>';
         $new_content .= $table_content;
     }
-    
     $content = $new_content;
     
     // تبدیل پاراگراف‌ها
@@ -5128,7 +5105,6 @@ function smart_admin_get_setting($key) {
     $settings = get_option('smart_admin_settings', array());
     return isset($settings[$key]) ? $settings[$key] : false;
 }
-
 // تابع ذخیره تنظیمات متاباکس
 function smart_admin_save_metabox_settings() {
     if (isset($_POST['smart_admin_metabox_nonce']) && wp_verify_nonce($_POST['smart_admin_metabox_nonce'], 'smart_admin_metabox_settings')) {
@@ -5328,7 +5304,6 @@ function smart_admin_extract_seo_title($content, $main_topic = '') {
             return "تفاوت برنامه‌نویس بک‌اند و فرانت‌اند: راهنمای کامل برای انتخاب مسیر شغلی";
         }
     }
-    
     // بررسی برای محتوای فناوری اطلاعات
     if (preg_match('/(?:Node\.?js|nodejs|javascript|js|php|python|java|react|vue|angular|laravel|django|wordpress|seo|api|database|server|deployment|deploy|hosting|vps|server|ubuntu|linux|windows|mac|git|github|docker|kubernetes|aws|azure|google cloud|cloud|ci\/cd|devops)/ui', $content)) {
         $tech_patterns = array(
@@ -5494,7 +5469,6 @@ function smart_admin_extract_seo_slug($content, $title = '', $keywords = array()
             return $slug;
         }
     }
-    
     // بررسی اگر محتوا در مورد مهاجرت و سفر است
     if (preg_match('/(مهاجرت|سفر|اقامت|ویزا|پاسپورت|کویت|دبی|ترکیه|کانادا|آمریکا|اروپا|استرالیا)/ui', $content)) {
         // اگر محتوا در مورد راهنمای مهاجرت به کشور خاصی است
