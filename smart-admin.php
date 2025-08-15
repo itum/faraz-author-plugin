@@ -3460,7 +3460,7 @@ function smart_admin_page() {
                 
                 // ساخت پرامپت بر اساس فیلدهای فرم
                 const formData = new FormData(this);
-                const prompt = buildPromptFromFormData(formData);
+                const prompt = buildPromptFromFormData(formData, document.getElementById('template-form-title').textContent);
                 
                 // تنظیم پرامپت در فیلد مخفی
                 document.getElementById('template-prompt').value = prompt;
@@ -3505,7 +3505,7 @@ function smart_admin_page() {
             });
         }
         // تابع ساخت پرامپت از فیلدهای فرم
-        function buildPromptFromFormData(formData) {
+        function buildPromptFromFormData(formData, templateTitle) {
             const mainTopic = formData.get('main_topic') || '';
             const focusKeyword = formData.get('focus_keyword') || '';
             const targetAudience = formData.get('target_audience') || '';
@@ -3523,8 +3523,114 @@ function smart_admin_page() {
             const competitorAnalysis = formData.get('competitor_analysis') || '';
             const uniqueValue = formData.get('unique_value') || '';
             const contentGoal = formData.get('content_goal') || '';
+
+            // فیلدهای قالب گردشگری
+            const destination = formData.get('destination') || '';
+            const travelSeason = formData.get('travel_season') || '';
+            const travelType = formData.get('travel_type') || '';
+            const travelDuration = formData.get('travel_duration') || '';
+            const budgetLevel = formData.get('budget_level') || '';
+
+            // فیلدهای قالب خوراکی
+            const foodTopic = formData.get('food_topic') || '';
+            const cuisineType = formData.get('cuisine_type') || '';
+            const difficultyLevel = formData.get('difficulty_level') || '';
+            const preparationTime = formData.get('preparation_time') || '';
+            const specialDiet = formData.get('special_diet') || '';
+
+            // فیلدهای صنعت آب و انرژی
+            const energyTopic = formData.get('energy_topic') || '';
+            const energySector = formData.get('energy_sector') || '';
+            const energyType = formData.get('energy_type') || '';
+            const industrySize = formData.get('industry_size') || '';
+            const regulatoryCompliance = formData.get('regulatory_compliance') || '';
+
+            // فیلدهای نفت و گاز
+            const oilTopic = formData.get('oil_topic') || '';
+            const oilSector = formData.get('oil_sector') || '';
+            const hydrocarbonType = formData.get('hydrocarbon_type') || '';
+            const facilityType = formData.get('facility_type') || '';
+            const safetyStandards = formData.get('safety_standards') || '';
+
+            // فیلدهای آتشنشانی
+            const fireTopic = formData.get('fire_topic') || '';
+            const fireSector = formData.get('fire_sector') || '';
+            const fireType = formData.get('fire_type') || '';
+            const equipmentType = formData.get('equipment_type') || '';
+            const safetyProtocols = formData.get('safety_protocols') || '';
             
-            // تشخیص نوع قالب بر اساس فیلدهای موجود
+            // اگر عنوان قالب مشخص است، بر اساس آن پرامپت کوتاه و استاندارد تولید می‌کنیم
+            switch (templateTitle) {
+                case 'مقاله تخصصی گردشگری و سفر':
+                    return `فقط خروجی HTML تمیز برگردان. از <h2> برای سرفصل‌ها، <h3> برای زیربخش‌ها، <ul><li> برای بولت‌ها و <strong> برای تاکید استفاده کن. هیچ Markdown یا <pre>/<code> ننویس.
+
+موضوع: راهنمای سفر به ${destination}.
+پارامترها: بهترین زمان: ${travelSeason} | نوع سفر: ${travelType} | مدت: ${travelDuration} | بودجه: ${budgetLevel}.
+
+ساختار:
+<h2>مقدمه کوتاه</h2>
+<h2>برنامه سفر و بهترین زمان</h2>
+<h2>حمل‌ونقل و دسترسی</h2>
+<h2>اقامت و محله‌های پیشنهادی</h2>
+<h2>جاذبه‌های برتر</h2>
+<h2>خوراکی‌ها و نکات کاربردی</h2>
+هر بخش 2-4 پاراگراف یا بولت.`;
+
+                case 'مقاله تخصصی خوراکی و آشپزی':
+                    return `فقط HTML تمیز. h2/h3، strong و لیست‌ها. موضوع: ${foodTopic} (${cuisineType})، سختی: ${difficultyLevel}، زمان آماده‌سازی: ${preparationTime}، رژیم: ${specialDiet}.
+
+ساختار:
+<h2>معرفی و ارزش غذایی</h2>
+<h2>مواد لازم</h2>
+<h2>تجهیزات</h2>
+<h2>مراحل تهیه (بولت شماره‌دار)</h2>
+<h2>نکات کلیدی و سرو</h2>`;
+
+                case 'مقاله جامع و بنیادی (Pillar Page)':
+                    return `خروجی HTML تمیز با h2/h3 و strong. موضوع: ${mainTopic} | مخاطب: ${targetAudience} | هدف: ${contentGoal}.
+بخش‌ها: مقدمه کوتاه، مروری بر مفاهیم، فصل‌های اصلی (5+ h2)، سوالات متداول، جمع‌بندی. پاراگراف‌ها کوتاه.`;
+
+                case 'مقاله به روش آسمان‌خراش (Skyscraper)':
+                    return `HTML تمیز. موضوع: ${mainTopic}. ارزش افزوده: ${uniqueValue}. ${competitorAnalysis ? 'نکات رقبا: ' + competitorAnalysis : ''}
+ساختار: مقدمه، h2 های اصلی با زیربخش‌های h3، جدول یا لیست مزایا/معایب، FAQ، جمع‌بندی.`;
+
+                case 'راهنمای عملی قدم به قدم (How-to)':
+                    return `HTML تمیز. راهنمای ${howToTopic} برای سطح ${skillLevel}. ابزار: ${requiredTools}.
+ساختار: مقدمه، پیش‌نیازها، مراحل شماره‌دار (حداقل 5 مرحله)، عیب‌یابی، نکات حرفه‌ای، جمع‌بندی.`;
+
+                case 'مقاله لیستی (مثلا: ۱۰ ابزار برتر)':
+                    return `HTML تمیز. عنوان لیست: ${listTopic} | تعداد: ${listCount} | معیار: ${listCriteria}.
+ساختار: مقدمه، برای هر آیتم یک h2 با معرفی کوتاه + بولت ویژگی‌ها، در پایان جمع‌بندی و یک جدول مقایسه ساده.`;
+
+                case 'مقاله مقایسه‌ای (X در مقابل Y)':
+                    return `HTML تمیز. مقایسه ${item1} در برابر ${item2}. معیارها: ${comparisonCriteria}.
+بخش‌ها: مرور سریع (جدول خلاصه)، h2 برای هر معیار با تحلیل و برنده، چه زمانی ${item1}، چه زمانی ${item2}، جمع‌بندی.`;
+
+                case 'مقاله کاملاً استاندارد برای Rank Math (امتیاز 90+)':
+                    if (mainTopic && focusKeyword) {
+                        return `HTML تمیز. موضوع: ${mainTopic} | کلمه کلیدی: ${focusKeyword} | طول تقریبی: ${contentLength} کلمه.
+ساختار: مقدمه کوتاه (حاوی کلمه کلیدی)، 5 بخش h2 با h3 های لازم، FAQ (3 سوال)، جمع‌بندی. از strong و لیست‌ها برای خوانایی استفاده کن.`;
+                    }
+                    break;
+
+                case 'مقاله تخصصی فناوری اطلاعات و برنامه‌نویسی':
+                    return `HTML تمیز. موضوع: ${mainTopic || ''}${mainTopic ? ' - ' : ''}${formData.get('tech_topic') || ''}. دسته: ${formData.get('tech_category') || ''}، سطح: ${skillLevel}.
+ساختار: مقدمه، پیش‌نیازها/نصب، مفاهیم پایه، پیاده‌سازی عملی (با توضیح بدون کد بلاک)، بهترین شیوه‌ها، FAQ، جمع‌بندی.`;
+
+                case 'مقاله تخصصی صنعت آب، انرژی و آب و برق':
+                    return `HTML تمیز. موضوع: ${energyTopic} | بخش: ${energySector} | نوع انرژی: ${energyType} | اندازه صنعت: ${industrySize} | مقررات: ${regulatoryCompliance}.
+بخش‌ها: معرفی و اهمیت، فناوری‌ها، پیاده‌سازی، استانداردها، چالش‌ها/راه‌حل‌ها، جمع‌بندی.`;
+
+                case 'مقاله تخصصی صنعت نفت، گاز و پتروشیمی':
+                    return `HTML تمیز. موضوع: ${oilTopic} | بخش: ${oilSector} | هیدروکربن: ${hydrocarbonType} | تأسیسات: ${facilityType} | ایمنی: ${safetyStandards}.
+بخش‌ها: وضعیت صنعت، فناوری‌های نوین، استانداردهای ایمنی، پیاده‌سازی، چالش‌ها، جمع‌بندی.`;
+
+                case 'مقاله تخصصی صنعت آتشنشانی':
+                    return `HTML تمیز. موضوع: ${fireTopic} | بخش: ${fireSector} | نوع آتش: ${fireType} | تجهیزات: ${equipmentType} | پروتکل‌ها: ${safetyProtocols}.
+بخش‌ها: معرفی و اهمیت، تجهیزات/روش‌ها، استانداردها، سناریوهای عملیاتی، نکات ایمنی، جمع‌بندی.`;
+            }
+
+            // تشخیص نوع قالب بر اساس فیلدهای موجود (پیش‌فرض‌های قبلی)
             if (mainTopic && focusKeyword) {
                 // قالب Rank Math استاندارد
                 return `**نقش شما:** شما یک متخصص ارشد SEO و تولیدکننده محتوای حرفه‌ای هستید که در بهینه‌سازی محتوا برای Rank Math و گوگل تخصص دارید. وظیفه شما ایجاد یک مقاله کاملاً استاندارد برای موضوع "${mainTopic}" است که امتیاز بالای ۹۰ در Rank Math کسب کند.
