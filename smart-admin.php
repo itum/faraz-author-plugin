@@ -4830,6 +4830,18 @@ function smart_admin_generate_html_table_of_contents($content) {
 }
 // تابع تبدیل Markdown به HTML
 function smart_admin_convert_markdown_to_html($content) {
+    // پاکسازی بلاک‌های کد و تگ‌های ناخواسته که بعضی مدل‌ها اضافه می‌کنند
+    // حذف بلاک‌های کد سه‌تایی ```...```
+    $content = preg_replace('/```[\s\S]*?```/m', '', $content);
+    // حذف بلاک‌های کد ~~~...~~~
+    $content = preg_replace('/~~~[\s\S]*?~~~/m', '', $content);
+    // حذف بک‌تیک‌های تک‌خطی
+    $content = preg_replace('/`([^`]+)`/m', '$1', $content);
+    // حذف هرگونه تگ pre/code باقی‌مانده یا رها شده
+    $content = str_replace(array('</code></pre>', '</pre></code>'), '', $content);
+    $content = preg_replace('/<\/?pre[^>]*>/i', '', $content);
+    $content = preg_replace('/<\/?code[^>]*>/i', '', $content);
+
     // ابتدا فهرست مطالب را ایجاد می‌کنیم (قبل از تبدیل مارک‌داون به HTML)
     $content = smart_admin_generate_table_of_contents($content);
     
@@ -4846,19 +4858,20 @@ function smart_admin_convert_markdown_to_html($content) {
     $new_content = '';
     
     foreach ($lines as $line) {
-        if (preg_match('/^[\*\-] (.+)$/', $line) || preg_match('/^\d+\. (.+)$/', $line)) {
+        if (preg_match('/^[\*\-] (.+)$/u', $line) || preg_match('/^\d+\. (.+)$/u', $line) || preg_match('/^•\s+(.+)$/u', $line)) {
             // این خط لیست است
             if (!$in_list) {
                 $in_list = true;
-                if (preg_match('/^\d+\./', $line)) {
+                if (preg_match('/^\d+\./u', $line)) {
                     $list_content = '<ol>';
                 } else {
                     $list_content = '<ul>';
                 }
             }
             
-            $item = preg_replace('/^[\*\-] (.+)$/', '$1', $line);
-            $item = preg_replace('/^\d+\. (.+)$/', '$1', $item);
+            $item = preg_replace('/^[\*\-] (.+)$/u', '$1', $line);
+            $item = preg_replace('/^\d+\. (.+)$/u', '$1', $item);
+            $item = preg_replace('/^•\s+(.+)$/u', '$1', $item);
             $list_content .= '<li>' . $item . '</li>';
         } else {
             // این خط لیست نیست
