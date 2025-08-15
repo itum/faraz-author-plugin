@@ -578,7 +578,6 @@ function build_template_prompt($form_data) {
 نوع انرژی: $energy_type
 اندازه صنعت: $industry_size
 مقررات و استانداردها: $regulatory_compliance
-
 ساختار مقاله:
 1. عنوان اصلی (H1): $energy_topic: راهنمای تخصصی صنعت انرژی (یا عنوانی جذاب دیگر)
 
@@ -2094,7 +2093,6 @@ function smart_admin_page() {
                     initCustomSelectHandlers(fieldsContainer);
                     modal.style.display = 'flex';
                 }
-
                 // ========== Product Template Modal ==========
                 const productTemplateButtons = document.querySelectorAll('.use-product-template-btn');
                 productTemplateButtons.forEach(btn => {
@@ -2626,7 +2624,6 @@ function smart_admin_page() {
                     }
                     return sel;
                 }
-
                 function getCommonProcessingFields(){
                     return `
                         <div class="form-group" style="margin-top:8px;">
@@ -2815,7 +2812,6 @@ function smart_admin_page() {
                 });
             })();
             </script>
-
             <?php if (!empty($image_result)): ?>
                 <div class="generated-image-container" style="margin-top:20px">
                     <?php if (isset($image_result['error'])): ?>
@@ -2989,7 +2985,6 @@ function smart_admin_page() {
                     </div>
                 <?php endforeach; ?>
             </div>
-            
             <!-- فرم داینامیک برای قالب‌ها -->
             <div id="template-form-modal" style="display: none;" class="template-form-modal">
                 <div class="template-form-content">
@@ -3183,7 +3178,6 @@ function smart_admin_page() {
                         </optgroup>
                     </select>
                 </div>
-
                 <fieldset class="form-group" style="border:1px solid #e5e5e5;padding:12px;border-radius:8px;margin-top:14px;">
                     <legend style="padding:0 8px;">قوانین قالب‌بندی محتوا</legend>
                     <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
@@ -3353,7 +3347,6 @@ function smart_admin_page() {
         }
         ?>
     </div>
-    
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         // تابع عمومی دانلود تصویر برای تمام تب‌ها
@@ -3551,7 +3544,6 @@ function smart_admin_page() {
 
 2. **کلمات کلیدی فرعی (LSI):** حداقل ۱۰ کلمه کلیدی مرتبط معنایی پیدا کن
 3. **کلمات کلیدی طولانی (Long-tail):** حداقل ۵ سوال رایج کاربران را شناسایی کن
-
 **مرحله ۲: طراحی ساختار مقاله کاملاً استاندارد**
 * **H1 (عنوان اصلی):** حداکثر ۶۰ کاراکتر، دارای کلمه کلیدی اصلی، جذاب همراه با عدد، سال یا سوال
 * **مقدمه قدرتمند:** شامل کلمه کلیدی، معرفی موضوع + ایجاد کنجکاوی، ترجیحاً با Bold و فونت متفاوت
@@ -3639,7 +3631,7 @@ function smart_admin_page() {
 با استفاده از ساختار بالا، شروع به نوشتن مقاله کن. نکات زیر را **با دقت** رعایت کن:
 * **لحن و سبک:** لحنی معتبر، حرفه‌ای اما روان و قابل فهم. از سبک نگارش "هرم معکوس" استفاده کن (مهم‌ترین اطلاعات در ابتدا).
 * **خوانایی:** پاراگراف‌ها را کوتاه (حداکثر ۳-۴ جمله) نگه دار. از لیست‌های شماره‌دار و بولت‌پوینت، **نقل قول** و **متن برجسته** برای شکستن یکنواختی متن استفاده کن.
-* **چگالی کلمات کلیدی:** کلمه کلیدی اصلی را در مقدمه، نتیجه‌گیری و یکی دو تا از H2 ها به کار ببر. از کلمات کلیدی فرعی و طولانی به صورت طبیعی در سراسر متن استفاده کن. **از تکرار بیش از حد (Keyword Stuffing) به شدت پرهیز کن.**
+* **چگالی کلمه کلیدی:** کلمه کلیدی اصلی را در مقدمه، نتیجه‌گیری و یکی دو تا از H2 ها به کار ببر. از کلمات کلیدی فرعی و طولانی به صورت طبیعی در سراسر متن استفاده کن. **از تکرار بیش از حد (Keyword Stuffing) به شدت پرهیز کن.**
 * **غنی‌سازی محتوا:** برای اعتبار بخشیدن به متن، به **آمار و ارقام** (با ذکر منبع فرضی)، **مثال‌های عملی** و **مطالعات موردی** اشاره کن. پیشنهاداتی برای افزودن **اینفوگرافیک** یا **ویدیو** در بخش‌های مرتبط ارائه بده.
 * **لینک‌دهی داخلی:** حداقل ۳ پیشنهاد برای لینک داخلی به مقالات مرتبط دیگر (با موضوعات فرضی) در متن بگنجان.
 
@@ -3708,7 +3700,7 @@ function smart_admin_page() {
     * **قیمت‌گذاری:** به طور خلاصه مدل قیمت‌گذاری آن را توضیح بده.
 * **بخش ویژه:** یک یا دو آیتم "افتخاری" یا "کمتر شناخته شده" به انتهای لیست اضافه کن تا مقاله شما منحصر به فرد شود.
 * **جدول مقایسه:** یک جدول مقایسه‌ای ساده در انتهای مقاله ایجاد کن که آیتم‌های اصلی را بر اساس معیارهای کلیدی مقایسه کند.
-* **نتیجه‌گیری:** یک جمع‌بندی کوتاه ارائه بده و شاید انتخاب شخصی خودت را به عنوان "بهترین گزینه کلی" معرفی کن.
+* **نتیجه‌گیری:** یک جمع‌بندی کوتاه ارائه بده و شاید انتخاب شخصی خودت را به عنوان "برترین گزینه کلی" معرفی کن.
 **مرحله ۳: نگارش محتوا**
 * **لحن جذاب و پرانرژی:** از لحنی استفاده کن که خواننده را تا انتهای لیست نگه دارد.
 * **توصیفات قانع‌کننده:** برای هر آیتم، به وضوح توضیح بده که چه ارزشی برای کاربر ایجاد می‌کند.
@@ -3750,7 +3742,6 @@ function smart_admin_page() {
             } else {
                 // قالب پیش‌فرض
                 return `**نقش شما:** شما یک متخصص تولید محتوا و نویسنده حرفه‌ای هستید. وظیفه شما ایجاد یک مقاله جامع و با کیفیت برای موضوع "${mainTopic}" است.
-
 **هدف اصلی:** تولید مقاله‌ای که ارزش واقعی برای خواننده ایجاد کند و در موتورهای جستجو عملکرد خوبی داشته باشد.
 
 **مراحل اجرای کار:**
@@ -3938,7 +3929,6 @@ function smart_admin_page() {
                         </div>
                     `;
                     break;
-                    
                 case 'راهنمای عملی قدم به قدم (How-to)':
                     fields = `
                         <div class="form-group">
@@ -4112,7 +4102,6 @@ function smart_admin_page() {
                         </div>
                     `;
                     break;
-                    
                 case 'مقاله تخصصی صنعت نفت، گاز و پتروشیمی':
                     fields = `
                         <div class="form-group">
@@ -4289,7 +4278,6 @@ function smart_admin_page() {
                 }, 100);
             });
         }
-        
         // مدیریت کپی کردن محتوای هوش مصنوعی
         const aiResponseContent = document.getElementById('ai-response-content');
         if (aiResponseContent) {
@@ -4477,7 +4465,6 @@ function smart_admin_generate_image($prompt, $model, $api_key, $options = array(
         smart_admin_log('API Error: ' . $msg);
         return array('error' => $msg);
     }
-    
     if (isset($response_body['data']) && is_array($response_body['data']) && !empty($response_body['data'])) {
         $urls = array();
         foreach ($response_body['data'] as $item) {
@@ -4659,7 +4646,6 @@ function send_to_gapgpt_api($prompt, $model, $api_key) {
         return array('error' => 'خطا در دریافت پاسخ از API');
     }
 }
-
 // تابع استخراج تیترهای H2 و ایجاد فهرست مطالب برای محتوای Markdown
 function smart_admin_generate_table_of_contents($content) {
     // استخراج تیترهای H2 از محتوا
@@ -4810,7 +4796,6 @@ function smart_admin_generate_html_table_of_contents($content) {
     
     return $content;
 }
-
 // تابع تبدیل Markdown به HTML
 function smart_admin_convert_markdown_to_html($content) {
     // ابتدا فهرست مطالب را ایجاد می‌کنیم (قبل از تبدیل مارک‌داون به HTML)
@@ -4997,7 +4982,6 @@ function smart_admin_notice() {
     </div>
     <?php
 }
-
 // انتشار پیش‌نویس با یک کلیک
 function smart_admin_publish_draft() {
     if (isset($_GET['action']) && $_GET['action'] == 'publish_ai_draft' && isset($_GET['post_id'])) {
@@ -5149,7 +5133,6 @@ function smart_admin_debug_log($message, $type = 'INFO') {
         error_log($log_message);
     }
 }
-
 /**
  * استخراج عنوان SEO شده از پاسخ هوش مصنوعی
  * 
@@ -5328,7 +5311,6 @@ function smart_admin_extract_seo_title($content, $main_topic = '') {
             }
         }
     }
-    
     // بررسی برای محتوای گردشگری و سفر
     if (preg_match('/(?:سفر|گردشگری|توریسم|مسافرت|راهنمای سفر|travel|tourism|tourist|vacation|holiday|destination|visit)/ui', $content)) {
         $travel_patterns = array(
@@ -5513,7 +5495,6 @@ function smart_admin_extract_seo_slug($content, $title = '', $keywords = array()
             return sanitize_title($slug);
         }
     }
-    
     // بررسی برای محتوای گردشگری و سفر
     if (preg_match('/(?:سفر|گردشگری|توریسم|مسافرت|راهنمای سفر|travel|tourism|tourist|vacation|holiday|destination|visit)/ui', $content)) {
         $travel_slug_patterns = array(
@@ -5658,3 +5639,17 @@ function smart_admin_advanced_content_guidelines($prompt) {
 
 // اضافه کردن فیلتر برای اعمال راهنمایی‌ها
 add_filter('smart_admin_prompt_generation', 'smart_admin_advanced_content_guidelines', 25);
+// تابع رفع محدودیت تولید محتوای HTML
+function smart_admin_html_content_generator($prompt) {
+    $html_guidelines = [
+        '• محتوا باید با استانداردهای HTML5 تولید شود.',
+        '• از تگ‌های معنایی HTML استفاده کن (h1, h2, p, strong, etc.).',
+        '• محتوا باید کاملاً قابل خواندن و با کیفیت باشد.',
+        '• از ساختار استاندارد HTML برای تولید محتوا استفاده کن.'
+    ];
+    
+    return $prompt . "\n\n" . implode("\n", $html_guidelines);
+}
+
+// اضافه کردن فیلتر برای اعمال راهنمایی‌های HTML
+add_filter('smart_admin_prompt_generation', 'smart_admin_html_content_generator', 30);
