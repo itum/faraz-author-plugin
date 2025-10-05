@@ -2,7 +2,7 @@
 /*
 Plugin Name: faraz Telegram Plugin
 Description: A WordPress plugin to add rss and save them as drafts and send them to the Telegram bot.
-Version: 1.0.6
+Version: 1.0.11
 Author: تیم توسعه تجارت الکترونیک فراز 
 */ 
 

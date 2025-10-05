@@ -11,6 +11,41 @@ if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 // افزودن منوی ادمین هوشمند به افزونه
 add_action('admin_menu', 'smart_admin_add_menu');
 
+// بارگذاری CSS ها برای صفحه ادمین
+add_action('admin_enqueue_scripts', 'smart_admin_enqueue_styles');
+
+// تابع بارگذاری CSS ها
+function smart_admin_enqueue_styles($hook) {
+    // فقط در صفحه ادمین هوشمند CSS ها را بارگذاری کن
+    if ($hook !== 'toplevel_page_smart-admin' && $hook !== 'smart-admin_page_smart-admin-metabox-settings') {
+        return;
+    }
+    
+    // بارگذاری فایل CSS فونت پیش‌فرض وردپرس
+    wp_enqueue_style(
+        'smart-admin-wordpress-font',
+        plugin_dir_url(__FILE__) . 'css/wordpress-font-inheritance.css',
+        array(),
+        '1.0.0'
+    );
+    
+    // بارگذاری فایل CSS SEO Optimizer
+    wp_enqueue_style(
+        'smart-admin-seo-optimizer',
+        plugin_dir_url(__FILE__) . 'css/smart-admin-seo-optimizer.css',
+        array(),
+        '1.0.0'
+    );
+    
+    // بارگذاری فایل CSS Unsplash Metabox
+    wp_enqueue_style(
+        'smart-admin-unsplash-metabox',
+        plugin_dir_url(__FILE__) . 'css/unsplash-metabox.css',
+        array(),
+        '1.0.0'
+    );
+}
+
 // وارد کردن فایل قالب‌های پرامپت
 require_once plugin_dir_path(__FILE__) . 'smart-admin-templates.php';
 
@@ -177,31 +212,64 @@ function build_template_prompt($form_data) {
         $travel_type = isset($form_data['travel_type']) ? sanitize_text_field($form_data['travel_type']) : 'تفریحی';
         $travel_duration = isset($form_data['travel_duration']) ? sanitize_text_field($form_data['travel_duration']) : 'یک هفته';
         $budget_level = isset($form_data['budget_level']) ? sanitize_text_field($form_data['budget_level']) : 'متوسط';
+        $travel_method = isset($form_data['travel_method']) ? sanitize_text_field($form_data['travel_method']) : 'هواپیما';
+        $accommodation_type = isset($form_data['accommodation_type']) ? sanitize_text_field($form_data['accommodation_type']) : 'هتل';
+        $hotel_rating = isset($form_data['hotel_rating']) ? sanitize_text_field($form_data['hotel_rating']) : 'مهم نیست';
+        $booking_services = isset($form_data['booking_services']) ? sanitize_text_field($form_data['booking_services']) : 'رزرو بلیط';
+        $article_tone = isset($form_data['article_tone']) ? sanitize_text_field($form_data['article_tone']) : 'دوستانه';
+        $call_to_action = isset($form_data['call_to_action']) ? sanitize_text_field($form_data['call_to_action']) : 'رزرو سفر';
+        $special_requirements = isset($form_data['special_requirements']) ? sanitize_text_field($form_data['special_requirements']) : 'بدون نیاز خاص';
         
-        $prompt = "شما یک متخصص گردشگری هستید. یک راهنمای سفر کامل و کاربردی برای سفر به $destination بنویسید.
+        $prompt = "شما یک متخصص گردشگری حرفه‌ای هستید. یک راهنمای سفر کامل و کاربردی برای سفر به $destination بنویسید.
 
 اطلاعات سفر:
+- مقصد: $destination
 - فصل: $travel_season
-- نوع: $travel_type  
-- مدت: $travel_duration
-- بودجه: $budget_level
+- نوع سفر: $travel_type  
+- مدت سفر: $travel_duration
+- سطح بودجه: $budget_level
+- روش سفر: $travel_method
+- نوع اقامت: $accommodation_type";
+        
+        if ($accommodation_type === 'هتل' && $hotel_rating !== 'مهم نیست') {
+            $prompt .= "\n- رتبه هتل: $hotel_rating";
+        }
+        
+        $prompt .= "\n- خدمات رزرو: $booking_services
+- لحن مقاله: $article_tone
+- فراخوان عمل: $call_to_action
+- نیازهای خاص: $special_requirements
 
 ساختار مقاله:
 - عنوان جذاب شامل نام مقصد
 - معرفی مقصد و دلایل جذابیت
 - بهترین زمان سفر و برنامه ریزی
-- نحوه رسیدن (حمل و نقل، ویزا)
-- اقامت و هتل ها
-- جاذبه های گردشگری (حداقل 8 جاذبه)
-- غذا و رستوران های محلی
-- خرید و سوغاتی
+- نحوه رسیدن ($travel_method - حمل و نقل، ویزا)
+- اقامت ($accommodation_type)";
+        
+        if ($accommodation_type === 'هتل') {
+            $prompt .= " و هتل‌ها";
+        }
+        
+        $prompt .= "\n- جاذبه های گردشگری (حداقل 10 جاذبه)
+- غذا و رستوران های محلی";
+        
+        if ($special_requirements !== 'بدون نیاز خاص') {
+            $prompt .= " (با توجه به $special_requirements)";
+        }
+        
+        $prompt .= "\n- خرید و سوغاتی
 - نکات مهم و توصیه ها
-- برنامه سفر پیشنهادی (3، 5 و 7 روز)
-- بخش FAQ (6 سوال متداول)
+- برنامه سفر پیشنهادی ($travel_duration)
+- بخش FAQ (8 سوال متداول)";
 
-ویژگی های مهم:
-- حداقل 800 کلمه و حداکثر 2000 کلمه
-- لحن دوستانه و کاربردی
+        if ($call_to_action !== 'بدون CTA') {
+            $prompt .= "\n- فراخوان عمل: $call_to_action";
+        }
+
+        $prompt .= "\n\nویژگی های مهم:
+- حداقل 1200 کلمه و حداکثر 2500 کلمه
+- لحن $article_tone و کاربردی
 - اطلاعات دقیق و به روز
 - مناسب برای گردشگران ایرانی
 - استفاده از هدینگ های H2 و H3
@@ -209,8 +277,13 @@ function build_template_prompt($form_data) {
 - بدون نتیجه گیری در انتها
 - استفاده از کلمات ساده و رایج فارسی
 - اجتناب از آمار و ارقام دقیق
+- توجه ویژه به $special_requirements";
 
-مستقیماً با پاراگراف جذاب شروع کنید که خواننده را ترغیب کند.";
+        if ($call_to_action !== 'بدون CTA') {
+            $prompt .= "\n- شامل فراخوان عمل مناسب: $call_to_action";
+        }
+
+        $prompt .= "\n\nمستقیماً با پاراگراف جذاب شروع کنید که خواننده را ترغیب کند.";
         
     } elseif (isset($form_data['food_topic'])) {
         // قالب خوراکی و آشپزی
@@ -725,15 +798,25 @@ function smart_admin_page() {
 
     // ذخیره پرامپت و درخواست به API
     if (isset($_POST['smart_admin_prompt']) || (isset($_POST['is_template']) && $_POST['is_template'] == '1')) {
+        smart_admin_log('Content generation form submitted');
         // افزودن نانس برای امنیت
-        check_admin_referer('smart_admin_prompt_action', 'smart_admin_nonce');
+        if (!check_admin_referer('smart_admin_prompt_action', 'smart_admin_nonce')) {
+            smart_admin_log('Nonce verification failed');
+            $response = array('error' => 'اعتبارسنجی امنیتی نامعتبر است. صفحه را رفرش کنید و دوباره تلاش کنید.');
+        } else {
+            smart_admin_log('Nonce verification passed');
         
         $model = sanitize_text_field($_POST['smart_admin_model']);
         $api_key = get_option('smart_admin_api_key');
         
+        smart_admin_log('Model: ' . $model);
+        smart_admin_log('API Key: ' . (empty($api_key) ? 'Empty' : 'Set'));
+        
         // اگر فرم قالب است، پرامپت را بر اساس فیلدهای فرم بساز
         if (isset($_POST['is_template']) && $_POST['is_template'] == '1') {
+            smart_admin_log('Building template prompt');
             $prompt = build_template_prompt($_POST);
+            smart_admin_log('Template prompt length: ' . strlen($prompt));
         } else {
             $prompt = sanitize_textarea_field($_POST['smart_admin_prompt']);
         }
@@ -774,7 +857,9 @@ function smart_admin_page() {
         }
         
         // ارسال درخواست به API
+        smart_admin_log('Sending request to API');
         $response = send_to_gapgpt_api($prompt, $model, $api_key);
+        smart_admin_log('API response received: ' . (isset($response['error']) ? 'Error: ' . $response['error'] : 'Success'));
         
         // بهبود خروجی با لحن انسانی و پاک‌سازی نشانه‌های مارک‌داون
         if (isset($response['content']) && !empty($response['content'])) {
@@ -833,6 +918,8 @@ function smart_admin_page() {
         
         // ذخیره خودکار پیش‌نویس برای قالب‌های آماده
         if (isset($_POST['is_template']) && $_POST['is_template'] == '1' && isset($response['content']) && !empty($response['content'])) {
+            smart_admin_log('Template content received, starting save process');
+            
             // استخراج عنوان از فیلدهای فرم یا استفاده از عنوان پیش‌فرض
             $title = '';
             // استخراج عنوان SEO شده از پاسخ هوش مصنوعی
@@ -849,6 +936,8 @@ function smart_admin_page() {
                 $title = 'محتوا تولید شده توسط دستیار هوشمند';
             }
             
+            smart_admin_log('Generated title: ' . $title);
+            
             $content = wp_kses_post($response['content']);
             
             // استخراج کلمات کلیدی از فیلدهای فرم
@@ -860,12 +949,22 @@ function smart_admin_page() {
                 $keywords[] = sanitize_text_field($_POST['main_topic']);
             }
             
+            smart_admin_log('Extracted keywords: ' . implode(', ', $keywords));
+            
             // ذخیره محتوا به عنوان پیش‌نویس
             $post_id = smart_admin_save_ai_content_as_draft($title, $content, $keywords);
             
+            smart_admin_log('Save result: ' . (is_wp_error($post_id) ? 'Error: ' . $post_id->get_error_message() : 'Success, Post ID: ' . $post_id));
+            
             if (!is_wp_error($post_id)) {
-                $success_message = 'محتوا با موفقیت تولید و به عنوان پیش‌نویس ذخیره شد. <a href="' . get_edit_post_link($post_id) . '" target="_blank">مشاهده و ویرایش</a>';
+                $edit_link = admin_url('post.php?post=' . $post_id . '&action=edit');
+                $success_message = 'محتوا با موفقیت تولید و به عنوان پیش‌نویس ذخیره شد. <a href="' . $edit_link . '" target="_blank">مشاهده و ویرایش</a>';
+                smart_admin_log('Success message created with edit link: ' . $edit_link);
+            } else {
+                $success_message = 'خطا در ذخیره‌سازی محتوا: ' . $post_id->get_error_message();
+                smart_admin_log('Error in saving: ' . $post_id->get_error_message());
             }
+        }
         }
     }
     // ذخیره پاسخ هوش مصنوعی به عنوان پیش‌نویس در وردپرس
@@ -889,7 +988,13 @@ function smart_admin_page() {
         $post_id = smart_admin_save_ai_content_as_draft($title, $content, $keywords);
         
         if (!is_wp_error($post_id)) {
-            $success_message = 'محتوا با موفقیت به عنوان پیش‌نویس ذخیره شد. <a href="' . get_edit_post_link($post_id) . '" target="_blank">مشاهده و ویرایش</a>';
+            $edit_link = admin_url('post.php?post=' . $post_id . '&action=edit');
+            // فقط اگر پیام موفقیت قبلی وجود ندارد، پیام جدید تنظیم کن
+            if (empty($success_message)) {
+                $success_message = 'محتوا با موفقیت به عنوان پیش‌نویس ذخیره شد. <a href="' . $edit_link . '" target="_blank">مشاهده و ویرایش</a>';
+            }
+        } else {
+            $success_message = 'خطا در ذخیره‌سازی محتوا: ' . $post_id->get_error_message();
         }
     }
     
@@ -916,7 +1021,7 @@ function smart_admin_page() {
     ?>
     <style>
         .smart-admin-wrap {
-            font-family: 'IRANSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
             max-width: 1200px;
             margin: 40px auto;
             background: white;
@@ -1510,16 +1615,78 @@ function smart_admin_page() {
             line-height: 1.4;
             margin-bottom: 15px;
         }
+        
+        /* استایل‌های تب لاگ‌ها */
+        .smart-admin-wrap .log-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        .smart-admin-wrap .log-section h4 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #0073aa;
+            padding-bottom: 10px;
+        }
+        
+        .smart-admin-wrap .log-section h5 {
+            color: #555;
+            margin-bottom: 5px;
+        }
+        
+        .smart-admin-wrap .log-display {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            direction: ltr;
+            text-align: left;
+        }
+        
+        .smart-admin-wrap .log-display pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .smart-admin-wrap .log-file-info {
+            background: #fff;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .smart-admin-wrap .system-info {
+            background: #fff;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .smart-admin-wrap .system-info p {
+            margin: 5px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .smart-admin-wrap .system-info p:last-child {
+            border-bottom: none;
+        }
     </style>
     
     <div class="smart-admin-wrap">
         <h2>ادمین هوشمند</h2>
         
-        <?php if (!empty($success_message)): ?>
-            <div class="success-message">
-                <?php echo $success_message; ?>
-            </div>
-        <?php endif; ?>
         
         <div class="smart-admin-tabs">
             <a href="#" class="tab-link active" data-tab="prompt">ایجاد محتوا با هوش مصنوعی</a>
@@ -1529,6 +1696,7 @@ function smart_admin_page() {
             <a href="#" class="tab-link" data-tab="drafts">پیش‌نویس‌ها</a>
             <a href="#" class="tab-link" data-tab="scheduler">زمان‌بندی محتوا</a>
             <a href="#" class="tab-link" data-tab="settings">تنظیمات</a>
+            <a href="#" class="tab-link" data-tab="logs">لاگ‌ها</a>
         </div>
         
         <div id="images" class="tab-content">
@@ -2865,6 +3033,12 @@ function smart_admin_page() {
             <p>از این قالب‌های آماده و بهینه‌سازی شده برای تولید محتوای با کیفیت استفاده کنید. کافیست فیلدهای زیر را پر کنید.</p>
             <p><strong>💡 نکته:</strong> می‌توانید مدل هوش مصنوعی را از لیست موجود انتخاب کنید. مدل پیش‌فرض هر قالب در کارت آن نمایش داده شده است.</p>
             
+            <?php if (!empty($success_message)): ?>
+                <div class="success-message">
+                    <?php echo $success_message; ?>
+                </div>
+            <?php endif; ?>
+            
             <div class="templates-grid">
                 <?php 
                 $default_prompts = get_default_content_prompts();
@@ -3304,6 +3478,82 @@ function smart_admin_page() {
         }
         ?>
     </div>
+    
+    <!-- تب لاگ‌ها -->
+    <div id="logs" class="tab-content">
+        <h3>لاگ‌های سیستم</h3>
+        
+        <div class="log-section">
+            <h4>لاگ‌های Smart Admin</h4>
+            <?php
+            $smart_admin_log_file = plugin_dir_path(__FILE__) . 'smart-admin-debug.log';
+            if (file_exists($smart_admin_log_file)) {
+                $log_content = file_get_contents($smart_admin_log_file);
+                $log_lines = explode("\n", $log_content);
+                $recent_lines = array_slice($log_lines, -50); // آخرین 50 خط
+                echo '<div class="log-display">';
+                echo '<pre>' . htmlspecialchars(implode("\n", $recent_lines)) . '</pre>';
+                echo '</div>';
+                echo '<p><a href="' . plugin_dir_url(__FILE__) . 'smart-admin-debug.log" target="_blank" class="button button-secondary">دانلود فایل کامل لاگ</a></p>';
+            } else {
+                echo '<p>فایل لاگ Smart Admin موجود نیست.</p>';
+            }
+            ?>
+        </div>
+        
+        <div class="log-section">
+            <h4>لاگ‌های عمومی WordPress</h4>
+            <?php
+            $wp_debug_log = WP_CONTENT_DIR . '/debug.log';
+            if (file_exists($wp_debug_log)) {
+                $log_content = file_get_contents($wp_debug_log);
+                $log_lines = explode("\n", $log_content);
+                $recent_lines = array_slice($log_lines, -30); // آخرین 30 خط
+                echo '<div class="log-display">';
+                echo '<pre>' . htmlspecialchars(implode("\n", $recent_lines)) . '</pre>';
+                echo '</div>';
+                echo '<p><a href="' . content_url('debug.log') . '" target="_blank" class="button button-secondary">دانلود فایل کامل لاگ</a></p>';
+            } else {
+                echo '<p>فایل لاگ WordPress موجود نیست.</p>';
+            }
+            ?>
+        </div>
+        
+        <div class="log-section">
+            <h4>لاگ‌های افزونه</h4>
+            <?php
+            $plugin_logs = [
+                'auto-report-debug.log' => 'لاگ گزارش خودکار',
+                'telegram_logs.txt' => 'لاگ تلگرام',
+                'whatsapp_logs.txt' => 'لاگ واتساپ'
+            ];
+            
+            foreach ($plugin_logs as $log_file => $log_name) {
+                $log_path = plugin_dir_path(__FILE__) . $log_file;
+                if (file_exists($log_path)) {
+                    $size = filesize($log_path);
+                    echo '<div class="log-file-info">';
+                    echo '<h5>' . $log_name . '</h5>';
+                    echo '<p>اندازه: ' . number_format($size) . ' بایت</p>';
+                    echo '<p><a href="' . plugin_dir_url(__FILE__) . $log_file . '" target="_blank" class="button button-small">مشاهده</a></p>';
+                    echo '</div>';
+                }
+            }
+            ?>
+        </div>
+        
+        <div class="log-section">
+            <h4>اطلاعات سیستم</h4>
+            <div class="system-info">
+                <p><strong>API Key:</strong> <?php echo get_option('smart_admin_api_key') ? 'تنظیم شده' : 'تنظیم نشده'; ?></p>
+                <p><strong>مدل پیش‌فرض:</strong> <?php echo get_option('smart_admin_model', 'تنظیم نشده'); ?></p>
+                <p><strong>حالت دیباگ:</strong> <?php echo function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode') ? 'فعال' : 'غیرفعال'; ?></p>
+                <p><strong>نسخه WordPress:</strong> <?php echo get_bloginfo('version'); ?></p>
+                <p><strong>نسخه PHP:</strong> <?php echo PHP_VERSION; ?></p>
+            </div>
+        </div>
+    </div>
+    
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         // مدیریت فیلد نام برند
@@ -3511,6 +3761,13 @@ function smart_admin_page() {
             const travelType = formData.get('travel_type') || '';
             const travelDuration = formData.get('travel_duration') || '';
             const budgetLevel = formData.get('budget_level') || '';
+            const travelMethod = formData.get('travel_method') || '';
+            const accommodationType = formData.get('accommodation_type') || '';
+            const hotelRating = formData.get('hotel_rating') || '';
+            const bookingServices = formData.get('booking_services') || '';
+            const articleTone = formData.get('article_tone') || '';
+            const callToAction = formData.get('call_to_action') || '';
+            const specialRequirements = formData.get('special_requirements') || '';
 
             // فیلدهای قالب خوراکی
             const foodTopic = formData.get('food_topic') || '';
@@ -3546,16 +3803,30 @@ function smart_admin_page() {
                     return `فقط خروجی HTML تمیز برگردان. از <h2> برای سرفصل‌ها، <h3> برای زیربخش‌ها، <ul><li> برای بولت‌ها و <strong> برای تاکید استفاده کن. هیچ Markdown یا <pre>/<code> ننویس.
 
 موضوع: راهنمای سفر به ${destination}.
-پارامترها: بهترین زمان: ${travelSeason} | نوع سفر: ${travelType} | مدت: ${travelDuration} | بودجه: ${budgetLevel}.
+پارامترها: 
+- بهترین زمان: ${travelSeason}
+- نوع سفر: ${travelType}
+- مدت: ${travelDuration}
+- بودجه: ${budgetLevel}
+- روش سفر: ${travelMethod}
+- نوع اقامت: ${accommodationType}${accommodationType === 'هتل' && hotelRating !== 'مهم نیست' ? ' (' + hotelRating + ')' : ''}
+- خدمات رزرو: ${bookingServices}
+- لحن مقاله: ${articleTone}
+- نیازهای خاص: ${specialRequirements}
 
 ساختار:
-<h2>مقدمه کوتاه</h2>
-<h2>برنامه سفر و بهترین زمان</h2>
-<h2>حمل‌ونقل و دسترسی</h2>
-<h2>اقامت و محله‌های پیشنهادی</h2>
-<h2>جاذبه‌های برتر</h2>
-<h2>خوراکی‌ها و نکات کاربردی</h2>
-هر بخش 2-4 پاراگراف یا بولت.`;
+<h2>معرفی ${destination}</h2>
+<h2>بهترین زمان سفر و برنامه‌ریزی</h2>
+<h2>حمل‌ونقل و دسترسی (${travelMethod})</h2>
+<h2>اقامت و ${accommodationType === 'هتل' ? 'هتل‌ها' : accommodationType}</h2>
+<h2>جاذبه‌های برتر و دیدنی‌ها</h2>
+<h2>خوراکی‌ها و رستوران‌های محلی</h2>
+<h2>خرید و سوغاتی</h2>
+<h2>نکات مهم و توصیه‌ها</h2>${specialRequirements !== 'بدون نیاز خاص' ? `
+<h3>توجه به ${specialRequirements}</h3>` : ''}
+${callToAction !== 'بدون CTA' ? `
+<h2>${callToAction}</h2>` : ''}
+هر بخش 2-4 پاراگراف یا بولت. لحن ${articleTone} باشد.`;
 
                 case 'مقاله تخصصی خوراکی و آشپزی':
                     return `فقط HTML تمیز. h2/h3، strong و لیست‌ها. موضوع: ${foodTopic} (${cuisineType})، سختی: ${difficultyLevel}، زمان آماده‌سازی: ${preparationTime}، رژیم: ${specialDiet}.
@@ -3905,15 +4176,22 @@ function smart_admin_page() {
                                 <option value="خانوادگی">خانوادگی</option>
                                 <option value="زیارتی">زیارتی</option>
                                 <option value="غذا و خوراک">غذا و خوراک</option>
+                                <option value="کوهنوردی">کوهنوردی</option>
+                                <option value="دریا و ساحل">دریا و ساحل</option>
+                                <option value="شهری">شهری</option>
+                                <option value="روستایی">روستایی</option>
+                                <option value="تجاری">تجاری</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="travel_duration">مدت سفر پیشنهادی:</label>
                             <select id="travel_duration" name="travel_duration">
+                                <option value="یک روز">یک روز</option>
                                 <option value="آخر هفته (۲-۳ روز)">آخر هفته (۲-۳ روز)</option>
                                 <option value="یک هفته">یک هفته</option>
                                 <option value="دو هفته">دو هفته</option>
-                                <option value="بیش از دو هفته">بیش از دو هفته</option>
+                                <option value="سه هفته">سه هفته</option>
+                                <option value="بیش از سه هفته">بیش از سه هفته</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -3921,7 +4199,94 @@ function smart_admin_page() {
                             <select id="budget_level" name="budget_level">
                                 <option value="اقتصادی">اقتصادی</option>
                                 <option value="متوسط">متوسط</option>
+                                <option value="بالا">بالا</option>
                                 <option value="لوکس">لوکس</option>
+                                <option value="نامحدود">نامحدود</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="travel_method">روش سفر:</label>
+                            <select id="travel_method" name="travel_method">
+                                <option value="هواپیما">هواپیما</option>
+                                <option value="قطار">قطار</option>
+                                <option value="اتوبوس">اتوبوس</option>
+                                <option value="خودرو شخصی">خودرو شخصی</option>
+                                <option value="موتورسیکلت">موتورسیکلت</option>
+                                <option value="دوچرخه">دوچرخه</option>
+                                <option value="کشتی">کشتی</option>
+                                <option value="ترکیبی">ترکیبی</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="accommodation_type">نوع اقامت:</label>
+                            <select id="accommodation_type" name="accommodation_type">
+                                <option value="هتل">هتل</option>
+                                <option value="مهمان‌سرا">مهمان‌سرا</option>
+                                <option value="پانسیون">پانسیون</option>
+                                <option value="آپارتمان اجاره‌ای">آپارتمان اجاره‌ای</option>
+                                <option value="خانه محلی">خانه محلی</option>
+                                <option value="کمپینگ">کمپینگ</option>
+                                <option value="استراحتگاه">استراحتگاه</option>
+                                <option value="بدون اقامت">بدون اقامت</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="hotel_rating">رتبه هتل (در صورت انتخاب هتل):</label>
+                            <select id="hotel_rating" name="hotel_rating">
+                                <option value="3 ستاره">3 ستاره</option>
+                                <option value="4 ستاره">4 ستاره</option>
+                                <option value="5 ستاره">5 ستاره</option>
+                                <option value="مهم نیست">مهم نیست</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="booking_services">خدمات رزرو:</label>
+                            <select id="booking_services" name="booking_services">
+                                <option value="رزرو بلیط">رزرو بلیط</option>
+                                <option value="رزرو هتل">رزرو هتل</option>
+                                <option value="رزرو کامل">رزرو کامل (بلیط + هتل)</option>
+                                <option value="بدون رزرو">بدون رزرو</option>
+                                <option value="رزرو محلی">رزرو محلی</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="article_tone">لحن مقاله:</label>
+                            <select id="article_tone" name="article_tone">
+                                <option value="دوستانه">دوستانه</option>
+                                <option value="رسمی">رسمی</option>
+                                <option value="سرگرم‌کننده">سرگرم‌کننده</option>
+                                <option value="آموزشی">آموزشی</option>
+                                <option value="ماجراجویانه">ماجراجویانه</option>
+                                <option value="عاشقانه">عاشقانه</option>
+                                <option value="خانوادگی">خانوادگی</option>
+                                <option value="تجاری">تجاری</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="call_to_action">فراخوان عمل (CTA):</label>
+                            <select id="call_to_action" name="call_to_action">
+                                <option value="رزرو سفر">رزرو سفر</option>
+                                <option value="مشاوره رایگان">مشاوره رایگان</option>
+                                <option value="دریافت برنامه سفر">دریافت برنامه سفر</option>
+                                <option value="تماس با ما">تماس با ما</option>
+                                <option value="خرید بسته گردشگری">خرید بسته گردشگری</option>
+                                <option value="عضویت در خبرنامه">عضویت در خبرنامه</option>
+                                <option value="دنبال کردن در شبکه‌های اجتماعی">دنبال کردن در شبکه‌های اجتماعی</option>
+                                <option value="بدون CTA">بدون CTA</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="special_requirements">نیازهای خاص:</label>
+                            <select id="special_requirements" name="special_requirements">
+                                <option value="بدون نیاز خاص">بدون نیاز خاص</option>
+                                <option value="دسترسی آسان">دسترسی آسان</option>
+                                <option value="مناسب برای کودکان">مناسب برای کودکان</option>
+                                <option value="مناسب برای سالمندان">مناسب برای سالمندان</option>
+                                <option value="گیاهخواری">گیاهخواری</option>
+                                <option value="حلال">حلال</option>
+                                <option value="بدون الکل">بدون الکل</option>
+                                <option value="ورزشی">ورزشی</option>
+                                <option value="درمانی">درمانی</option>
                             </select>
                         </div>
                     `;

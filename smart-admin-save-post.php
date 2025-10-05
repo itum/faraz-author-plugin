@@ -50,6 +50,14 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
         }
     }
     
+    // بررسی وجود دسته‌بندی
+    $category_id = get_option('smart_admin_assistant_category_id');
+    if (function_exists('smart_admin_log')) {
+        smart_admin_log('Category ID: ' . ($category_id ? $category_id : 'Not found'));
+    } else {
+        error_log('Smart Admin: Category ID: ' . ($category_id ? $category_id : 'Not found'));
+    }
+    
     // ایجاد آرایه پست
     $post_data = array(
         'post_title'    => sanitize_text_field($title),
@@ -58,7 +66,7 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
         'post_type'     => 'post',
         'post_author'   => get_current_user_id(),
         'post_name'     => $slug, // تنظیم پیوند یکتا
-        'post_category' => array(get_option('smart_admin_assistant_category_id')),
+        'post_category' => $category_id ? array($category_id) : array(),
         'meta_input'    => array(
             'smart_admin_generated' => 'yes',
             'smart_admin_generation_date' => current_time('mysql')
@@ -67,6 +75,13 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
     
     // درج پست جدید
     $post_id = wp_insert_post($post_data);
+    
+    // لاگ برای تشخیص مشکل
+    if (function_exists('smart_admin_log')) {
+        smart_admin_log('Post insertion result: ' . (is_wp_error($post_id) ? 'Error: ' . $post_id->get_error_message() : 'Success, Post ID: ' . $post_id));
+    } else {
+        error_log('Smart Admin: Post insertion result: ' . (is_wp_error($post_id) ? 'Error: ' . $post_id->get_error_message() : 'Success, Post ID: ' . $post_id));
+    }
     
     // فقط ارسال کلمات کلیدی به Rank Math بدون اضافه کردن به برچسب‌های وردپرس
     if (!empty($keywords) && !is_wp_error($post_id)) {
