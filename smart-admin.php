@@ -200,6 +200,69 @@ function smart_admin_register_settings() {
 }
 add_action('admin_init', 'smart_admin_register_settings');
 
+// تابع‌های قالب‌بندی محتوا
+if (!function_exists('smart_admin_enforce_human_prompt_constraints')) {
+    function smart_admin_enforce_human_prompt_constraints($p) {
+        $suffix = "\n\nدستورالعمل‌های نگارش (اجباری):\n- متن ۱۰۰٪ انسانی، طبیعی و بومی فارسی باشد؛ از عبارات ماشینی یا کلیشه‌ای پرهیز کن.\n- از هرگونه نشانه‌گذاری مارک‌داون غیرضروری مثل ** و __ استفاده نکن.\n- طول و ساختار جملات را متنوع کن؛ از کلمات و ساختارهای روزمره استفاده کن.\n- هیچ‌گاه نگویید 'به عنوان یک مدل هوش مصنوعی' یا مشابه آن.\n- خروجی نباید توسط ابزارهای تشخیص AI به‌عنوان محتوای ماشینی قابل تشخیص باشد.\n- لحن محاوره‌ای-حرفه‌ای، طبیعی، گرم و بدون اغراق.\n- عنوان‌ها و متن را مستقیم بنویس، بدون پیشوندهای تکراری یا برچسب‌های ساختگی.";
+        return $p . $suffix;
+    }
+}
+
+if (!function_exists('smart_admin_append_formatting_constraints')) {
+    function smart_admin_append_formatting_constraints($p) {
+        $rules = "\n\nقوانین قالب‌بندی خروجی (اجباری و غیرقابل تغییر):\n- خروجی را صرفاً به صورت HTML تمیز بنویس (مطلقاً نه Markdown).\n- از تگ‌های <h2> برای تیترهای اصلی و <h3> برای زیربخش‌ها استفاده کن.\n- برای بولد داخل پاراگراف‌ها از <strong> استفاده کن (هرگز از ** یا __ استفاده نکن).\n- عنوان‌ها باید با فاصله مناسب و Bold باشند.\n- از نشانه‌های اضافی در عنوان‌ها خودداری کن.\n- هر پاراگراف مهم را با <strong> مشخص کن.\n- از نوشتن بخش‌های 'مقدمه' یا 'نتیجه‌گیری/جمع‌بندی/FAQ' خودداری کن.\n- فقط محتوای بدنه مقاله را برگردان (بدون تگ <html> و <body>).\n- مطلقاً از نشانه‌های ** یا __ یا # یا * استفاده نکن.\n- تمام متن باید در تگ‌های HTML مناسب قرار گیرد.";
+        return $p . $rules;
+    }
+}
+
+if (!function_exists('smart_admin_cleanup_generated_content')) {
+    function smart_admin_cleanup_generated_content($c) {
+        // حذف ** و __ و الگوهای بولد مارک‌داون فقط در متن خام (نه در HTML)
+        // اگر محتوا HTML است، نشانه‌های Markdown را حذف نکن
+        $is_html = (strpos($c, '<h') !== false || strpos($c, '<p') !== false || strpos($c, '<strong') !== false);
+        smart_admin_log('Content cleanup: HTML detected = ' . ($is_html ? 'Yes' : 'No'));
+        
+        if ($is_html) {
+            // محتوا HTML است، فقط جمله‌های معرفی AI را حذف کن
+            smart_admin_log('Skipping Markdown cleanup for HTML content');
+        } else {
+            // محتوا Markdown است، نشانه‌های Markdown را حذف کن
+            $c = str_replace(array('**', '__'), '', $c);
+            smart_admin_log('Applied Markdown cleanup for non-HTML content');
+        }
+        
+        // حذف جمله‌های رایج معرفی AI (فارسی و انگلیسی)
+        $patterns = array(
+            '/به عنوان یک مدل هوش مصنوعی[^\.\n]*[\.\n]/u',
+            '/As an AI language model[^\.\n]*[\.\n]/i'
+        );
+        foreach ($patterns as $pat) { $c = preg_replace($pat, '', $c); }
+        
+        // حذف گیومه‌های فارسی از نام برند
+        if (get_option('smart_admin_allow_brand', 0) && get_option('smart_admin_brand_name', '')) {
+            $brand_name = get_option('smart_admin_brand_name', '');
+            $c = str_replace(array('«' . $brand_name . '»', '"' . $brand_name . '"', "'" . $brand_name . "'"), $brand_name, $c);
+        }
+        if (get_option('smart_admin_enforce_formatting', 1)) {
+            // استانداردسازی تیترها و حذف علائم تزئینی
+            $c = str_replace('::', ' - ', $c);
+            // حذف تیترهای ناخواسته بر اساس تنظیمات
+            if (!get_option('smart_admin_allow_intro', 0)) {
+                $c = preg_replace('/<h[23][^>]*>\s*مقدمه\s*<\/h[23]>\s*[\s\S]*?(?=<h2|<h3|$)/iu', '', $c, 1);
+            }
+            if (!get_option('smart_admin_allow_conclusion', 0)) {
+                $c = preg_replace('/<h[23][^>]*>\s*(نتیجه[‌ ]?گیری|جمع[‌ ]?بندی)\s*<\/h[23]>\s*[\s\S]*$/iu', '', $c, 1);
+            }
+            if (!get_option('smart_admin_allow_faq', 0)) {
+                $c = preg_replace('/<h[23][^>]*>\s*FAQ\s*<\/h[23]>\s*[\s\S]*$/iu', '', $c, 1);
+            }
+            // حذف پیشوند "عنوان:" در ابتدای خطوط
+            $c = preg_replace('/(^|\n)\s*عنوان\s*:\s*/u', "$1", $c);
+        }
+        return $c;
+    }
+}
+
 // تابع ساخت پرامپت بر اساس فیلدهای فرم قالب
 function build_template_prompt($form_data) {
     $prompt = '';
@@ -825,20 +888,9 @@ function smart_admin_page() {
         if (function_exists('optimize_prompt_for_natural_content')) {
             $prompt = optimize_prompt_for_natural_content($prompt);
         }
-        if (!function_exists('smart_admin_enforce_human_prompt_constraints')) {
-            function smart_admin_enforce_human_prompt_constraints($p) {
-                $suffix = "\n\nدستورالعمل‌های نگارش (اجباری):\n- متن ۱۰۰٪ انسانی، طبیعی و بومی فارسی باشد؛ از عبارات ماشینی یا کلیشه‌ای پرهیز کن.\n- از هرگونه نشانه‌گذاری مارک‌داون غیرضروری مثل ** و __ استفاده نکن.\n- طول و ساختار جملات را متنوع کن؛ از کلمات و ساختارهای روزمره استفاده کن.\n- هیچ‌گاه نگویید 'به عنوان یک مدل هوش مصنوعی' یا مشابه آن.\n- خروجی نباید توسط ابزارهای تشخیص AI به‌عنوان محتوای ماشینی قابل تشخیص باشد.\n- لحن محاوره‌ای-حرفه‌ای، طبیعی، گرم و بدون اغراق.\n- عنوان‌ها و متن را مستقیم بنویس، بدون پیشوندهای تکراری یا برچسب‌های ساختگی.";
-                return $p . $suffix;
-            }
-        }
-        if (!function_exists('smart_admin_append_formatting_constraints')) {
-            function smart_admin_append_formatting_constraints($p) {
-                $rules = "\n\nقوانین قالب‌بندی خروجی (اجباری):\n- خروجی را صرفاً به صورت HTML تمیز بنویس (نه Markdown).\n- از تگ‌های <h2> برای تیترهای اصلی و <h3> برای زیربخش‌ها استفاده کن.\n- برای بولد داخل پاراگراف‌ها از <strong> استفاده کن (نه **).\n- عنوان‌ها باید با فاصله مناسب و Bold باشند.\n- از نشانه‌های اضافی در عنوان‌ها خودداری کن.\n- هر پاراگراف مهم را با <strong> مشخص کن.\n- از نوشتن بخش‌های 'مقدمه' یا 'نتیجه‌گیری/جمع‌بندی/FAQ' خودداری کن.\n- فقط محتوای بدنه مقاله را برگردان (بدون تگ <html> و <body>).";
-                return $p . $rules;
-            }
-        }
         $prompt = smart_admin_enforce_human_prompt_constraints($prompt);
         if (get_option('smart_admin_enforce_formatting', 1)) {
+            smart_admin_log('Formatting constraints enabled - adding HTML formatting rules');
             $prompt = smart_admin_append_formatting_constraints($prompt);
             // افزودن محدودیت‌های روشن/خاموش
             $extra_rules = [];
@@ -860,47 +912,14 @@ function smart_admin_page() {
         smart_admin_log('Sending request to API');
         $response = send_to_gapgpt_api($prompt, $model, $api_key);
         smart_admin_log('API response received: ' . (isset($response['error']) ? 'Error: ' . $response['error'] : 'Success'));
+        smart_admin_log('Full API response: ' . json_encode($response));
         
         // بهبود خروجی با لحن انسانی و پاک‌سازی نشانه‌های مارک‌داون
         if (isset($response['content']) && !empty($response['content'])) {
             if (function_exists('improve_ai_output_with_human_tone')) {
                 $response['content'] = improve_ai_output_with_human_tone($response['content']);
             }
-            if (!function_exists('smart_admin_cleanup_generated_content')) {
-                function smart_admin_cleanup_generated_content($c) {
-                    // حذف ** و __ و الگوهای بولد مارک‌داون
-                    $c = str_replace(array('**', '__'), '', $c);
-                    // حذف جمله‌های رایج معرفی AI (فارسی و انگلیسی)
-                    $patterns = array(
-                        '/به عنوان یک مدل هوش مصنوعی[^\.\n]*[\.\n]/u',
-                        '/As an AI language model[^\.\n]*[\.\n]/i'
-                    );
-                    foreach ($patterns as $pat) { $c = preg_replace($pat, '', $c); }
-                    
-                    // حذف گیومه‌های فارسی از نام برند
-                    if (get_option('smart_admin_allow_brand', 0) && get_option('smart_admin_brand_name', '')) {
-                        $brand_name = get_option('smart_admin_brand_name', '');
-                        $c = str_replace(array('«' . $brand_name . '»', '"' . $brand_name . '"', "'" . $brand_name . "'"), $brand_name, $c);
-                    }
-                    if (get_option('smart_admin_enforce_formatting', 1)) {
-                        // استانداردسازی تیترها و حذف علائم تزئینی
-                        $c = str_replace('::', ' - ', $c);
-                        // حذف تیترهای ناخواسته بر اساس تنظیمات
-                        if (!get_option('smart_admin_allow_intro', 0)) {
-                            $c = preg_replace('/<h[23][^>]*>\s*مقدمه\s*<\/h[23]>\s*[\s\S]*?(?=<h2|<h3|$)/iu', '', $c, 1);
-                        }
-                        if (!get_option('smart_admin_allow_conclusion', 0)) {
-                            $c = preg_replace('/<h[23][^>]*>\s*(نتیجه[‌ ]?گیری|جمع[‌ ]?بندی)\s*<\/h[23]>\s*[\s\S]*$/iu', '', $c, 1);
-                        }
-                        if (!get_option('smart_admin_allow_faq', 0)) {
-                            $c = preg_replace('/<h[23][^>]*>\s*FAQ\s*<\/h[23]>\s*[\s\S]*$/iu', '', $c, 1);
-                        }
-                        // حذف پیشوند "عنوان:" در ابتدای خطوط
-                        $c = preg_replace('/(^|\n)\s*عنوان\s*:\s*/u', "$1", $c);
-                    }
-                    return $c;
-                }
-            }
+            smart_admin_log('Applying content cleanup with formatting constraints');
             $response['content'] = smart_admin_cleanup_generated_content($response['content']);
         }
         
@@ -915,6 +934,10 @@ function smart_admin_page() {
             );
             update_option('smart_admin_saved_prompts', $saved_prompts);
         }
+        
+        // بررسی وضعیت قالب
+        smart_admin_log('is_template value: ' . (isset($_POST['is_template']) ? $_POST['is_template'] : 'Not set'));
+        smart_admin_log('response content exists: ' . (isset($response['content']) && !empty($response['content']) ? 'Yes' : 'No'));
         
         // ذخیره خودکار پیش‌نویس برای قالب‌های آماده
         if (isset($_POST['is_template']) && $_POST['is_template'] == '1' && isset($response['content']) && !empty($response['content'])) {
@@ -938,10 +961,21 @@ function smart_admin_page() {
             
             smart_admin_log('Generated title: ' . $title);
             
+            smart_admin_log('Original content length: ' . strlen($response['content']));
             $content = wp_kses_post($response['content']);
+            smart_admin_log('Content length after wp_kses_post: ' . strlen($content));
+            smart_admin_log('Content preview: ' . substr($content, 0, 200) . '...');
             
-            // استخراج کلمات کلیدی از فیلدهای فرم
+            // استخراج کلمات کلیدی از فیلدهای فرم یا پاسخ API
             $keywords = array();
+            
+            // اولویت اول: کلمات کلیدی از پاسخ API
+            if (!empty($response['keywords']) && is_array($response['keywords'])) {
+                $keywords = array_merge($keywords, $response['keywords']);
+                smart_admin_log('Using keywords from API response: ' . implode(', ', $response['keywords']));
+            }
+            
+            // اولویت دوم: فیلدهای فرم
             if (!empty($_POST['focus_keyword'])) {
                 $keywords[] = sanitize_text_field($_POST['focus_keyword']);
             }
@@ -949,7 +983,68 @@ function smart_admin_page() {
                 $keywords[] = sanitize_text_field($_POST['main_topic']);
             }
             
-            smart_admin_log('Extracted keywords: ' . implode(', ', $keywords));
+            // حذف تکرارها
+            $keywords = array_unique($keywords);
+            
+            smart_admin_log('Final extracted keywords: ' . implode(', ', $keywords));
+            smart_admin_log('About to call smart_admin_save_ai_content_as_draft with title: ' . $title);
+            
+            // ذخیره محتوا به عنوان پیش‌نویس
+            $post_id = smart_admin_save_ai_content_as_draft($title, $content, $keywords);
+            
+            smart_admin_log('Save result: ' . (is_wp_error($post_id) ? 'Error: ' . $post_id->get_error_message() : 'Success, Post ID: ' . $post_id));
+            
+            if (!is_wp_error($post_id)) {
+                $edit_link = admin_url('post.php?post=' . $post_id . '&action=edit');
+                $success_message = 'محتوا با موفقیت تولید و به عنوان پیش‌نویس ذخیره شد. <a href="' . $edit_link . '" target="_blank">مشاهده و ویرایش</a>';
+                smart_admin_log('Success message created with edit link: ' . $edit_link);
+            } else {
+                $success_message = 'خطا در ذخیره‌سازی محتوا: ' . $post_id->get_error_message();
+                smart_admin_log('Error in saving: ' . $post_id->get_error_message());
+            }
+        } else if (isset($response['content']) && !empty($response['content'])) {
+            // اگر محتوا تولید شده ولی قالب نباشد، باز هم ذخیره کن
+            smart_admin_log('Non-template content received, starting save process');
+            
+            // استخراج عنوان از فیلدهای فرم یا استفاده از عنوان پیش‌فرض
+            $title = '';
+            if (!empty($_POST['focus_keyword'])) {
+                $title = sanitize_text_field($_POST['focus_keyword']);
+            } elseif (!empty($_POST['main_topic'])) {
+                $title = sanitize_text_field($_POST['main_topic']);
+            } else {
+                $title = 'محتوا تولید شده توسط دستیار هوشمند';
+            }
+            
+            smart_admin_log('Generated title: ' . $title);
+            
+            smart_admin_log('Original content length: ' . strlen($response['content']));
+            $content = wp_kses_post($response['content']);
+            smart_admin_log('Content length after wp_kses_post: ' . strlen($content));
+            smart_admin_log('Content preview: ' . substr($content, 0, 200) . '...');
+            
+            // استخراج کلمات کلیدی از فیلدهای فرم یا پاسخ API
+            $keywords = array();
+            
+            // اولویت اول: کلمات کلیدی از پاسخ API
+            if (!empty($response['keywords']) && is_array($response['keywords'])) {
+                $keywords = array_merge($keywords, $response['keywords']);
+                smart_admin_log('Using keywords from API response: ' . implode(', ', $response['keywords']));
+            }
+            
+            // اولویت دوم: فیلدهای فرم
+            if (!empty($_POST['focus_keyword'])) {
+                $keywords[] = sanitize_text_field($_POST['focus_keyword']);
+            }
+            if (!empty($_POST['main_topic'])) {
+                $keywords[] = sanitize_text_field($_POST['main_topic']);
+            }
+            
+            // حذف تکرارها
+            $keywords = array_unique($keywords);
+            
+            smart_admin_log('Final extracted keywords: ' . implode(', ', $keywords));
+            smart_admin_log('About to call smart_admin_save_ai_content_as_draft with title: ' . $title);
             
             // ذخیره محتوا به عنوان پیش‌نویس
             $post_id = smart_admin_save_ai_content_as_draft($title, $content, $keywords);
@@ -5042,7 +5137,11 @@ function send_to_gapgpt_api($prompt, $model, $api_key) {
     
     // دریافت پاسخ
     $response_code = wp_remote_retrieve_response_code($response);
-    $response_body = json_decode(wp_remote_retrieve_body($response), true);
+    $response_body_raw = wp_remote_retrieve_body($response);
+    $response_body = json_decode($response_body_raw, true);
+    
+        // smart_admin_log('Raw response body: ' . $response_body_raw);
+        // smart_admin_log('Parsed response body: ' . json_encode($response_body));
     
     if ($response_code !== 200) {
         $error_message = 'خطای نامشخص';
@@ -5062,8 +5161,17 @@ function send_to_gapgpt_api($prompt, $model, $api_key) {
     }
     
     // استخراج محتوای پاسخ
+    // smart_admin_log('Checking for content in response: ' . (isset($response_body['choices'][0]['message']['content']) ? 'Found' : 'Not found'));
+    // if (isset($response_body['choices'])) {
+    //     smart_admin_log('Choices count: ' . count($response_body['choices']));
+    //     if (isset($response_body['choices'][0])) {
+    //         smart_admin_log('First choice structure: ' . json_encode($response_body['choices'][0]));
+    //     }
+    // }
+    
     if (isset($response_body['choices'][0]['message']['content'])) {
         $content = $response_body['choices'][0]['message']['content'];
+        smart_admin_log('Content extracted: ' . substr($content, 0, 100) . '...');
         
         // تبدیل Markdown به HTML برای نمایش بهتر
         $content = smart_admin_convert_markdown_to_html($content);
@@ -5282,6 +5390,17 @@ function smart_admin_generate_html_table_of_contents($content) {
 }
 // تابع تبدیل Markdown به HTML
 function smart_admin_convert_markdown_to_html($content) {
+    // بررسی اینکه آیا محتوا HTML است یا نه
+    $is_html_content = (strpos($content, '<h') !== false || strpos($content, '<p') !== false || strpos($content, '<strong') !== false);
+    
+    if ($is_html_content) {
+        // اگر محتوا HTML است، فقط ```html و ``` را حذف کن
+        $content = preg_replace('/```html\s*/i', '', $content);
+        $content = preg_replace('/```\s*$/i', '', $content);
+        smart_admin_log('HTML content detected, skipping markdown conversion');
+        return $content;
+    }
+    
     // پاکسازی بلاک‌های کد و تگ‌های ناخواسته که بعضی مدل‌ها اضافه می‌کنند
     // حذف بلاک‌های کد سه‌تایی ```...```
     $content = preg_replace('/```[\s\S]*?```/m', '', $content);

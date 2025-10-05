@@ -73,14 +73,27 @@ function smart_admin_save_ai_content_as_draft($title, $content, $keywords = arra
         )
     );
     
+    // بررسی دسترسی‌ها
+    if (function_exists('smart_admin_log')) {
+        smart_admin_log('Current user ID: ' . get_current_user_id());
+        smart_admin_log('User can publish posts: ' . (current_user_can('publish_posts') ? 'Yes' : 'No'));
+        smart_admin_log('Attempting to create post with data: ' . json_encode($post_data));
+    }
+    
     // درج پست جدید
     $post_id = wp_insert_post($post_data);
     
     // لاگ برای تشخیص مشکل
     if (function_exists('smart_admin_log')) {
         smart_admin_log('Post insertion result: ' . (is_wp_error($post_id) ? 'Error: ' . $post_id->get_error_message() : 'Success, Post ID: ' . $post_id));
+        if (is_wp_error($post_id)) {
+            smart_admin_log('WP_Error details: ' . print_r($post_id, true));
+        }
     } else {
         error_log('Smart Admin: Post insertion result: ' . (is_wp_error($post_id) ? 'Error: ' . $post_id->get_error_message() : 'Success, Post ID: ' . $post_id));
+        if (is_wp_error($post_id)) {
+            error_log('Smart Admin: WP_Error details: ' . print_r($post_id, true));
+        }
     }
     
     // فقط ارسال کلمات کلیدی به Rank Math بدون اضافه کردن به برچسب‌های وردپرس
