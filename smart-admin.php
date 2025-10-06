@@ -69,6 +69,19 @@ if (!function_exists('smart_admin_log')) {
     function smart_admin_log($message) {
         $prefix = '[Smart-Admin] ';
         $timestamp = date('Y-m-d H:i:s');
+        
+        // اگر پیام شامل HTML است، آن را برای نمایش بهتر در لاگ پردازش کن
+        if (strpos($message, '<') !== false && strpos($message, '>') !== false) {
+            // HTML را به صورت خوانا در لاگ نمایش بده
+            $readable_message = html_entity_decode($message, ENT_QUOTES, 'UTF-8');
+            $readable_message = str_replace(array('<h1>', '</h1>', '<h2>', '</h2>', '<h3>', '</h3>'), 
+                                          array('[H1]', '[/H1]', '[H2]', '[/H2]', '[H3]', '[/H3]'), $readable_message);
+            $readable_message = str_replace(array('<p>', '</p>', '<strong>', '</strong>', '<ul>', '</ul>', '<li>', '</li>'), 
+                                          array('[P]', '[/P]', '[BOLD]', '[/BOLD]', '[UL]', '[/UL]', '[LI]', '[/LI]'), $readable_message);
+            $readable_message = preg_replace('/<[^>]+>/', '', $readable_message); // حذف سایر تگ‌ها
+            $message = $readable_message;
+        }
+        
         $line = "[$timestamp] $prefix$message" . PHP_EOL;
         // نوشتن در فایل لاگ اختصاصی افزونه
         $log_file_plugin = plugin_dir_path(__FILE__) . 'smart-admin-debug.log';
@@ -219,7 +232,7 @@ if (!function_exists('smart_admin_cleanup_generated_content')) {
     function smart_admin_cleanup_generated_content($c) {
         // حذف ** و __ و الگوهای بولد مارک‌داون فقط در متن خام (نه در HTML)
         // اگر محتوا HTML است، نشانه‌های Markdown را حذف نکن
-        $is_html = (strpos($c, '<h') !== false || strpos($c, '<p') !== false || strpos($c, '<strong') !== false);
+        $is_html = (strpos($c, '<h') !== false || strpos($c, '<p') !== false || strpos($c, '<strong') !== false || strpos($c, '<ul') !== false || strpos($c, '<li') !== false || strpos($c, '<ol') !== false);
         smart_admin_log('Content cleanup: HTML detected = ' . ($is_html ? 'Yes' : 'No'));
         
         if ($is_html) {
@@ -338,15 +351,20 @@ function build_template_prompt($form_data) {
 - استفاده از هدینگ های H2 و H3
 - بدون استفاده از کلمه 'مقدمه' در ابتدا
 - بدون نتیجه گیری در انتها
-- استفاده از کلمات ساده و رایج فارسی
-- اجتناب از آمار و ارقام دقیق
-- توجه ویژه به $special_requirements";
+- استفاده از تگ strong برای کلمات کلیدی
+- استفاده از لیست‌های بولت برای نکات مهم
+- گنجاندن نام برند \"$booking_services\" به صورت طبیعی در متن
 
-        if ($call_to_action !== 'بدون CTA') {
-            $prompt .= "\n- شامل فراخوان عمل مناسب: $call_to_action";
-        }
+فرمت خروجی:
+فقط HTML استاندارد تولید کن. از تگ‌های زیر استفاده کن:
+- <h2> برای عناوین اصلی
+- <h3> برای زیرعناوین
+- <p> برای پاراگراف‌ها
+- <strong> برای کلمات مهم و کلیدی
+- <ul><li> برای لیست‌های بولت
+- <ol><li> برای لیست‌های شماره‌دار
 
-        $prompt .= "\n\nمستقیماً با پاراگراف جذاب شروع کنید که خواننده را ترغیب کند.";
+هیچ Markdown، کد یا تگ‌های اضافی استفاده نکن.";
         
     } elseif (isset($form_data['food_topic'])) {
         // قالب خوراکی و آشپزی
@@ -920,7 +938,8 @@ function smart_admin_page() {
                 $response['content'] = improve_ai_output_with_human_tone($response['content']);
             }
             smart_admin_log('Applying content cleanup with formatting constraints');
-            $response['content'] = smart_admin_cleanup_generated_content($response['content']);
+            // محتوا را فقط یک بار پردازش می‌کنیم
+            // $response['content'] = smart_admin_cleanup_generated_content($response['content']);
         }
         
         // ذخیره پرامپت در تنظیمات (اگر قالب پیش‌فرض نباشد)
@@ -962,8 +981,20 @@ function smart_admin_page() {
             smart_admin_log('Generated title: ' . $title);
             
             smart_admin_log('Original content length: ' . strlen($response['content']));
-            $content = wp_kses_post($response['content']);
-            smart_admin_log('Content length after wp_kses_post: ' . strlen($content));
+            smart_admin_log('Original content preview: ' . substr($response['content'], 0, 200) . '...');
+            
+            // اعمال قالب‌بندی HTML اگر تنظیمات فعال باشد
+            if (get_option('smart_admin_enforce_formatting', 1)) {
+                smart_admin_log('Processing content with HTML formatting enforcement');
+                $content = smart_admin_cleanup_generated_content($response['content']);
+                smart_admin_log('Content processed with HTML formatting');
+                smart_admin_log('Final content preview: ' . substr($content, 0, 200) . '...');
+            } else {
+                smart_admin_log('Processing content without HTML formatting enforcement');
+                $content = wp_kses_post($response['content']);
+            }
+            
+            smart_admin_log('Content length after processing: ' . strlen($content));
             smart_admin_log('Content preview: ' . substr($content, 0, 200) . '...');
             
             // استخراج کلمات کلیدی از فیلدهای فرم یا پاسخ API
@@ -1019,8 +1050,20 @@ function smart_admin_page() {
             smart_admin_log('Generated title: ' . $title);
             
             smart_admin_log('Original content length: ' . strlen($response['content']));
-            $content = wp_kses_post($response['content']);
-            smart_admin_log('Content length after wp_kses_post: ' . strlen($content));
+            smart_admin_log('Original content preview: ' . substr($response['content'], 0, 200) . '...');
+            
+            // اعمال قالب‌بندی HTML اگر تنظیمات فعال باشد
+            if (get_option('smart_admin_enforce_formatting', 1)) {
+                smart_admin_log('Processing content with HTML formatting enforcement');
+                $content = smart_admin_cleanup_generated_content($response['content']);
+                smart_admin_log('Content processed with HTML formatting');
+                smart_admin_log('Final content preview: ' . substr($content, 0, 200) . '...');
+            } else {
+                smart_admin_log('Processing content without HTML formatting enforcement');
+                $content = wp_kses_post($response['content']);
+            }
+            
+            smart_admin_log('Content length after processing: ' . strlen($content));
             smart_admin_log('Content preview: ' . substr($content, 0, 200) . '...');
             
             // استخراج کلمات کلیدی از فیلدهای فرم یا پاسخ API
@@ -1068,7 +1111,13 @@ function smart_admin_page() {
         check_admin_referer('smart_admin_save_draft_action', 'smart_admin_save_draft_nonce');
         
         $title = sanitize_text_field($_POST['post_title']);
-        $content = wp_kses_post($_POST['ai_response']);
+        
+        // اعمال قالب‌بندی HTML اگر تنظیمات فعال باشد
+        if (get_option('smart_admin_enforce_formatting', 1)) {
+            $content = smart_admin_cleanup_generated_content($_POST['ai_response']);
+        } else {
+            $content = wp_kses_post($_POST['ai_response']);
+        }
         
         // استخراج کلمات کلیدی از فرم یا استخراج خودکار
         $keywords = array();
@@ -3895,33 +3944,55 @@ function smart_admin_page() {
             // اگر عنوان قالب مشخص است، بر اساس آن پرامپت کوتاه و استاندارد تولید می‌کنیم
             switch (templateTitle) {
                 case 'مقاله تخصصی گردشگری و سفر':
-                    return `فقط خروجی HTML تمیز برگردان. از <h2> برای سرفصل‌ها، <h3> برای زیربخش‌ها، <ul><li> برای بولت‌ها و <strong> برای تاکید استفاده کن. هیچ Markdown یا <pre>/<code> ننویس.
+                    return `شما یک متخصص گردشگری حرفه‌ای هستید. یک راهنمای سفر کامل و کاربردی برای سفر به ${destination} بنویسید.
 
-موضوع: راهنمای سفر به ${destination}.
-پارامترها: 
-- بهترین زمان: ${travelSeason}
+اطلاعات سفر:
+- مقصد: ${destination}
+- فصل: ${travelSeason}
 - نوع سفر: ${travelType}
-- مدت: ${travelDuration}
-- بودجه: ${budgetLevel}
+- مدت سفر: ${travelDuration}
+- سطح بودجه: ${budgetLevel}
 - روش سفر: ${travelMethod}
 - نوع اقامت: ${accommodationType}${accommodationType === 'هتل' && hotelRating !== 'مهم نیست' ? ' (' + hotelRating + ')' : ''}
 - خدمات رزرو: ${bookingServices}
 - لحن مقاله: ${articleTone}
+- فراخوان عمل: ${callToAction}
 - نیازهای خاص: ${specialRequirements}
 
-ساختار:
-<h2>معرفی ${destination}</h2>
-<h2>بهترین زمان سفر و برنامه‌ریزی</h2>
-<h2>حمل‌ونقل و دسترسی (${travelMethod})</h2>
-<h2>اقامت و ${accommodationType === 'هتل' ? 'هتل‌ها' : accommodationType}</h2>
-<h2>جاذبه‌های برتر و دیدنی‌ها</h2>
-<h2>خوراکی‌ها و رستوران‌های محلی</h2>
-<h2>خرید و سوغاتی</h2>
-<h2>نکات مهم و توصیه‌ها</h2>${specialRequirements !== 'بدون نیاز خاص' ? `
-<h3>توجه به ${specialRequirements}</h3>` : ''}
-${callToAction !== 'بدون CTA' ? `
-<h2>${callToAction}</h2>` : ''}
-هر بخش 2-4 پاراگراف یا بولت. لحن ${articleTone} باشد.`;
+ساختار مقاله:
+- عنوان جذاب شامل نام مقصد
+- معرفی مقصد و دلایل جذابیت
+- بهترین زمان سفر و برنامه ریزی
+- نحوه رسیدن (${travelMethod} - حمل و نقل، ویزا)
+- اقامت (${accommodationType})${accommodationType === 'هتل' ? ' و هتل‌ها' : ''}
+- جاذبه های گردشگری (حداقل 10 جاذبه)
+- غذا و رستوران های محلی${specialRequirements !== 'بدون نیاز خاص' ? ' (با توجه به ' + specialRequirements + ')' : ''}
+- خرید و سوغاتی
+- نکات مهم و توصیه ها
+- برنامه سفر پیشنهادی (${travelDuration})${callToAction !== 'بدون CTA' ? '\n- فراخوان عمل: ' + callToAction : ''}
+
+ویژگی های مهم:
+- حداقل 1200 کلمه و حداکثر 2500 کلمه
+- لحن ${articleTone} و کاربردی
+- اطلاعات دقیق و به روز
+- مناسب برای گردشگران ایرانی
+- استفاده از هدینگ های H2 و H3
+- بدون استفاده از کلمه 'مقدمه' در ابتدا
+- بدون نتیجه گیری در انتها
+- استفاده از تگ strong برای کلمات کلیدی
+- استفاده از لیست‌های بولت برای نکات مهم
+- گنجاندن نام برند "${bookingServices}" به صورت طبیعی در متن
+
+فرمت خروجی:
+فقط HTML استاندارد تولید کن. از تگ‌های زیر استفاده کن:
+- <h2> برای عناوین اصلی
+- <h3> برای زیرعناوین
+- <p> برای پاراگراف‌ها
+- <strong> برای کلمات مهم و کلیدی
+- <ul><li> برای لیست‌های بولت
+- <ol><li> برای لیست‌های شماره‌دار
+
+هیچ Markdown، کد یا تگ‌های اضافی استفاده نکن.`;
 
                 case 'مقاله تخصصی خوراکی و آشپزی':
                     return `فقط HTML تمیز. h2/h3، strong و لیست‌ها. موضوع: ${foodTopic} (${cuisineType})، سختی: ${difficultyLevel}، زمان آماده‌سازی: ${preparationTime}، رژیم: ${specialDiet}.
@@ -5391,7 +5462,7 @@ function smart_admin_generate_html_table_of_contents($content) {
 // تابع تبدیل Markdown به HTML
 function smart_admin_convert_markdown_to_html($content) {
     // بررسی اینکه آیا محتوا HTML است یا نه
-    $is_html_content = (strpos($content, '<h') !== false || strpos($content, '<p') !== false || strpos($content, '<strong') !== false);
+    $is_html_content = (strpos($content, '<h') !== false || strpos($content, '<p') !== false || strpos($content, '<strong') !== false || strpos($content, '<ul') !== false || strpos($content, '<li') !== false || strpos($content, '<ol') !== false);
     
     if ($is_html_content) {
         // اگر محتوا HTML است، فقط ```html و ``` را حذف کن
