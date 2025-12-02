@@ -2,6 +2,49 @@
 // Add settings menu
 add_action('admin_menu', 'tsp_add_menu');
 
+// مدیریت cron job برای polling
+add_action('init', 'telegram_manage_polling_cron');
+function telegram_manage_polling_cron() {
+    $update_method = get_option('telegram_update_method', 'webhook');
+    $hook_name = 'telegram_poll_updates_hook';
+    
+    if ($update_method === 'polling') {
+        // اگر polling فعال است و cron وجود ندارد، آن را ایجاد کن
+        if (!wp_next_scheduled($hook_name)) {
+            // استفاده از wp_schedule_single_event برای انعطاف بیشتر
+            wp_schedule_single_event(time() + 3, $hook_name);
+        }
+    } else {
+        // اگر polling غیرفعال است و cron وجود دارد، آن را حذف کن
+        $timestamp = wp_next_scheduled($hook_name);
+        if ($timestamp) {
+            wp_unschedule_event($timestamp, $hook_name);
+        }
+    }
+}
+
+// اجرای polling
+add_action('telegram_poll_updates_hook', 'telegram_execute_polling');
+function telegram_execute_polling() {
+    $update_method = get_option('telegram_update_method', 'webhook');
+    
+    // فقط اگر polling فعال باشد
+    if ($update_method !== 'polling') {
+        return;
+    }
+    
+    $updates = telegram_poll_updates();
+    
+    if ($updates !== false && !empty($updates)) {
+        process_telegram_updates($updates);
+    }
+    
+    // برنامه‌ریزی برای اجرای بعدی (3 ثانیه بعد)
+    if (!wp_next_scheduled('telegram_poll_updates_hook')) {
+        wp_schedule_single_event(time() + 3, 'telegram_poll_updates_hook');
+    }
+}
+
 function tsp_add_menu()
 {
     add_submenu_page('faraz-telegram-plugin', 'Telegram Webhook', 'Telegram Webhook', 'manage_options', 'telegram-webhook-plugin', 'telegram_bot_settings_page');
@@ -165,6 +208,30 @@ function telegram_bot_settings_page()
             </div>
 
             <div class="form-group">
+                <label>روش دریافت پیام‌ها:</label>
+                <div style="margin-top: 10px;">
+                    <label style="display: inline-flex; align-items: center; margin-left: 20px;">
+                        <input type="radio" name="telegram_update_method" value="webhook" 
+                               <?php checked(get_option('telegram_update_method', 'webhook'), 'webhook'); ?> 
+                               style="margin-left: 8px;" id="update_method_webhook">
+                        Webhook (پیشنهادی برای سرورهای آنلاین)
+                    </label>
+                    <label style="display: inline-flex; align-items: center;">
+                        <input type="radio" name="telegram_update_method" value="polling" 
+                               <?php checked(get_option('telegram_update_method', 'webhook'), 'polling'); ?> 
+                               style="margin-left: 8px;" id="update_method_polling">
+                        Long Polling (برای localhost و سرورهای بدون دسترسی به اینترنت)
+                    </label>
+                </div>
+                <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                    Webhook: تلگرام پیام‌ها را به سرور شما ارسال می‌کند (نیاز به HTTPS و دسترسی عمومی)
+                </small>
+                <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                    Long Polling: افزونه به صورت دوره‌ای از تلگرام پیام‌ها را دریافت می‌کند (مناسب برای localhost)
+                </small>
+            </div>
+
+            <div class="form-group" id="webhook_url_group">
                 <label for="telegram_bot_url">آدرس وب‌هوک ربات:</label>
                 <input type="text" id="telegram_bot_url" name="telegram_bot_url" 
                        value="<?php echo esc_attr(get_option('telegram_bot_url', home_url('/wp-json/faraz/v1/handle/'))); ?>" 
@@ -274,6 +341,9 @@ function telegram_bot_settings_page()
                 <button type="button" id="full-test-btn" class="submit-button" style="background: #f1c40f;">
                     🧪 تست کامل
                 </button>
+                <button type="button" id="test-polling-btn" class="submit-button" style="background: #1abc9c;">
+                    🔄 تست Long Polling
+                </button>
             </div>
             
             <div id="webhook-status" style="margin-top: 20px; padding: 15px; background: white; border-radius: 4px; display: none;">
@@ -297,6 +367,8 @@ function telegram_bot_settings_page()
         const hostTypeRadios = document.querySelectorAll('input[name="telegram_host_type"]');
         const proxyUrlGroup = document.getElementById('proxy_url_group');
         const webhookProxyGroup = document.getElementById('webhook_proxy_group');
+        const webhookUrlGroup = document.getElementById('webhook_url_group');
+        const updateMethodRadios = document.querySelectorAll('input[name="telegram_update_method"]');
 
         // نمایش/مخفی کردن فیلدهای پروکسی بر اساس نوع هاست
         function toggleProxyField() {
@@ -310,12 +382,28 @@ function telegram_bot_settings_page()
             }
         }
 
-        // اجرای تابع در ابتدا
+        // نمایش/مخفی کردن فیلد webhook URL بر اساس روش دریافت
+        function toggleWebhookField() {
+            const selectedMethod = document.querySelector('input[name="telegram_update_method"]:checked');
+            if (selectedMethod && selectedMethod.value === 'webhook') {
+                webhookUrlGroup.style.display = 'block';
+            } else {
+                webhookUrlGroup.style.display = 'none';
+            }
+        }
+
+        // اجرای توابع در ابتدا
         toggleProxyField();
+        toggleWebhookField();
 
         // اضافه کردن event listener برای تغییر نوع هاست
         hostTypeRadios.forEach(function(radio) {
             radio.addEventListener('change', toggleProxyField);
+        });
+
+        // اضافه کردن event listener برای تغییر روش دریافت
+        updateMethodRadios.forEach(function(radio) {
+            radio.addEventListener('change', toggleWebhookField);
         });
 
         form.addEventListener('submit', function() {
@@ -472,6 +560,13 @@ function telegram_bot_settings_page()
             });
         }
 
+        const testPollingBtn = document.getElementById('test-polling-btn');
+        if (testPollingBtn) {
+            testPollingBtn.addEventListener('click', function(event) {
+                performWebhookAction('test_polling', this);
+            });
+        }
+
         <?php if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_token'])) : ?>
             <?php if (check_admin_referer('save_telegram_bot_token', 'telegram_bot_nonce')) : ?>
                 successMessage.style.display = 'block';
@@ -503,6 +598,10 @@ function telegram_bot_save_token()
         $proxy_url = sanitize_text_field($_POST['telegram_proxy_url']);
         $webhook_proxy = sanitize_text_field($_POST['telegram_webhook_proxy']);
         $admin_ids = isset($_POST['faraz_telegram_admin_ids']) ? sanitize_text_field($_POST['faraz_telegram_admin_ids']) : '';
+        $update_method = isset($_POST['telegram_update_method']) ? sanitize_text_field($_POST['telegram_update_method']) : 'webhook';
+
+        // دریافت روش قبلی
+        $old_update_method = get_option('telegram_update_method', 'webhook');
 
         // اگر هاست خارجی انتخاب شده باشد، مقادیر پروکسی را برای جداسازی کامل خالی می‌کنیم
         if ($host_type === 'foreign') {
@@ -518,14 +617,36 @@ function telegram_bot_save_token()
         update_option('telegram_proxy_url', $proxy_url);
         update_option('telegram_webhook_proxy', $webhook_proxy);
         update_option('faraz_telegram_admin_ids', $admin_ids);
+        update_option('telegram_update_method', $update_method);
         
-        // تنظیم وب‌هوک و نمایش نتیجه
-        $webhook_result = telegram_bot_set_webhook($token, $url_p, $host_type);
-        
-        if ($webhook_result) {
-            echo '<div class="updated"><p>تنظیمات با موفقیت ذخیره شد و وب‌هوک تنظیم شد!</p></div>';
+        // مدیریت تغییر روش
+        if ($update_method === 'polling') {
+            // اگر polling انتخاب شده، webhook را حذف کن
+            if ($old_update_method === 'webhook') {
+                delete_telegram_webhook($token, $host_type);
+            }
+            // cron job به صورت خودکار در telegram_manage_polling_cron مدیریت می‌شود
+            echo '<div class="updated"><p>تنظیمات با موفقیت ذخیره شد! Long Polling فعال شد و webhook حذف شد.</p></div>';
         } else {
-            echo '<div class="error"><p>تنظیمات ذخیره شد ولی خطا در تنظیم وب‌هوک!</p></div>';
+            // اگر webhook انتخاب شده، polling را متوقف کن و webhook را تنظیم کن
+            if ($old_update_method === 'polling') {
+                // cron job به صورت خودکار در telegram_manage_polling_cron متوقف می‌شود
+                // reset کردن last_update_id
+                update_option('telegram_last_update_id', 0);
+            }
+            
+            // تنظیم وب‌هوک
+            if (!empty($token) && !empty($url_p)) {
+                $webhook_result = telegram_bot_set_webhook($token, $url_p, $host_type);
+                
+                if ($webhook_result) {
+                    echo '<div class="updated"><p>تنظیمات با موفقیت ذخیره شد و وب‌هوک تنظیم شد!</p></div>';
+                } else {
+                    echo '<div class="error"><p>تنظیمات ذخیره شد ولی خطا در تنظیم وب‌هوک!</p></div>';
+                }
+            } else {
+                echo '<div class="updated"><p>تنظیمات با موفقیت ذخیره شد!</p></div>';
+            }
         }
     }
 }
@@ -1146,6 +1267,288 @@ function handle_request()
 		return array('ok' => true);
 }
 
+// تابع دریافت update ها از تلگرام با استفاده از getUpdates (Long Polling)
+function telegram_poll_updates($timeout = 2) {
+    $token = get_option('telegram_bot_token');
+    $host_type = get_option('telegram_host_type', 'foreign');
+    
+    if (empty($token)) {
+        return false;
+    }
+    
+    // دریافت آخرین update_id که پردازش شده
+    $offset = (int) get_option('telegram_last_update_id', 0);
+    
+    // فقط update های message و callback_query را دریافت می‌کنیم (برای بهینه‌سازی)
+    $allowed_updates = urlencode(json_encode(['message', 'callback_query']));
+    
+    // timeout را به صورت پارامتر می‌گیریم (پیش‌فرض 2 ثانیه برای long polling)
+    $url = "https://api.telegram.org/bot{$token}/getUpdates?timeout={$timeout}&offset={$offset}&allowed_updates={$allowed_updates}";
+    
+    if ($host_type === 'iranian') {
+        // برای هاست ایرانی، از پروکسی استفاده می‌کنیم
+        // اما getUpdates معمولاً از پروکسی پشتیبانی نمی‌شود، پس باید مستقیماً تلاش کنیم
+        // یا از یک پروکسی HTTP استفاده کنیم
+        $proxy_url = get_option('telegram_proxy_url', '');
+        
+        // اگر پروکسی برای getUpdates پشتیبانی می‌شود، از آن استفاده می‌کنیم
+        // در غیر این صورت، مستقیماً تلاش می‌کنیم (ممکن است در هاست ایرانی کار نکند)
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        // timeout باید کمی بیشتر از timeout درخواست باشد (timeout + 1 ثانیه برای overhead)
+        curl_setopt($ch, CURLOPT_TIMEOUT, (int)$timeout + 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        
+        // اگر پروکسی HTTP تنظیم شده باشد، از آن استفاده می‌کنیم
+        if (!empty($proxy_url) && strpos($proxy_url, 'http') === 0) {
+            // در اینجا می‌توانیم از پروکسی استفاده کنیم اگر پشتیبانی شود
+            // اما برای سادگی، مستقیماً تلاش می‌کنیم
+        }
+        
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($http_code !== 200 || empty($response)) {
+            return false;
+        }
+    } else {
+        // برای هاست خارجی، مستقیماً به API تلگرام متصل می‌شویم
+        // timeout باید کمی بیشتر از timeout درخواست باشد (timeout + 1 ثانیه برای overhead)
+        $response = wp_remote_get($url, array(
+            'timeout' => (int)$timeout + 1,
+            'sslverify' => false
+        ));
+        
+        if (is_wp_error($response)) {
+            return false;
+        }
+        
+        $response = wp_remote_retrieve_body($response);
+    }
+    
+    $data = json_decode($response, true);
+    
+    if (!isset($data['ok']) || !$data['ok']) {
+        return false;
+    }
+    
+    return isset($data['result']) ? $data['result'] : array();
+}
+
+// تابع پردازش update های دریافتی
+function process_telegram_updates($updates) {
+    if (empty($updates) || !is_array($updates)) {
+        return;
+    }
+    
+    $log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
+    $last_update_id = 0;
+    
+    foreach ($updates as $update) {
+        if (!isset($update['update_id'])) {
+            continue;
+        }
+        
+        $update_id = (int) $update['update_id'];
+        $last_update_id = max($last_update_id, $update_id);
+        
+        // فقط update هایی که message یا callback_query دارند را پردازش می‌کنیم
+        // update های دیگر (مثل my_chat_member) را نادیده می‌گیریم اما update_id را ذخیره می‌کنیم
+        if (isset($update['message']) || isset($update['callback_query'])) {
+            handle_telegram_update_direct($update);
+        } else {
+            // لاگ برای update های پردازش نشده (اختیاری)
+            if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
+                file_put_contents($log_file, "Skipping update " . $update_id . " (no message or callback_query)\n", FILE_APPEND);
+            }
+        }
+    }
+    
+    // ذخیره آخرین update_id (حتی برای update های پردازش نشده)
+    if ($last_update_id > 0) {
+        update_option('telegram_last_update_id', $last_update_id + 1);
+        
+        // لاگ برای ردیابی
+        if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
+            file_put_contents($log_file, "Updated last_update_id to: " . ($last_update_id + 1) . "\n", FILE_APPEND);
+        }
+    }
+}
+
+// تابع پردازش مستقیم یک update (بدون نیاز به HTTP request)
+function handle_telegram_update_direct($update) {
+    $log_file = plugin_dir_path(__FILE__) . 'telegram_logs.txt';
+    
+    // استفاده از همان منطق handle_request اما برای update مستقیم
+    if (isset($update['message'])) {
+        $message_text = isset($update['message']['text']) ? $update['message']['text'] : '';
+        $token = get_option('telegram_bot_token');
+        $url_p = get_option('telegram_bot_url');
+        $admin_login = get_option('admin_login_p');
+        $chat_id = get_option('telegram_bot_Chat_id');
+        $current_chat_id = isset($update['message']['chat']['id']) ? $update['message']['chat']['id'] : $chat_id;
+        $sender_user_id = isset($update['message']['from']['id']) ? (string)$update['message']['from']['id'] : '';
+        $allowed_admins_option = (string) get_option('faraz_telegram_admin_ids', '');
+        $allowed_admins = array_filter(array_map('trim', preg_split('/[\s,،]+/', faraz_normalize_digits($allowed_admins_option))));
+        
+        if (function_exists('smart_admin_get_setting') && smart_admin_get_setting('debug_mode')) {
+            if (function_exists('smart_admin_debug_log')) {
+                smart_admin_debug_log("Processing message (polling): $message_text", "INFO");
+                smart_admin_debug_log("Sender: $sender_user_id | Admins: " . implode(',', $allowed_admins), "INFO");
+            } else {
+                file_put_contents($log_file, "Processing message (polling): $message_text\n", FILE_APPEND);
+                file_put_contents($log_file, "Sender: $sender_user_id | Admins: " . implode(',', $allowed_admins) . "\n", FILE_APPEND);
+            }
+        }
+        
+        if (strpos($message_text, '/start') === 0) { 
+            $botinfo = get_option('telegram_bot_info');
+            if ($botinfo == "") {
+                $botinfo = "
+                به بات فراز خوش اومدی :)
+
+        از کامند های زیر استفاده کن : 
+        /start 
+        /send_drafts
+        /publish_all_drafts
+                ";
+            }
+            
+            $response_message = $botinfo;
+            update_option('chat_id', get_option('telegram_bot_Chat_id'));
+            update_option('admin_login_p', false);
+            $starter_conuter = starter_conuter();
+            send_to_telegram($response_message, $current_chat_id);
+        }
+        elseif (strpos($message_text, '/ping') === 0) { 
+            send_to_telegram("hello", $current_chat_id);
+        }
+        elseif (strpos($message_text, '/send_drafts') === 0) {
+            send_to_telegram("پست ها در حال ارسال هستند..."); 
+            send_all_draft_posts($chat_id);
+        }
+        elseif(strpos($message_text, '/publish_all_drafts') === 0) {
+            // کد منتشر کردن همه پست‌ها
+        }
+        elseif (!empty($update['message']['photo']) || ((!empty($message_text)) && (strpos(str_replace('؛',';',$message_text), ';') !== false))) {
+            $is_admin = faraz_is_telegram_admin($sender_user_id);
+            if (!$is_admin) {
+                send_to_telegram('⛔ شما ادمین نیستید و امکان ارسال پست را ندارید.', $current_chat_id);
+            } else {
+                $post_title = '';
+                $post_content = '';
+                $featured_image_url = '';
+
+                if (!empty($update['message']['photo'])) {
+                    $caption_text = isset($update['message']['caption']) ? $update['message']['caption'] : '';
+                    list($post_title, $post_content) = faraz_parse_title_and_content_from_text($caption_text);
+                    $photos = $update['message']['photo'];
+                    $largest = end($photos);
+                    $file_id = $largest['file_id'];
+                    $featured_image_url = faraz_download_telegram_file_to_wp_media($file_id);
+                } else {
+                    list($post_title, $post_content) = faraz_parse_title_and_content_from_text($message_text);
+                }
+
+                if (empty($post_title)) {
+                    $post_title = wp_trim_words(wp_strip_all_tags($post_content), 12, '');
+                    if (empty($post_title)) { $post_title = 'بدون عنوان'; }
+                }
+
+                $post_id = wp_insert_post([
+                    'post_title'   => $post_title,
+                    'post_content' => $post_content,
+                    'post_status'  => 'faraz',
+                    'post_type'    => 'post',
+                    'post_author'  => 1,
+                ]);
+
+                if (!is_wp_error($post_id)) {
+                    if (!empty($featured_image_url)) {
+                        $attached = faraz_attach_external_image_as_featured($post_id, $featured_image_url);
+                        if ($attached) {
+                            update_post_meta($post_id, '_faraz_featured_source_url', esc_url_raw($featured_image_url));
+                        }
+                    }
+                    send_post_to_telegram($post_id, $current_chat_id);
+                    send_to_telegram("اگر تصویر یا فایل دیگری برای اضافه‌کردن داری ارسال کن (اختیاری). برای رد کردن، چیزی نفرست.", $current_chat_id);
+                } else {
+                    send_to_telegram('خطا در ایجاد پست: ' . $post_id->get_error_message(), $current_chat_id);
+                }
+            }
+        }
+        elseif (strpos($message_text, '/id') === 0 || strpos($message_text, '/whoami') === 0) {
+            $username = isset($update['message']['from']['username']) ? '@' . $update['message']['from']['username'] : '—';
+            $first = isset($update['message']['from']['first_name']) ? $update['message']['from']['first_name'] : '';
+            $last  = isset($update['message']['from']['last_name']) ? $update['message']['from']['last_name'] : '';
+            $is_admin = faraz_is_telegram_admin($sender_user_id) ? 'بله' : 'خیر';
+            $info = "👤 اطلاعات شما\nID: {$sender_user_id}\nUsername: {$username}\nName: {$first} {$last}\nادمین: {$is_admin}";
+            send_to_telegram($info, $current_chat_id);
+        }
+    }
+    elseif (isset($update['callback_query'])) {
+        $callback_query = $update['callback_query'];
+        $callback_data = $callback_query['data'];
+        $chat_id = isset($callback_query['message']['chat']['id']) ? $callback_query['message']['chat']['id'] : $callback_query['from']['id'];
+        $message_id = $callback_query['message']['message_id'];
+
+        answer_callback_query($callback_query['id']);
+
+        if (strpos($callback_data, 'publish_post_') === 0) {
+            $post_id = str_replace('publish_post_', '', $callback_data);
+            $post_status = get_post_status($post_id);
+
+            if($post_status === 'faraz'){
+                publish_draft_post($post_id);
+                $post_title = get_the_title($post_id);
+                
+                $post_thumbnail_url = get_the_post_thumbnail_url($post_id, 'full');
+                if ($post_thumbnail_url) {
+                    $post_excerpt = get_the_excerpt($post_id);
+                    $post_link = get_permalink($post_id);
+                    $cats = get_the_category($post_id);
+                    $cat = !empty($cats) ? esc_html($cats[0]->name) : 'بدون دسته‌بندی';
+                    $message = "$post_title \n\n$post_excerpt \n\nدسته‌بندی:  $cat \n\nآدرس پست در سایت: $post_link";
+                    
+                    $public_channel_id = get_option('farazautur_public_channel_id', '');
+                    if (!empty($public_channel_id)) {
+                        send_telegram_photo_with_caption($post_thumbnail_url, $message, $post_id, true, $public_channel_id);
+                    }
+                }
+                
+                $confirmation_message = $post_title . " با موفقیت منتشر شد!";
+                send_to_telegram($confirmation_message, $chat_id);
+            } else {
+                send_to_telegram("پست در حالت فراز نیست و قابل انتشار نیست!", $chat_id);
+            }
+        }
+        elseif (strpos($callback_data, 'delete_post_') === 0) {
+            $post_id = str_replace('delete_post_', '', $callback_data);
+            $post_status = get_post_status($post_id);
+            
+            if($post_status === 'faraz'){
+                delete_post($post_id);
+                $post_title = get_the_title($post_id);
+                send_to_telegram($post_title . " با موفقیت حذف شد!", $chat_id);
+            } else {
+                send_to_telegram("پست در حالت فراز نیست و قابل حذف نیست!", $chat_id);
+            }
+        }
+        elseif (strpos($callback_data, 'edited_post_') === 0) {
+            $post_id = str_replace('edited_post_', '', $callback_data);
+            send_post_to_telegram($post_id, $chat_id);
+        }
+        elseif (strpos($callback_data, 'show_post_') === 0) {
+            $post_id = str_replace('show_post_', '', $callback_data);
+            send_post_to_telegram($post_id, $chat_id);
+        }
+        // سایر callback_query ها مشابه handle_request
+    }
+}
+
 // تابع جدید برای پاسخ به callback_query
 function answer_callback_query($callback_query_id) {
     $token = get_option('telegram_bot_token');
@@ -1511,6 +1914,10 @@ function handle_telegram_webhook_action() {
             
         case 'switch_to_foreign':
             $result = switch_to_foreign_host($token);
+            break;
+            
+        case 'test_polling':
+            $result = test_telegram_polling($token, $host_type);
             break;
             
         default:
@@ -2203,4 +2610,51 @@ function full_callback_test($token, $host_type) {
             return 'خطا در ارسال پیام: ' . ($result['description'] ?? 'نامشخص');
         }
     }
+}
+
+// تابع تست Long Polling
+function test_telegram_polling($token, $host_type) {
+    if (empty($token)) {
+        return 'توکن ربات خالی است.';
+    }
+    
+    $last_update_id_before = get_option('telegram_last_update_id', 0);
+    
+    // دریافت update ها با timeout کوتاه‌تر برای تست (1 ثانیه - حداقل مجاز)
+    $updates = telegram_poll_updates(1);
+    
+    if ($updates === false) {
+        return '❌ خطا در دریافت update ها از تلگرام!' .
+               "\n\n🔧 بررسی کنید:" .
+               "\n• توکن ربات صحیح است" .
+               "\n• اتصال به اینترنت برقرار است" .
+               "\n• برای هاست ایرانی، ممکن است نیاز به VPN باشد";
+    }
+    
+    $update_count = is_array($updates) ? count($updates) : 0;
+    
+    $result_message = '✅ تست Long Polling با موفقیت انجام شد!' .
+                     "\n\n📊 اطلاعات:" .
+                     "\n• تعداد update های دریافت شده: " . $update_count .
+                     "\n• آخرین update_id قبل از پردازش: " . $last_update_id_before .
+                     "\n• زمان: " . current_time('Y-m-d H:i:s') .
+                     "\n• نوع هاست: " . ($host_type === 'iranian' ? 'ایرانی (پروکسی)' : 'خارجی (مستقیم)');
+    
+    if ($update_count > 0) {
+        $result_message .= "\n\n📝 Update های دریافت شده:" .
+                          "\n" . json_encode($updates, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        
+        // پردازش update ها
+        process_telegram_updates($updates);
+        
+        // خواندن last_update_id بعد از پردازش
+        $last_update_id_after = get_option('telegram_last_update_id', 0);
+        
+        $result_message .= "\n\n✅ Update ها پردازش شدند." .
+                          "\n• آخرین update_id بعد از پردازش: " . $last_update_id_after;
+    } else {
+        $result_message .= "\n\n💡 هیچ update جدیدی دریافت نشد. این طبیعی است اگر پیامی ارسال نکرده‌اید.";
+    }
+    
+    return $result_message;
 }
