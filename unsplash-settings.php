@@ -1,0 +1,314 @@
+<?php
+/**
+ * Unsplash API Settings Page
+ */
+
+// Add submenu for Unsplash settings
+add_action('admin_menu', 'faraz_unsplash_add_submenu', 30);
+
+function faraz_unsplash_add_submenu() {
+    add_submenu_page(
+        'faraz-telegram-plugin', // Slug of the parent menu
+        'تنظیمات Unsplash',      // Page title
+        'تنظیمات Unsplash',      // Menu title
+        'manage_options',       // Capability required
+        'faraz-unsplash-settings', // Menu slug
+        'faraz_unsplash_settings_page_callback' // Callback function to display the page
+    );
+}
+
+// Register settings
+add_action('admin_init', 'faraz_unsplash_register_settings');
+
+function faraz_unsplash_register_settings() {
+    register_setting(
+        'faraz_unsplash_settings_group', // Option group
+        'faraz_unsplash_api_key',      // Option name
+        [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ]
+    );
+
+    register_setting(
+        'faraz_unsplash_settings_group',
+        'faraz_unsplash_image_resolution',
+        [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => 'regular'
+        ]
+    );
+
+    register_setting(
+        'faraz_unsplash_settings_group',
+        'faraz_unsplash_suggestion_count',
+        [
+            'type' => 'number',
+            'sanitize_callback' => 'absint',
+            'default' => 3
+        ]
+    );
+
+    register_setting(
+        'faraz_unsplash_settings_group',
+        'faraz_unsplash_enable_image_generation',
+        [
+            'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
+            'default' => true
+        ]
+    );
+
+    register_setting(
+        'faraz_unsplash_settings_group',
+        'faraz_unsplash_enable_auto_featured_image',
+        [
+            'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
+            'default' => true
+        ]
+    );
+
+    register_setting(
+        'faraz_unsplash_settings_group',
+        'faraz_unsplash_enable_image_suggestions',
+        [
+            'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
+            'default' => true
+        ]
+    );
+}
+
+// تابع‌های کمکی برای بررسی وضعیت فعال بودن تولید تصویر
+function faraz_unsplash_is_image_generation_enabled() {
+    return get_option('faraz_unsplash_enable_image_generation', true);
+}
+
+function faraz_unsplash_is_auto_featured_image_enabled() {
+    return faraz_unsplash_is_image_generation_enabled() && get_option('faraz_unsplash_enable_auto_featured_image', true);
+}
+
+function faraz_unsplash_is_image_suggestions_enabled() {
+    return faraz_unsplash_is_image_generation_enabled() && get_option('faraz_unsplash_enable_image_suggestions', true);
+}
+
+// Settings page content
+function faraz_unsplash_settings_page_callback() {
+    $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'settings';
+    ?>
+    <div class="wrap">
+        <h1>تنظیمات اتصال به Unsplash</h1>
+        <h2 class="nav-tab-wrapper">
+            <a href="?page=faraz-unsplash-settings&tab=settings" class="nav-tab <?php echo $active_tab == 'settings' ? 'nav-tab-active' : ''; ?>">تنظیمات</a>
+            <a href="?page=faraz-unsplash-settings&tab=logs" class="nav-tab <?php echo $active_tab == 'logs' ? 'nav-tab-active' : ''; ?>">لاگ‌ها</a>
+        </h2>
+
+        <?php if ($active_tab == 'settings') : ?>
+            <p>برای دریافت کلید API، به <a href="https://unsplash.com/developers" target="_blank">صفحه توسعه‌دهندگان Unsplash</a> مراجعه کنید.</p>
+            <form method="post" action="options.php">
+                <?php
+                settings_fields('faraz_unsplash_settings_group');
+                do_settings_sections('faraz_unsplash_settings_group');
+                ?>
+                <table class="form-table">
+                    <tr valign="top">
+                        <th scope="row">
+                            <label for="faraz_unsplash_api_key">کلید API Unsplash</label>
+                        </th>
+                        <td>
+                            <input type="text" id="faraz_unsplash_api_key" name="faraz_unsplash_api_key" value="<?php echo esc_attr(get_option('faraz_unsplash_api_key')); ?>" class="regular-text" />
+                            <p class="description">کلید API خود را که از Unsplash دریافت کرده‌اید، در این قسمت وارد کنید.</p>
+                        </td>
+                    </tr>
+                    
+                    <tr valign="top">
+                        <th scope="row">
+                            <label for="faraz_unsplash_image_resolution">رزولوشن تصویر</label>
+                        </th>
+                        <td>
+                            <select id="faraz_unsplash_image_resolution" name="faraz_unsplash_image_resolution">
+                                <option value="raw" <?php selected(get_option('faraz_unsplash_image_resolution'), 'raw'); ?>>خام (Raw)</option>
+                                <option value="full" <?php selected(get_option('faraz_unsplash_image_resolution'), 'full'); ?>>کامل (Full)</option>
+                                <option value="regular" <?php selected(get_option('faraz_unsplash_image_resolution'), 'regular'); ?>>معمولی (Regular)</option>
+                                <option value="small" <?php selected(get_option('faraz_unsplash_image_resolution'), 'small'); ?>>کوچک (Small)</option>
+                                <option value="thumb" <?php selected(get_option('faraz_unsplash_image_resolution'), 'thumb'); ?>>بندانگشتی (Thumb)</option>
+                            </select>
+                            <p class="description">کیفیت و اندازه تصویری که از Unsplash دانلود می‌شود را انتخاب کنید.</p>
+                        </td>
+                    </tr>
+
+                    <tr valign="top">
+                        <th scope="row">
+                            <label for="faraz_unsplash_suggestion_count">تعداد تصاویر پیشنهادی</label>
+                        </th>
+                        <td>
+                            <input type="number" id="faraz_unsplash_suggestion_count" name="faraz_unsplash_suggestion_count" value="<?php echo esc_attr(get_option('faraz_unsplash_suggestion_count', 3)); ?>" min="1" max="10" class="small-text" />
+                            <p class="description">تعداد تصاویری که برای انتخاب به شما پیشنهاد می‌شود (بین ۱ تا ۱۰).</p>
+                        </td>
+                    </tr>
+
+                    <tr valign="top">
+                        <th scope="row">
+                            <label for="faraz_unsplash_enable_image_generation">فعال کردن تولید تصویر</label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="faraz_unsplash_enable_image_generation" name="faraz_unsplash_enable_image_generation" value="1" <?php checked(get_option('faraz_unsplash_enable_image_generation', true)); ?> />
+                                فعال کردن تولید خودکار تصویر با Unsplash
+                            </label>
+                            <p class="description">اگر این گزینه غیرفعال باشد، تمام قابلیت‌های تولید تصویر غیرفعال می‌شود.</p>
+                        </td>
+                    </tr>
+
+                    <tr valign="top" class="unsplash-sub-option">
+                        <th scope="row">
+                            <label for="faraz_unsplash_enable_auto_featured_image">تصویر شاخص خودکار</label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="faraz_unsplash_enable_auto_featured_image" name="faraz_unsplash_enable_auto_featured_image" value="1" <?php checked(get_option('faraz_unsplash_enable_auto_featured_image', true)); ?> />
+                                تولید خودکار تصویر شاخص برای پست‌ها
+                            </label>
+                            <p class="description">تصویر شاخص به طور خودکار بر اساس محتوای پست تولید می‌شود.</p>
+                        </td>
+                    </tr>
+
+                    <tr valign="top" class="unsplash-sub-option">
+                        <th scope="row">
+                            <label for="faraz_unsplash_enable_image_suggestions">پیشنهاد تصاویر</label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="faraz_unsplash_enable_image_suggestions" name="faraz_unsplash_enable_image_suggestions" value="1" <?php checked(get_option('faraz_unsplash_enable_image_suggestions', true)); ?> />
+                                نمایش پیشنهادات تصویر در ویرایشگر
+                            </label>
+                            <p class="description">تصاویر مرتبط در ویرایشگر پست نمایش داده می‌شود.</p>
+                        </td>
+                    </tr>
+                </table>
+                
+                <?php submit_button('ذخیره تنظیمات'); ?>
+            </form>
+
+            <hr>
+            <h3>تست اتصال</h3>
+            <p>برای بررسی وضعیت اتصال به Unsplash، روی دکمه زیر کلیک کنید:</p>
+            <button type="button" id="test-unsplash-connection" class="button button-secondary">تست اتصال به Unsplash</button>
+            <div id="connection-test-result"></div>
+
+            <script>
+            jQuery(document).ready(function($) {
+                // تابع برای کنترل گزینه‌های فرعی
+                function toggleSubOptions() {
+                    var mainOption = $('#faraz_unsplash_enable_image_generation');
+                    var subOptions = $('.unsplash-sub-option');
+                    
+                    if (mainOption.is(':checked')) {
+                        subOptions.show();
+                        subOptions.find('input[type="checkbox"]').prop('disabled', false);
+                    } else {
+                        subOptions.hide();
+                        subOptions.find('input[type="checkbox"]').prop('disabled', true).prop('checked', false);
+                    }
+                }
+                
+                // اجرای اولیه
+                toggleSubOptions();
+                
+                // تغییر گزینه اصلی
+                $('#faraz_unsplash_enable_image_generation').on('change', function() {
+                    toggleSubOptions();
+                });
+                
+                // تست اتصال
+                $('#test-unsplash-connection').on('click', function() {
+                    var button = $(this);
+                    var resultDiv = $('#connection-test-result');
+                    
+                    button.prop('disabled', true).text('در حال تست...');
+                    resultDiv.html('<p>در حال بررسی اتصال...</p>');
+                    
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'test_unsplash_connection',
+                            nonce: '<?php echo wp_create_nonce("test_unsplash_connection"); ?>'
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                resultDiv.html('<div class="notice notice-success"><p>✅ اتصال موفق: ' + response.data.message + '</p></div>');
+                            } else {
+                                resultDiv.html('<div class="notice notice-error"><p>❌ خطا در اتصال: ' + response.data.message + '</p></div>');
+                            }
+                        },
+                        error: function() {
+                            resultDiv.html('<div class="notice notice-error"><p>❌ خطای ناشناخته در هنگام تست اتصال</p></div>');
+                        },
+                        complete: function() {
+                            button.prop('disabled', false).text('تست اتصال به Unsplash');
+                        }
+                    });
+                });
+            });
+            </script>
+        <?php elseif ($active_tab == 'logs') : 
+            $log_file = plugin_dir_path(__FILE__) . 'unsplash_logs.txt';
+
+            if (isset($_POST['clear_log_file']) && check_admin_referer('clear_unsplash_logs_nonce')) {
+                if (file_exists($log_file)) {
+                    unlink($log_file);
+                    echo '<div class="notice notice-success is-dismissible"><p>فایل لاگ با موفقیت پاک شد.</p></div>';
+                }
+            }
+        ?>
+            <h2>لاگ‌های Unsplash</h2>
+            <div id="log-viewer">
+                <?php
+                if (file_exists($log_file)) {
+                    echo '<pre>' . esc_textarea(file_get_contents($log_file)) . '</pre>';
+                } else {
+                    echo '<p>هنوز هیچ لاگی ثبت نشده است.</p>';
+                }
+                ?>
+            </div>
+            <form method="post" action="">
+                <?php wp_nonce_field('clear_unsplash_logs_nonce'); ?>
+                <p class="submit">
+                    <input type="submit" name="clear_log_file" class="button button-secondary" value="پاک کردن لاگ" onclick="return confirm('آیا از پاک کردن فایل لاگ اطمینان دارید؟')">
+                </p>
+            </form>
+            <style>
+                #log-viewer {
+                    background: #fff;
+                    border: 1px solid #e5e5-5;
+                    padding: 10px;
+                    height: 400px;
+                    overflow-y: scroll;
+                    white-space: pre-wrap;
+                }
+                
+                .unsplash-sub-option {
+                    background-color: #f9f9f9;
+                    border-left: 3px solid #0073aa;
+                }
+                
+                .unsplash-sub-option th {
+                    padding-left: 20px;
+                }
+                
+                .unsplash-sub-option td {
+                    padding-left: 20px;
+                }
+                
+                .unsplash-sub-option label {
+                    color: #666;
+                }
+            </style>
+        <?php endif; ?>
+    </div>
+    <?php
+}

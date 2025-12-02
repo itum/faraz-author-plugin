@@ -1,0 +1,632 @@
+/**
+ * فونت پیش‌فرض وردپرس برای افزونه ادمین هوشمند
+ * WordPress Default Font Inheritance for Smart Admin Plugin
+ */
+
+/* فونت پیش‌فرض وردپرس داشبورد */
+.smart-admin-wrap,
+.smart-admin-wrap *,
+.smart-admin-tabs,
+.smart-admin-tabs *,
+.template-card,
+.template-card *,
+.prompt-card,
+.prompt-card *,
+.form-group,
+.form-group *,
+.modal-content,
+.modal-content *,
+.image-grid,
+.image-grid *,
+.smart-admin-seo-modal,
+.smart-admin-seo-modal *,
+.image-search-modal,
+.image-search-modal *,
+#unsplash-metabox-container,
+#unsplash-metabox-container * {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif !important;
+}
+
+/* حفظ فونت‌های خاص برای آیکون‌ها و نمادها */
+.dashicons,
+.dashicons:before,
+.wp-admin .dashicons,
+.wp-admin .dashicons:before {
+    font-family: dashicons !important;
+}
+
+/* تنظیمات برای عناصر مختلف */
+.smart-admin-wrap h1,
+.smart-admin-wrap h2,
+.smart-admin-wrap h3 {
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+}
+
+.smart-admin-wrap h4,
+.smart-admin-wrap h5,
+.smart-admin-wrap h6 {
+    font-weight: 500 !important;
+    line-height: 1.3 !important;
+}
+
+.smart-admin-wrap p {
+    font-weight: normal !important;
+    line-height: 1.5 !important;
+}
+
+.smart-admin-wrap label {
+    font-weight: 500 !important;
+}
+
+.smart-admin-wrap input,
+.smart-admin-wrap textarea,
+.smart-admin-wrap select {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-wrap button {
+    font-weight: 500 !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای کارت‌های قالب */
+.template-card h3 {
+    font-weight: 600 !important;
+    font-size: 18px !important;
+    line-height: 1.2 !important;
+}
+
+.template-card p {
+    font-weight: normal !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+.template-card span {
+    font-weight: normal !important;
+    font-size: 12px !important;
+}
+
+/* تنظیمات برای کارت‌های پرامپت */
+.prompt-card h3 {
+    font-weight: 600 !important;
+    font-size: 16px !important;
+    line-height: 1.2 !important;
+}
+
+.prompt-card p {
+    font-weight: normal !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+}
+
+/* تنظیمات برای فرم‌ها */
+.form-group label {
+    font-weight: 500 !important;
+    font-size: 14px !important;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای مودال‌ها */
+.modal-content h3 {
+    font-weight: 600 !important;
+    font-size: 18px !important;
+    line-height: 1.2 !important;
+}
+
+.modal-content p {
+    font-weight: normal !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+.modal-content label {
+    font-weight: 500 !important;
+    font-size: 14px !important;
+}
+
+.modal-content input,
+.modal-content textarea,
+.modal-content select {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+.modal-content button {
+    font-weight: 500 !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای تب‌ها */
+.smart-admin-tabs a {
+    font-weight: 500 !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-tabs a.active {
+    font-weight: 600 !important;
+}
+
+/* تنظیمات برای دکمه‌ها */
+.smart-admin-wrap .button,
+.smart-admin-wrap .submit-button,
+.smart-admin-wrap button[type="submit"] {
+    font-weight: 500 !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای پیام‌ها و اعلان‌ها */
+.smart-admin-wrap .notice,
+.smart-admin-wrap .error,
+.smart-admin-wrap .success,
+.smart-admin-wrap .warning {
+    font-weight: normal !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+/* تنظیمات برای جداول */
+.smart-admin-wrap table,
+.smart-admin-wrap table th,
+.smart-admin-wrap table td {
+    font-weight: normal !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+.smart-admin-wrap table th {
+    font-weight: 600 !important;
+}
+
+/* تنظیمات برای لیست‌ها */
+.smart-admin-wrap ul,
+.smart-admin-wrap ol,
+.smart-admin-wrap li {
+    font-weight: normal !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+/* تنظیمات برای لینک‌ها */
+.smart-admin-wrap a {
+    font-weight: normal !important;
+    font-size: inherit !important;
+}
+
+/* تنظیمات برای کدها */
+.smart-admin-wrap code,
+.smart-admin-wrap pre {
+    font-family: Consolas, Monaco, "Courier New", monospace !important;
+    font-weight: normal !important;
+}
+
+/* تنظیمات برای تصاویر و آیکون‌ها */
+.smart-admin-wrap img {
+    font-family: inherit !important;
+}
+
+/* تنظیمات برای عناصر خاص */
+.smart-admin-wrap .loading-message,
+.smart-admin-wrap .loading-text,
+.smart-admin-wrap .loading-subtext {
+    font-weight: normal !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+.smart-admin-wrap .loading-text {
+    font-weight: 600 !important;
+    font-size: 18px !important;
+}
+
+.smart-admin-wrap .loading-subtext {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خطا */
+.smart-admin-wrap .error-icon {
+    font-family: inherit !important;
+}
+
+.smart-admin-wrap .error p {
+    font-weight: 600 !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر موفقیت */
+.smart-admin-wrap .success-message {
+    font-weight: normal !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+/* تنظیمات برای عناصر هشدار */
+.smart-admin-wrap .warning-message {
+    font-weight: normal !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+/* تنظیمات برای عناصر اطلاعات */
+.smart-admin-wrap .info-message {
+    font-weight: normal !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+/* تنظیمات برای عناصر بارگذاری */
+.smart-admin-wrap .spinner,
+.smart-admin-wrap .loading-spinner {
+    font-family: inherit !important;
+}
+
+/* تنظیمات برای عناصر خاص افزونه */
+.smart-admin-wrap .template-card-model,
+.smart-admin-wrap .prompt-card-model {
+    font-weight: normal !important;
+    font-size: 12px !important;
+}
+
+.smart-admin-wrap .template-card-date,
+.smart-admin-wrap .prompt-card-date {
+    font-weight: normal !important;
+    font-size: 12px !important;
+}
+
+.smart-admin-wrap .template-card-actions,
+.smart-admin-wrap .prompt-card-actions {
+    font-weight: normal !important;
+    font-size: 13px !important;
+}
+
+/* تنظیمات برای عناصر خاص فرم */
+.smart-admin-wrap .form-row {
+    font-weight: normal !important;
+}
+
+.smart-admin-wrap .form-row label {
+    font-weight: 500 !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-wrap .form-row input,
+.smart-admin-wrap .form-row textarea,
+.smart-admin-wrap .form-row select {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص مودال */
+.smart-admin-wrap .template-form-modal,
+.smart-admin-wrap .template-form-content,
+.smart-admin-wrap .template-form-header {
+    font-weight: normal !important;
+}
+
+.smart-admin-wrap .template-form-header h3 {
+    font-weight: 600 !important;
+    font-size: 18px !important;
+}
+
+.smart-admin-wrap .template-form-header .close-template-form {
+    font-weight: normal !important;
+    font-size: 24px !important;
+}
+
+/* تنظیمات برای عناصر خاص تصویر */
+.smart-admin-wrap .image-templates-wrap,
+.smart-admin-wrap .image-templates-wrap h3,
+.smart-admin-wrap .image-templates-wrap p {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-wrap .image-templates-wrap h3 {
+    font-weight: 600 !important;
+    font-size: 16px !important;
+}
+
+/* تنظیمات برای عناصر خاص جستجو */
+.smart-admin-wrap .image-search-container,
+.smart-admin-wrap .image-search-container input,
+.smart-admin-wrap .image-search-container button {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص نتایج */
+.smart-admin-wrap .image-grid,
+.smart-admin-wrap .image-card,
+.smart-admin-wrap .image-info,
+.smart-admin-wrap .image-alt,
+.smart-admin-wrap .image-description,
+.smart-admin-wrap .image-author {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-wrap .image-alt {
+    font-weight: bold !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-wrap .image-description {
+    font-weight: normal !important;
+    font-size: 12px !important;
+}
+
+.smart-admin-wrap .image-author {
+    font-weight: normal !important;
+    font-size: 11px !important;
+}
+
+/* تنظیمات برای عناصر خاص عملیات */
+.smart-admin-wrap .image-actions,
+.smart-admin-wrap .image-actions .button {
+    font-weight: normal !important;
+    font-size: 11px !important;
+}
+
+/* تنظیمات برای عناصر خاص پیشنهاد */
+.smart-admin-wrap .auto-suggest-results,
+.smart-admin-wrap .auto-suggest-results h4 {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-wrap .auto-suggest-results h4 {
+    font-weight: 600 !important;
+    font-size: 16px !important;
+}
+
+/* تنظیمات برای عناصر خاص بارگذاری */
+.smart-admin-wrap .loading,
+.smart-admin-wrap .loading::before {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص خطا */
+.smart-admin-wrap .error,
+.smart-admin-wrap .no-results {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص متاباکس */
+.smart-admin-wrap #unsplash-metabox-container,
+.smart-admin-wrap #unsplash-metabox-container .inside,
+.smart-admin-wrap #unsplash-metabox-container input,
+.smart-admin-wrap #unsplash-metabox-container button {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص نتایج */
+.smart-admin-wrap #unsplash-results,
+.smart-admin-wrap .unsplash-image-wrapper {
+    font-weight: normal !important;
+}
+
+/* تنظیمات برای عناصر خاص اسپینر */
+.smart-admin-wrap .spinner,
+.smart-admin-wrap #image-search-loading,
+.smart-admin-wrap #image-search-loading .spinner {
+    font-weight: normal !important;
+}
+
+/* تنظیمات برای عناصر خاص پاسخگویی */
+@media (max-width: 768px) {
+    .smart-admin-wrap .image-actions .button {
+        font-weight: normal !important;
+        font-size: 12px !important;
+    }
+}
+
+/* تنظیمات برای عناصر خاص SEO */
+.smart-admin-wrap .smart-admin-seo-modal,
+.smart-admin-wrap .smart-admin-seo-modal-content,
+.smart-admin-wrap .smart-admin-seo-modal-header,
+.smart-admin-wrap .smart-admin-seo-modal-title,
+.smart-admin-wrap .smart-admin-seo-modal-close,
+.smart-admin-wrap .smart-admin-seo-modal-body,
+.smart-admin-wrap .smart-admin-seo-result-item,
+.smart-admin-wrap .smart-admin-seo-result-title,
+.smart-admin-wrap .smart-admin-seo-result-value,
+.smart-admin-wrap .smart-admin-seo-recommendations,
+.smart-admin-wrap .smart-admin-seo-recommendation-item,
+.smart-admin-wrap .smart-admin-seo-score,
+.smart-admin-wrap .smart-admin-seo-score-circle,
+.smart-admin-wrap .smart-admin-seo-score-text {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-wrap .smart-admin-seo-modal-title {
+    font-weight: bold !important;
+    font-size: 18px !important;
+}
+
+.smart-admin-wrap .smart-admin-seo-modal-close {
+    font-weight: normal !important;
+    font-size: 20px !important;
+}
+
+.smart-admin-wrap .smart-admin-seo-result-title {
+    font-weight: bold !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-wrap .smart-admin-seo-score-circle {
+    font-weight: bold !important;
+    font-size: 18px !important;
+}
+
+.smart-admin-wrap .smart-admin-seo-score-text {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص Gutenberg */
+.smart-admin-wrap .smart-admin-seo-gutenberg-button {
+    font-weight: normal !important;
+    font-size: 12px !important;
+}
+
+/* تنظیمات برای عناصر خاص بارگذاری SEO */
+.smart-admin-wrap .smart-admin-seo-loading,
+.smart-admin-wrap .smart-admin-seo-spinner {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص Image Optimizer */
+.smart-admin-wrap .image-search-modal,
+.smart-admin-wrap .modal-content,
+.smart-admin-wrap .modal-header,
+.smart-admin-wrap .modal-header h3,
+.smart-admin-wrap .modal-header .close,
+.smart-admin-wrap .modal-body,
+.smart-admin-wrap .modal-body input,
+.smart-admin-wrap .modal-body .button {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-wrap .modal-header h3 {
+    font-weight: normal !important;
+    font-size: 18px !important;
+}
+
+.smart-admin-wrap .modal-header .close {
+    font-weight: normal !important;
+    font-size: 24px !important;
+}
+
+/* تنظیمات برای عناصر خاص گرید تصاویر */
+.smart-admin-wrap .image-grid,
+.smart-admin-wrap .image-card,
+.smart-admin-wrap .image-preview,
+.smart-admin-wrap .image-error,
+.smart-admin-wrap .image-info,
+.smart-admin-wrap .image-alt,
+.smart-admin-wrap .image-description,
+.smart-admin-wrap .image-author,
+.smart-admin-wrap .image-actions {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-wrap .image-alt {
+    font-weight: bold !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-wrap .image-description {
+    font-weight: normal !important;
+    font-size: 12px !important;
+}
+
+.smart-admin-wrap .image-author {
+    font-weight: normal !important;
+    font-size: 11px !important;
+}
+
+.smart-admin-wrap .image-actions .button {
+    font-weight: normal !important;
+    font-size: 11px !important;
+}
+
+/* تنظیمات برای عناصر خاص پیشنهاد خودکار */
+.smart-admin-wrap .auto-suggest-results,
+.smart-admin-wrap .auto-suggest-results h4 {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-wrap .auto-suggest-results h4 {
+    font-weight: normal !important;
+    font-size: 16px !important;
+}
+
+/* تنظیمات برای عناصر خاص بارگذاری */
+.smart-admin-wrap .loading,
+.smart-admin-wrap .loading::before {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص خطا و هشدار */
+.smart-admin-wrap .error,
+.smart-admin-wrap .no-results {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص متاباکس جستجوی تصویر */
+.smart-admin-wrap #smart-admin-image-search-container,
+.smart-admin-wrap #smart-admin-image-search-container .inside,
+.smart-admin-wrap #smart-admin-image-search-container input,
+.smart-admin-wrap #smart-admin-image-search-container .button {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+.smart-admin-wrap #image-search-loading,
+.smart-admin-wrap #image-search-loading .spinner {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص پاسخگویی */
+@media (max-width: 768px) {
+    .smart-admin-wrap .image-actions .button {
+        font-weight: normal !important;
+        font-size: 12px !important;
+    }
+}
+
+/* تنظیمات برای عناصر خاص Unsplash */
+.smart-admin-wrap #unsplash-metabox-container,
+.smart-admin-wrap #unsplash-metabox-container .spinner,
+.smart-admin-wrap #unsplash-results,
+.smart-admin-wrap .unsplash-image-wrapper {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص اسپینر Unsplash */
+.smart-admin-wrap #unsplash-metabox-container .spinner {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص نتایج Unsplash */
+.smart-admin-wrap #unsplash-results,
+.smart-admin-wrap .unsplash-image-wrapper {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص تصاویر Unsplash */
+.smart-admin-wrap #unsplash-results img {
+    font-weight: normal !important;
+    font-size: 14px !important;
+}
+
+/* تنظیمات برای عناصر خاص پاسخگویی Unsplash */
+@media (max-width: 768px) {
+    .smart-admin-wrap #unsplash-results {
+        font-weight: normal !important;
+        font-size: 14px !important;
+    }
+}
